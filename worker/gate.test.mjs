@@ -6,7 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import { powChallenge, checkPow, gateCookie, gateUser, gatedPath, POW_BITS } from "./gate.js";
+import { powChallenge, checkPow, gateCookie, gateUser, gatedPath, liveSession, forgetSessions, POW_BITS } from "./gate.js";
 import { handle, sha } from "./api.js";
 
 const dir = path.dirname(new URL(import.meta.url).pathname);
@@ -69,13 +69,34 @@ test("proof of work: good work passes once; wrong, replayed, rushed and forged w
 
 test("gate cookie: valid for its user, refused when tampered or expired", async () => {
   const env = { PEPPER };
-  const raw = (await gateCookie(env, "abcd123456")).split(";")[0];
+  const raw = (await gateCookie(env, "abcd123456", "0123456789abcdef99")).split(";")[0];
   const r = (c) => new Request("https://ff.test/data/home.json", { headers: { cookie: c } });
-  assert.equal(await gateUser(r(raw), env), "abcd123456");
+  assert.deepEqual(await gateUser(r(raw), env), { uid: "abcd123456", sid: "0123456789abcdef" });
   assert.equal(await gateUser(r(raw.replace("abcd123456", "zzzz123456")), env), null, "a changed user id breaks the signature");
   assert.equal(await gateUser(r(raw), { PEPPER: "other" }), null, "signed with another secret");
   const expired = raw.replace(/\.(\d{10})\./, ".1000000000.");
   assert.equal(await gateUser(r(expired), env), null);
+});
+
+test("a gate cookie dies with its session: sign-out, a new code or a ban ends it", async () => {
+  const { env, owner } = await setup();
+  const j = await call(env, "/api/account", { method: "POST", body: { ref: "ownref1", pow: await aged(env) } });
+  const raw = j.cookie.split(";")[0];
+  const g = await gateUser(new Request("https://ff.test/", { headers: { cookie: raw } }), env);
+  forgetSessions(); assert.equal(await liveSession(env, g), true);
+  await call(env, `/api/admin/users/${j.d.user.id}`, { method: "POST", token: owner, body: { banned: true } });
+  forgetSessions(); assert.equal(await liveSession(env, g), false, "banned");
+  // Another member signs out: their cookie stops working too.
+  const k = await call(env, "/api/account", { method: "POST", body: { ref: "ownref1", pow: await aged(env) } });
+  const gk = await gateUser(new Request("https://ff.test/", { headers: { cookie: k.cookie.split(";")[0] } }), env);
+  await call(env, "/api/logout", { method: "POST", token: k.d.token });
+  forgetSessions(); assert.equal(await liveSession(env, gk), false, "signed out");
+});
+
+test("a referral link reports itself as a referral, so the browser joins with it as one", async () => {
+  const { env } = await setup();
+  const look = await call(env, "/api/invite/ownref1");
+  assert.equal(look.d.kind, "ref");
 });
 
 test("only the front door is public", () => {

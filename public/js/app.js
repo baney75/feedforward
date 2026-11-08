@@ -74,7 +74,8 @@ async function route() {
   }
   markNav(path);
   if (path === "/tv") {
-    await D.ready; if (my !== seq) return;
+    try { await startMember(); } catch { if (!signedIn()) { started = null; D.ready = null; return route(); } }
+    if (my !== seq) return;
     if (!D.isFull) await D.full.catch(() => {});
     if (my === seq && !tvIsOpen()) openTV((history.state && history.state.start) || null);
     return;

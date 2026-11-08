@@ -1,7 +1,8 @@
 // Account client: device-code sign-in, API calls, community stats, sync of history, saves and progress.
 // The session token lives in localStorage. The code is kept on this device only so it can be shown and shared by QR.
 import { store } from "./store.js";
-import { proofOfWork } from "./pow.js";
+import { proofOfWork, prepare } from "./pow.js";
+export { prepare };
 
 const KEY = "lt:acct";
 let acct = read();
@@ -30,24 +31,24 @@ export async function api(path, { method = "GET", body, raw, type } = {}) {
 const device = () => (/iphone|ipad/i.test(navigator.userAgent) ? "iPhone or iPad" : /android/i.test(navigator.userAgent) ? "Android" : /mac/i.test(navigator.userAgent) ? "Mac" : /win/i.test(navigator.userAgent) ? "Windows" : "Browser");
 
 // Joining needs an invite ({invite} or {ref}). Every front-door call spends a proof of work first.
-export async function createAccount(join = store.get("join", null), { onProgress, extra = {} } = {}) {
+export async function createAccount(join = store.get("join", null), { onProgress, extra = {}, ready } = {}) {
   if (!join || (!join.invite && !join.ref)) throw new Error("Feedforward is invite-only. Use a member's invite link, or apply.");
-  const pow = await proofOfWork(onProgress);
+  const pow = await proofOfWork(onProgress, { ready, minAge: 2 });
   const d = await api("/api/account", { method: "POST", body: { device: device(), ...join, ...extra, pow } });
   store.set("join", null);
   write({ token: d.token, code: d.code, user: d.user });
   await sync();
   return d;
 }
-export async function signIn(code, { onProgress } = {}) {
-  const pow = await proofOfWork(onProgress);
+export async function signIn(code, { onProgress, ready } = {}) {
+  const pow = await proofOfWork(onProgress, { ready });
   const d = await api("/api/login", { method: "POST", body: { code, device: device(), pow } });
   write({ token: d.token, code: code.trim().toLowerCase().replace(/[\s_]+/g, "-"), user: d.user });
   await sync();
   return d;
 }
-export async function apply(form, { onProgress } = {}) {
-  const pow = await proofOfWork(onProgress);
+export async function apply(form, { onProgress, ready } = {}) {
+  const pow = await proofOfWork(onProgress, { ready, minAge: 4 });
   return api("/api/apply", { method: "POST", body: { ...form, pow } });
 }
 // Who sent an invite link, for the front door.

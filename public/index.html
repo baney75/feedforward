@@ -36,13 +36,14 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=3">
 <link rel="preload" href="/fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/ibm-plex-sans-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="/data/home.json" as="fetch" crossorigin="anonymous">
 <link rel="preconnect" href="https://i.ytimg.com">
 <link rel="preconnect" href="https://pbs.twimg.com">
 <link rel="stylesheet" href="/css/tokens.css">
 <link rel="stylesheet" href="/css/app.css">
 <link rel="stylesheet" href="/css/pages.css">
 <script>
+  // Members get the catalog's first file preloaded. Signed out it would only fetch a 401 and keep it.
+  try { if (localStorage.getItem("lt:acct")) { const l = document.createElement("link"); l.rel = "preload"; l.as = "fetch"; l.crossOrigin = "anonymous"; l.href = "/data/home.json"; document.head.appendChild(l); } } catch {}
   try { const t = localStorage.getItem("lt:theme"); if (/^(light|dark|terminal|amber|midnight|sepia|contrast)$/.test(t)) document.documentElement.dataset.theme = t; } catch {}
 </script>
 <link rel="modulepreload" href="/js/app.js">

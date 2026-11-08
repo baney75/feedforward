@@ -24,7 +24,9 @@ function video(r, fresh = false) {
 const short = ([id, title, views, person, topic, q, score]) => ({ id, title, views, person, topic, q, score });
 
 async function json(url) {
-  const r = await fetch(url);
+  let r = await fetch(url);
+  // A 401 here is a stale answer (a preload from before the gate cookie was set): ask once more, fresh.
+  if (r.status === 401) r = await fetch(url, { cache: "no-store" });
   if (!r.ok) throw new Error(url + " " + r.status);
   return r.json();
 }

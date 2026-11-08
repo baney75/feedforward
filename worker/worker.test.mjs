@@ -46,11 +46,13 @@ test("refresh keeps on-topic uploads and posts, drops politics, personal posts, 
 });
 
 test("/api/fresh serves the stored feed to members only", async () => {
-  const env = { FRESH: kv(), ASSETS: { fetch: () => new Response("asset") }, PEPPER: "test" };
+  // A database that says the cookie's session is alive.
+  const DB = { prepare: () => ({ bind: () => ({ first: async () => ({ ok: 1 }), run: async () => ({ meta: { changes: 0 } }), all: async () => ({ results: [] }) }) }) };
+  const env = { FRESH: kv(), ASSETS: { fetch: () => new Response("asset") }, PEPPER: "test", DB };
   await W.refresh(env);
   assert.equal((await W.default.fetch(new Request("https://x/api/fresh"), env)).status, 401, "invite-only: no gate, no feed");
   const { gateCookie } = await import(pathToFileURL(path.join(dir, "gate.js")).href);
-  const cookie = (await gateCookie(env, "abcd123456")).split(";")[0];
+  const cookie = (await gateCookie(env, "abcd123456", "0123456789abcdef")).split(";")[0];
   const r = await W.default.fetch(new Request("https://x/api/fresh", { headers: { cookie } }), env);
   const d = await r.json();
   assert.equal(d.posts.length, 1);

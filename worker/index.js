@@ -3,7 +3,7 @@
 import SOURCES from "./sources.json";
 import { handle, xAvatar, setListed } from "./api.js";
 import { mcp } from "./mcp.js";
-import { gatedPath, gateUser } from "./gate.js";
+import { gatedPath, gateUser, liveSession } from "./gate.js";
 import { tokenUser, inviteInfo, wsToken } from "./api.js";
 import { oauth, metadata } from "./oauth.js";
 export { ChatRoom } from "./chat.js";
@@ -58,7 +58,8 @@ async function joinPage(req, env, code) {
 
 // A member: a valid gate cookie, or a signed-in Bearer session (scripts and the app before its cookie lands).
 async function member(req, env) {
-  if (await gateUser(req, env)) return true;
+  const g = await gateUser(req, env);
+  if (g && (await liveSession(env, g))) return true;
   const h = req.headers.get("authorization") || "";
   // Chat sockets carry the session as a "t.<token>" subprotocol, since browsers can't set headers on them.
   const tok = h.startsWith("Bearer ") ? h.slice(7) : wsToken(req);

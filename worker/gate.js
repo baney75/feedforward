@@ -18,16 +18,34 @@ const nowS = () => Math.floor(Date.now() / 1000);
 
 export const GATE = "__Host-ff_gate";
 const WEEK = 7 * 86400;
-export async function gateCookie(env, uid) {
-  const exp = nowS() + WEEK, body = `${uid}.${exp}`;
+// The cookie names the user and the session it came from (the first 16 hex characters of the session's hash),
+// so signing out, rotating the code or a ban ends it along with the session.
+export async function gateCookie(env, uid, tokenHash) {
+  const exp = nowS() + WEEK, body = `${uid}.${String(tokenHash).slice(0, 16)}.${exp}`;
   return `${GATE}=${body}.${await hmac(env, body)}; Path=/; Max-Age=${WEEK}; HttpOnly; Secure; SameSite=Lax`;
 }
 export const clearGate = `${GATE}=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax`;
 
+// Returns { uid, sid } for a well-signed, unexpired cookie. The caller still checks the session is alive.
 export async function gateUser(req, env) {
-  const m = (req.headers.get("cookie") || "").match(new RegExp(`(?:^|;\\s*)${GATE}=([\\w-]{6,20})\\.(\\d{10})\\.([\\w-]{43})(?:;|$)`));
-  if (!m || +m[2] < nowS()) return null;
-  return same(m[3], await hmac(env, `${m[1]}.${m[2]}`)) ? m[1] : null;
+  const m = (req.headers.get("cookie") || "").match(new RegExp(`(?:^|;\\s*)${GATE}=([\\w-]{6,20})\\.([0-9a-f]{16})\\.(\\d{10})\\.([\\w-]{43})(?:;|$)`));
+  if (!m || +m[3] < nowS()) return null;
+  return same(m[4], await hmac(env, `${m[1]}.${m[2]}.${m[3]}`)) ? { uid: m[1], sid: m[2] } : null;
+}
+
+// A cookie counts only while its session lives and its user isn't banned. Checked against D1 and remembered for
+// 30 seconds per isolate, so a page's burst of file requests costs one query.
+const alive = new Map();
+export const forgetSessions = () => alive.clear();
+export async function liveSession(env, { uid, sid }) {
+  const key = uid + "." + sid, hit = alive.get(key);
+  if (hit && hit.until > Date.now()) return hit.ok;
+  const row = await env.DB.prepare("SELECT 1 ok FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.user_id = ? AND s.token_hash >= ? AND s.token_hash < ? AND u.banned = 0 LIMIT 1")
+    .bind(uid, sid, sid + "g").first();   // every hash that starts with sid sorts below sid + "g"
+  const ok = !!row;
+  if (alive.size > 5000) alive.clear();
+  alive.set(key, { ok, until: Date.now() + 30000 });
+  return ok;
 }
 
 // Paths anyone may call: the front door (join, sign in, apply, invite lookups), the landing page's live

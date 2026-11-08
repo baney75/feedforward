@@ -7,7 +7,7 @@
 //   "Donovan invited you"                a person vouched for you, so you're expected
 //   the human check's progress           visible progress, so a wait feels like work being done for you
 //   your code, big, with "save it"       ownership: it's your key
-import { createAccount, signIn, apply, inviteInfo } from "../account.js";
+import { createAccount, signIn, apply, inviteInfo, prepare } from "../account.js";
 import { esc, toast, userAvatar, badges } from "../ui.js";
 import { $, setTitle, cssReady, copy } from "./_shared.js";
 
@@ -127,6 +127,7 @@ function invitePane(pane, { code = "" } = {}) {
         <button class="btn primary door-go" type="submit">Accept invite</button>
         <div class="door-msg" aria-live="polite"></div>
       </form>`;
+    let ready = prepare();
     $("#joinForm", pane).onsubmit = (e) => {
       e.preventDefault();
       const f = e.currentTarget, msg = $(".door-msg", pane);
@@ -135,7 +136,8 @@ function invitePane(pane, { code = "" } = {}) {
       // Hold the app back until they've seen and kept their code.
       sessionStorage.setItem("ff:hold", "1");
       withCheck(f.querySelector(".door-go"), "Checking you're human", async (p) => {
-        const d = await createAccount(join, { onProgress: p, extra: { name: f.name.value.trim(), website: f.website.value } });
+        const r = ready; ready = prepare();   // each challenge is single use
+        const d = await createAccount(join, { onProgress: p, ready: r, extra: { name: f.name.value.trim(), website: f.website.value } });
         welcome(pane, d.code);
       }).catch((err) => { sessionStorage.removeItem("ff:hold"); fail(msg, err); });
     };
@@ -176,8 +178,10 @@ function signinPane(pane) {
       <div class="door-msg" aria-live="polite"></div>
     </form>`;
   const msg = $(".door-msg", pane), form = $("#siForm", pane);
+  let ready = prepare();
   const go = (code) => withCheck(form.querySelector(".door-go"), "Checking you're human", async (p) => {
-    try { await signIn(code, { onProgress: p }); store.set("application", null); }
+    const r = ready; ready = prepare();   // each challenge is single use
+    try { await signIn(code, { onProgress: p, ready: r }); store.set("application", null); }
     catch (e) { if (e.status === 409) { msg.innerHTML = `<p class="door-pending" role="status">${esc(e.message)}</p>`; return; } throw e; }
   }).catch((e) => fail(msg, e));
   form.onsubmit = (e) => { e.preventDefault(); msg.innerHTML = ""; go(form.code.value); };
@@ -241,13 +245,14 @@ function applyPane(pane) {
     <div class="door-msg" aria-live="polite"></div>
   </form>`;
   const form = $("#apForm", pane);
+  let ready = prepare();
   form.onsubmit = (e) => {
     e.preventDefault();
     const msg = $(".door-msg", pane);
     msg.innerHTML = "";
     withCheck(form.querySelector(".door-go"), "Checking you're human", async (p) => {
       const d = await apply({ name: form.name.value, reason: form.reason.value, website: form.website.value,
-        links: { x: form.x.value.replace(/^@/, ""), github: form.github.value } }, { onProgress: p });
+        links: { x: form.x.value.replace(/^@/, ""), github: form.github.value } }, { onProgress: p, ready: ((r) => (ready = prepare(), r))(ready) });
       store.set("application", { code: d.code, ts: Date.now() });
       applyPane(pane);
     }).catch((err) => fail(msg, err));

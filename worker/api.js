@@ -196,10 +196,12 @@ on("POST", "/api/account", async (req, env) => {
     if (n.n >= (REF_CAP[referrer.role] || REF_CAP.user)) return err(429, "This invite link has brought in all the people it can today. Try again tomorrow.");
   }
   const code = newCode();
-  const u = { id: rid(10), code_hash: await sha(env.PEPPER + code), ref_code: rid(7), referred_by: (invite && invite.creator) || (referrer && referrer.id) || null, verified: invite && invite.verified ? 1 : 0, created: now() };
+  // The check, like a role, needs the maker to still hold the rank to give it.
+  const verified = invite && invite.verified && RANK[invite.maker_role] >= RANK.admin ? 1 : 0;
+  const u = { id: rid(10), code_hash: await sha(env.PEPPER + code), ref_code: rid(7), referred_by: (invite && invite.creator) || (referrer && referrer.id) || null, verified, created: now() };
   let links = cleanLinks(b.links);
   let [nm] = b.name ? clean(b.name, 40) : [""];
-  if (impersonates({ verified: invite && invite.verified }, nm, links)) { links = { ...links }; delete links.x; nm = ""; }
+  if (impersonates({ verified }, nm, links)) { links = { ...links }; delete links.x; nm = ""; }
   const ax = links.x ? await xAvatar(links.x) : "";
   // Permissions come from the invite, re-checked against the maker's role today (they may have been demoted).
   const role = invite && RANK[invite.role] && RANK[invite.role] < RANK[invite.maker_role] && invite.role !== "owner" ? invite.role : "user";
@@ -214,7 +216,7 @@ on("POST", "/api/account", async (req, env) => {
   if (role !== "user" || teach) await log(env, invite.creator, `invite-grant:${role}${teach ? ":" + teach : ""}`, u.id);
   const token = await session(env, u.id, b.device);
   const full = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(u.id).first();
-  return json({ code, token, user: me(full) }, 200, { "set-cookie": await gateCookie(env, u.id) });
+  return json({ code, token, user: me(full) }, 200, { "set-cookie": await gateCookie(env, u.id, await sha(token)) });
 });
 
 on("POST", "/api/login", async (req, env) => {
@@ -237,7 +239,7 @@ on("POST", "/api/login", async (req, env) => {
   }
   if (u.banned) return err(403, "This account is suspended.");
   const token = await session(env, u.id, b.device);
-  return json({ token, user: me(u) }, 200, { "set-cookie": await gateCookie(env, u.id) });
+  return json({ token, user: me(u) }, 200, { "set-cookie": await gateCookie(env, u.id, await sha(token)) });
 });
 
 on("POST", "/api/logout", async (req, env) => {
@@ -249,7 +251,7 @@ on("POST", "/api/logout", async (req, env) => {
 // A signed-in browser refreshes its read-only gate cookie on start.
 on("POST", "/api/gate", async (req, env, u) => {
   if (!u || u.banned) return json({ error: "Sign in first." }, 401, { "set-cookie": clearGate });
-  return json({ ok: true }, 200, { "set-cookie": await gateCookie(env, u.id) });
+  return json({ ok: true }, 200, { "set-cookie": await gateCookie(env, u.id, await sha((req.headers.get("authorization") || "").slice(7))) });
 });
 
 on("GET", "/api/pow", async (req, env) => {
@@ -264,7 +266,7 @@ on("GET", "/api/invite/([\\w-]{1,40})", async (req, env, _u, [code]) => {
   const inv = await inviteInfo(env, code);
   if (inv) {
     if (inv.gone) return err(410, inv.gone);
-    return json({ kind: "invite", verified: inv.verified, role: inv.role, teach: inv.teach, by: inv.by });
+    return json({ kind: inv.kind, verified: inv.verified, role: inv.role, teach: inv.teach, by: inv.by });
   }
   return err(404, "That invite link isn't valid. Check it, or apply.");
 });
@@ -275,7 +277,7 @@ export async function inviteInfo(env, code) {
   if (i) {
     const gone = i.max_uses && i.uses >= i.max_uses ? "That invite has been used up. Ask for a new one." : i.expires && i.expires < now() ? "That invite has expired. Ask for a new one." : "";
     const role = RANK[i.grant_role] && RANK[i.grant_role] < RANK[i.role] ? i.grant_role : "user";
-    return { kind: "invite", gone, verified: !!i.grant_verified, role, teach: RANK[i.role] >= RANK.admin ? i.grant_teach || "" : "", by: pub(i) };
+    return { kind: "invite", gone, verified: !!i.grant_verified && RANK[i.role] >= RANK.admin, role, teach: RANK[i.role] >= RANK.admin ? i.grant_teach || "" : "", by: pub(i) };
   }
   const r = await env.DB.prepare("SELECT * FROM users WHERE ref_code = ? AND banned = 0").bind(code).first();
   return r ? { kind: "ref", gone: "", verified: false, role: "user", teach: "", by: pub(r) } : null;
