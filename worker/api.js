@@ -445,7 +445,7 @@ on("POST", "/api/sync", async (req, env, u) => {
     const o = { ...(b2 || {}) };
     for (const [k, v] of Object.entries(a || {})) if (typeof k === "string" && k.length < 90 && typeof v === "number" && Number.isFinite(v)) { if (Math.abs(v) > Math.abs(o[k] || 0)) o[k] = v; }
     const month = (Date.now() - 30 * 864e5);
-    return Object.fromEntries(Object.entries(o).filter(([, v]) => v > 0 || -v > month).slice(0, 2000));
+    return Object.fromEntries(Object.entries(o).filter(([, v]) => v > 0 || -v > month).sort((x, y) => Math.abs(y[1]) - Math.abs(x[1])).slice(0, 2000));
   };
   // Clearing history on one device wins over older history from the others.
   const reset = Math.max(Number(b.historyReset) || 0, (cur.meta && cur.meta.historyReset) || 0);

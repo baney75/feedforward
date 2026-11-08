@@ -50,10 +50,12 @@ export function initGestures({ nav, standalone, stageEl, closeStage }) {
       if (next) { haptic.tick(); nav(next); }
     }
   }, { passive: true });
+  document.addEventListener("touchcancel", () => { s = null; ptr.style.transform = ""; ptr.style.opacity = 0; ptr.classList.remove("ready"); }, { passive: true });
   // Swipe the mini player's bar down to put it away.
   const bar = stageEl.querySelector(".stage-bar");
   let y0 = null, moved = 0;
   bar.addEventListener("touchstart", (e) => { y0 = stageEl.classList.contains("mini") ? e.touches[0].clientY : null; moved = 0; }, { passive: true });
   bar.addEventListener("touchmove", (e) => { if (y0 == null) return; moved = Math.max(0, e.touches[0].clientY - y0); stageEl.style.transform = `translateY(${moved}px)`; stageEl.style.opacity = 1 - Math.min(0.7, moved / 160); }, { passive: true });
   bar.addEventListener("touchend", () => { if (y0 == null) return; y0 = null; stageEl.style.transform = ""; stageEl.style.opacity = ""; if (moved > 60) { haptic.tick(); closeStage(); } }, { passive: true });
+  bar.addEventListener("touchcancel", () => { y0 = null; stageEl.style.transform = ""; stageEl.style.opacity = ""; }, { passive: true });
 }

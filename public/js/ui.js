@@ -138,10 +138,7 @@ export function postCard(post) {
       <div class="post-text${long ? " clamp" : ""}">${linkify(post.t)}</div>${long ? '<button class="more" data-more>Show more</button>' : ""}
       ${media(post)}${q}
       <div class="post-f">
-        <span title="Replies">${icon("reply")}${num(post.c)}</span>
-        <span title="Reposts">${icon("repost")}${num(post.r)}</span>
         <span title="Likes">${icon("heart")}${num(post.l)}</span>
-        ${post.v ? `<span title="Views">${icon("eye")}${num(post.v)}</span>` : ""}
         <button data-save="p:${post.id}" aria-pressed="${saved}" aria-label="Save post">${icon(saved ? "bookmarked" : "bookmark")}</button>
       </div>
     </div>

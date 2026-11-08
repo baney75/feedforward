@@ -288,13 +288,16 @@ test("a typed code gets its dashes, whatever word it holds", async () => {
     assert.ok(isCode(code));
   }
   assert.equal(formatCode("Otter River cedar_ACORN 42"), "otter-river-cedar-acorn-42");
+  assert.equal(formatCode("otter-maple-rocket-42"), "otter-maple-rocket-42", "a whole pasted code is never re-split");
   assert.equal(formatCode("zzzq-qqq-zzz-42"), "zzzq-qqq-zzz-42", "old three-word codes keep working");
 });
 
-test("iPhone haptics come from a real tap on a switch label, never a scripted click", () => {
+test("iPhone haptics: buttons carry a real switch label, and scripted flips only follow a real tap", () => {
   const src = read("public/js/haptics.js");
-  assert.doesNotMatch(src, /\.click\(\);?\s*\n?\s*\}\s*function buzz|iosTick/);
   assert.match(src, /setAttribute\("switch", ""\)/);
+  assert.match(src, /b\.append\(label\("inset:0"\)\)/);
+  assert.match(src, /Date\.now\(\) - lastTap < GRANT\) setTimeout\(flip/);
+  assert.match(src, /if \(!e\.isTrusted/);
 });
 
 test("notifications: cleared stays cleared, undo restores, a grown queue returns", async () => {
@@ -307,7 +310,27 @@ test("notifications: cleared stays cleared, undo restores, a grown queue returns
   c = unclearItems([a], c, 200);
   assert.equal(isCleared(a, c), false);
   c = settleCleared([q(1)], c, 300);
+  assert.equal(isCleared(q(1), c), true, "a cleared queue that only shrank stays cleared");
   assert.equal(isCleared(q(2), c), false, "shrank to 1, then grew to 2: that is news");
+  assert.equal(settleCleared([q(1)], c, 400), c, "settled state does not rewrite itself");
+});
+
+test("YouTube's end wall is replaced and annotations stay off; Twitch names the page as parent", () => {
+  const views = read("public/js/views.js");
+  assert.match(views, /!next \|\| track\) \{ endCard\(\); return; \}/);
+  assert.match(read("public/js/tv.js"), /iv_load_policy: 3/);
+  assert.match(views, /player\.twitch\.tv\/\?channel=\$\{p\.twitch\}&parent=\$\{location\.hostname\}/);
+});
+
+test("the theme picker stays short, and a removed theme falls back to the device", () => {
+  const list = read("public/js/app.js").match(/const THEMES = \[([\s\S]*?)\n\];/)[1];
+  assert.equal((list.match(/\["[a-z]*", "/g) || []).length, 4);
+  assert.doesNotMatch(read("public/index.html"), /terminal|sepia/);
+});
+
+test("go-anywhere: Enter opens the highlighted row, and private notes leave with the account", () => {
+  assert.match(read("public/js/palette.js"), /if \(typeT\) \{ clearTimeout\(typeT\); typeT = 0; paint\(\); \} pick\(active\)/);
+  assert.match(read("public/js/account.js"), /SYNCED_KEYS = \[[^\]]*"notes", "recentQ"\]/);
 });
 
 test("member home has no animated counters (reported twice: they looked glitchy)", () => {

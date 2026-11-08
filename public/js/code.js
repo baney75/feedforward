@@ -10,6 +10,7 @@ const hasLonger = (w) => WORDS.some((x) => x.length > w.length && x.startsWith(w
 // Words that begin longer words ("art", "artist") wait for the next letter. Old codes with other words keep their typed dashes.
 export function formatCode(raw) {
   const s = String(raw).toLowerCase().replace(/[\s_]+/g, "-").replace(/[^a-z0-9-]/g, "");
+  if (isCode(s)) return s.replace(/-+/g, "-"); // A whole code, pasted or typed with its dashes, is left as it is.
   const parts = []; let w = "", digits = "";
   const close = () => { if (w) { parts.push(w); w = ""; } };
   for (const c of s) {
@@ -32,8 +33,9 @@ if (typeof document !== "undefined") {
   let tried = "";
   document.addEventListener("input", (e) => {
     const el = e.target;
+    if (el.matches?.("[data-code]") && !isCode(el.value)) tried = "";
     if (!el.matches?.("[data-code]") || e.isComposing || e.inputType?.startsWith("delete") || el.selectionStart !== el.value.length) return;
     el.value = formatCode(el.value);
-    if (isCode(el.value) && el.value !== tried) { tried = el.value; el.form?.requestSubmit(); }
+    if (isCode(el.value) && el.value !== tried) { tried = el.value; el.form?.requestSubmit(el.form.querySelector("[type=submit]") || undefined); }
   });
 }

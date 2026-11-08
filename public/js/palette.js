@@ -57,11 +57,11 @@ function pick(i) {
   remember(it.save || (it.ico === "clock" ? it.label : input.value.trim()));
   box.close(); go(it.href);
 }
-input.addEventListener("input", () => { clearTimeout(typeT); typeT = setTimeout(paint, 70); });
+input.addEventListener("input", () => { clearTimeout(typeT); typeT = setTimeout(() => { typeT = 0; paint(); }, 70); });
 input.addEventListener("keydown", (e) => {
   if (e.key === "ArrowDown") { e.preventDefault(); active = Math.min(items.length - 1, active + 1); mark(); }
   else if (e.key === "ArrowUp") { e.preventDefault(); active = Math.max(0, active - 1); mark(); }
-  else if (e.key === "Enter") { e.preventDefault(); clearTimeout(typeT); paint(); pick(active); }
+  else if (e.key === "Enter") { e.preventDefault(); if (typeT) { clearTimeout(typeT); typeT = 0; paint(); } pick(active); }
 });
 list.addEventListener("click", (e) => { const a = e.target.closest("[data-i]"); if (!a) return; e.preventDefault(); e.stopPropagation(); pick(+a.dataset.i); });
 list.addEventListener("pointermove", (e) => { const a = e.target.closest("[data-i]"); if (a && +a.dataset.i !== active) { active = +a.dataset.i; mark(); } });

@@ -151,18 +151,25 @@ export function watch(el, qs, id) {
     </div>
   </div>`;
   let countdown = 0;
+  // YouTube fills the end of a video with its own wall of suggestions. Ours says what's next, and nothing else.
+  const endCard = () => {
+    const nx = !track && next;
+    stage.video.insertAdjacentHTML("beforeend", `<div class="autonext" role="status">${nx ? `<img src="${thumb(nx.id, "hqdefault")}" alt="">` : ""}<div><span class="topic-tag">${nx ? "Finished. Next up" : "Finished"}</span>${nx ? `<h3>${esc(nx.title)}</h3>` : ""}<div class="row"><button class="btn replay" type="button">Watch again</button>${nx ? `<a class="btn primary" href="/watch/${nx.id}">${icon("play")}Play next</a>` : ""}</div></div></div>`);
+    const box = stage.video.querySelector(".autonext");
+    box.querySelector(".replay").onclick = () => { box.remove(); stage.play(); };
+  };
   // Our poster covers YouTube's start screen until the video plays. A tap plays it; if the browser refuses,
   // the cover steps aside so YouTube's own play button can take the tap.
   const cover = `<button class="pcover" type="button" aria-label="Play ${esc(v.title)}"><img src="${thumb(id, "maxresdefault")}" alt="" onerror="this.onerror=null;this.src='${thumb(id, "hqdefault")}'"><span class="pplay" aria-hidden="true">${icon("play")}</span></button>`;
   const stage = openStage({ id, title: v.title, slotEl: $(".player", el), cover, on: {
     onPlay: () => store.watched(id),
     onEnd: () => {
-      if (store.get("autoplay", true) === false || !next || track) return;
+      if (store.get("autoplay", true) === false || !next || track) { endCard(); return; }
       const nx = next;
       let n = 6;
       stage.video.insertAdjacentHTML("beforeend", `<div class="autonext" role="status"><img src="${thumb(nx.id, "hqdefault")}" alt=""><div><span class="topic-tag">Up next in <b class="an">${n}</b></span><h3>${esc(nx.title)}</h3><div class="row"><button class="btn cancel">Cancel</button><a class="btn primary" href="/watch/${nx.id}">${icon("play")}Play now</a></div></div></div>`);
       const box = stage.video.querySelector(".autonext");
-      box.querySelector(".cancel").onclick = () => { clearInterval(countdown); box.remove(); };
+      box.querySelector(".cancel").onclick = () => { clearInterval(countdown); box.remove(); endCard(); };
       countdown = setInterval(() => { n--; const c = box.querySelector(".an"); if (c) c.textContent = n; if (n <= 0) { clearInterval(countdown); box.querySelector("a.primary")?.click(); } }, 1000);
     },
     onError: () => { stage.video.innerHTML = `<div class="noembed"><img src="${thumb(id, "hqdefault")}" alt=""><div><p>The owner only allows this video to play on YouTube.</p><a class="btn primary" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">${icon("yt")}Watch on YouTube</a></div></div>`; },
@@ -207,12 +214,16 @@ export function personPage(el, qs, slug) {
   const sort = qs.get("sort") || "popular";
   el.innerHTML = `<header class="ph">${avatar(p, "l")}<div style="min-width:0;flex:1">
       <h1>${esc(p.name)}</h1><p>${esc(p.why)}</p>
-      <div class="links">${p.yt ? `<a class="btn" href="https://www.youtube.com/${esc(p.yt)}" target="_blank" rel="noopener">${icon("yt")}${p.ytSubs ? num(p.ytSubs) : "YouTube"}</a>` : ""}${p.x ? `<a class="btn" href="https://x.com/${esc(p.x)}" target="_blank" rel="noopener">${icon("x")}@${esc(p.x)}</a>` : ""}<span class="chip" style="background:none;border:1px solid var(--line)">${topicLabel(topicIndex(p.topic))}</span></div>
+      <div class="links">${p.twitch ? `<a class="btn" href="https://www.twitch.tv/${esc(p.twitch)}" target="_blank" rel="noopener">${icon("tv")}Twitch</a>` : ""}${p.yt ? `<a class="btn" href="https://www.youtube.com/${esc(p.yt)}" target="_blank" rel="noopener">${icon("yt")}${p.ytSubs ? num(p.ytSubs) : "YouTube"}</a>` : ""}${p.x ? `<a class="btn" href="https://x.com/${esc(p.x)}" target="_blank" rel="noopener">${icon("x")}@${esc(p.x)}</a>` : ""}<span class="chip" style="background:none;border:1px solid var(--line)">${topicLabel(topicIndex(p.topic))}</span></div>
     </div></header>
-    <div class="tabs" role="group">${p.nv ? `<button data-tab="videos" aria-pressed="${tab === "videos"}">Videos <span class="muted mono">${num(p.nv)}</span></button>` : ""}${p.np ? `<button data-tab="posts" aria-pressed="${tab === "posts"}">Posts <span class="muted mono">${p.np}</span></button>` : ""}</div>
+    <div class="tabs" role="group">${p.nv ? `<button data-tab="videos" aria-pressed="${tab === "videos"}">Videos <span class="muted mono">${num(p.nv)}</span></button>` : ""}${p.np ? `<button data-tab="posts" aria-pressed="${tab === "posts"}">Posts <span class="muted mono">${p.np}</span></button>` : ""}${p.twitch ? `<button data-tab="live" aria-pressed="${tab === "live"}">Live</button>` : ""}</div>
     <div id="pc"></div><div id="more" style="height:1px"></div>`;
   el.querySelector(".tabs").onclick = (e) => { const b = e.target.closest("[data-tab]"); if (!b) return; history.replaceState(null, "", `/p/${slug}?tab=${b.dataset.tab}`); dispatchEvent(new PopStateEvent("popstate")); };
   const pc = $("#pc", el);
+  if (tab === "live" && /^\w{4,25}$/.test(p.twitch || "")) {
+    pc.innerHTML = `<div class="twitch-frame"><iframe src="https://player.twitch.tv/?channel=${p.twitch}&parent=${location.hostname}&autoplay=false" title="${esc(p.name)} on Twitch" allow="autoplay; fullscreen" allowfullscreen></iframe></div><p class="muted" style="margin-top:12px">When ${esc(p.name)} is offline, Twitch shows the last stream here.</p>`;
+    return;
+  }
   if (tab === "videos" && p.nv) {
     const list = [...(D.vByPerson.get(p.i) || [])];
     if (sort === "new") list.sort((a, b) => b.ts - a.ts); else if (sort === "views") list.sort((a, b) => b.views - a.views);

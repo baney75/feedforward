@@ -8,14 +8,57 @@
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Video</title>
-<style>html, body { margin: 0; height: 100%; background: #000; } video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }</style>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font: 13px/1 ui-sans-serif, -apple-system, "Segoe UI", sans-serif; color: #fff; }
+  video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; cursor: pointer; }
+  button { all: unset; cursor: pointer; display: grid; place-items: center; }
+  button:focus-visible { outline: 2px solid #ffb224; outline-offset: 2px; border-radius: 4px; }
+  svg { width: 20px; height: 20px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  #big { position: absolute; inset: 0; margin: auto; width: 64px; height: 64px; border-radius: 50%; background: rgba(0, 0, 0, .6); }
+  #big svg { width: 28px; height: 28px; fill: #fff; }
+  #bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); transition: opacity .2s; }
+  body.playing.idle #bar { opacity: 0; }
+  body.playing #big, [hidden] { display: none; }
+  #bar button { width: 32px; height: 32px; flex: none; }
+  input { flex: 1; min-width: 0; accent-color: #ffb224; height: 24px; margin: 0; cursor: pointer; }
+  #time { flex: none; font-variant-numeric: tabular-nums; }
+</style>
 </head>
 <body>
-<video controls playsinline preload="metadata"></video>
+<video playsinline preload="metadata"></video>
+<button id="big" type="button" aria-label="Play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+<div id="bar">
+  <button id="pp" type="button" aria-label="Play"></button>
+  <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Seek">
+  <span id="time">0:00</span>
+  <button id="mute" type="button" aria-label="Mute"></button>
+  <button id="full" type="button" aria-label="Full screen"><svg viewBox="0 0 24 24"><path d="M4 9V5h4M20 9V5h-4M4 15v4h4M20 15v4h-4"/></svg></button>
+</div>
 <script>
-  var parts = decodeURIComponent(location.hash.slice(1)).split("|"), v = document.querySelector("video");
+  var parts = decodeURIComponent(location.hash.slice(1)).split("|"), v = document.querySelector("video"), $ = function (i) { return document.getElementById(i); };
   function ok(u, host) { try { var x = new URL(u); return x.protocol === "https:" && x.hostname === host; } catch (e) { return false; } }
   if (ok(parts[0], "video.twimg.com")) { if (ok(parts[1], "pbs.twimg.com")) v.poster = parts[1]; v.src = parts[0]; }
+  var svg = function (d) { return '<svg viewBox="0 0 24 24">' + d + "</svg>"; };
+  var PLAY = svg('<path fill="#fff" d="M8 5v14l11-7z"/>'), PAUSE = svg('<path d="M9 5v14M15 5v14"/>');
+  var ON = svg('<path d="M4 10v4h3l5 4V6L7 10z"/><path d="M16 9a4 4 0 0 1 0 6"/>'), OFF = svg('<path d="M4 10v4h3l5 4V6L7 10z"/><path d="m16 10 4 4m0-4-4 4"/>');
+  var clock = function (s) { s = Math.floor(s || 0); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+  var idle = 0, wake = function () { document.body.classList.remove("idle"); clearTimeout(idle); idle = setTimeout(function () { document.body.classList.add("idle"); }, 2200); };
+  function paint() {
+    document.body.classList.toggle("playing", !v.paused);
+    $("pp").innerHTML = v.paused ? PLAY : PAUSE; $("pp").setAttribute("aria-label", v.paused ? "Play" : "Pause");
+    $("mute").innerHTML = v.muted ? OFF : ON; $("mute").setAttribute("aria-label", v.muted ? "Turn sound on" : "Mute");
+  }
+  function toggle() { if (v.paused) v.play(); else v.pause(); }
+  v.onclick = toggle; $("big").onclick = toggle; $("pp").onclick = toggle;
+  $("mute").onclick = function () { v.muted = !v.muted; paint(); };
+  $("full").onclick = function () { if (v.webkitEnterFullscreen && !document.fullscreenEnabled) v.webkitEnterFullscreen(); else if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); };
+  $("seek").oninput = function () { if (v.duration) v.currentTime = (this.value / 1000) * v.duration; };
+  v.onplay = v.onpause = v.onended = function () { paint(); wake(); };
+  v.ontimeupdate = function () { if (v.duration) $("seek").value = (v.currentTime / v.duration) * 1000; $("time").textContent = clock(v.currentTime); };
+  v.onloadedmetadata = function () { $("time").textContent = clock(v.duration); };
+  addEventListener("pointermove", wake); addEventListener("pointerdown", wake);
+  addEventListener("keydown", function (e) { if (e.key === " " && e.target === document.body) { e.preventDefault(); toggle(); } });
+  paint();
 </script>
 </body>
 </html>

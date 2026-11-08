@@ -19,13 +19,15 @@ export function isCleared(n, cleared) {
 }
 export const clearItems = (list, cleared, at) => ({ ...cleared, ...Object.fromEntries(list.map((n) => [clearKey(n), at])) });
 export const unclearItems = (list, cleared, at) => ({ ...cleared, ...Object.fromEntries(list.map((n) => [clearKey(n), -at])) });
-// A queue that shrank forgets its larger clears, so new arrivals show up again.
+// A queue that shrank lowers its clear to the new size: it stays hidden now, and the next arrival is news.
 export function settleCleared(items, cleared, at) {
   const size = Object.fromEntries(items.filter((n) => QUEUES.has(n.kind)).map((n) => [n.kind, n.n]));
   let out = cleared;
   for (const [k, v] of Object.entries(cleared)) {
     const [kind, n] = k.split(":");
-    if (v > 0 && QUEUES.has(kind) && +n > (size[kind] || 0)) out = { ...out, [k]: -at };
+    if (!(v > 0) || !QUEUES.has(kind) || +n <= (size[kind] || 0)) continue;
+    out = { ...out, [k]: -at };
+    if (size[kind]) out[`${kind}:${size[kind]}`] = at;
   }
   return out;
 }

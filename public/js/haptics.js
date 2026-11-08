@@ -1,7 +1,8 @@
 // Haptics: a light tick for taps that change something, a success pattern for moments that matter.
 // Android uses the Vibration API. iPhones have no web haptics API: Safari ticks only when a real finger toggles a
 // native switch, and a script clicking one does nothing. So on iPhone every button carries an invisible label wired to
-// a hidden switch, and the tap itself makes the tick. That means taps tick; swipes and timers can't on iPhone.
+// a hidden switch, and the tap itself makes the tick. For about a second after a real tap Safari also lets a script
+// flip a switch: links use that, and so does the second pulse of a success pattern. Swipes grant nothing.
 // Off with reduced motion, and the viewer can turn it off (lt:haptics = false).
 const enabled = () => {
   try { if (localStorage.getItem("lt:haptics") === "false") return false; } catch {}
@@ -41,9 +42,22 @@ if (isIOS) {
   let queued = false;
   new MutationObserver(() => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; scan(); }); } }).observe(document.documentElement, { childList: true, subtree: true });
   scan();
+  addEventListener("click", (e) => {
+    if (!e.isTrusted || !enabled()) return;
+    lastTap = Date.now();
+    if (!e.target.closest?.(`[${ATTR}]`) && e.target.closest?.("a[href]")) flip();
+  }, true);
+}
+let hidden = null, lastTap = 0;
+const GRANT = 850;
+function flip() {
+  if (!hidden?.isConnected) { hidden = label("display:none"); document.body.append(hidden); }
+  hidden.click();
 }
 function buzz(pattern) {
-  if (enabled() && navigator.vibrate) { try { navigator.vibrate(pattern); } catch {} }
+  if (!enabled()) return;
+  if (navigator.vibrate) { try { navigator.vibrate(pattern); } catch {} return; }
+  if (isIOS && Array.isArray(pattern) && Date.now() - lastTap < GRANT) setTimeout(flip, pattern[0] + pattern[1]);
 }
 export const haptic = {
   tick: () => buzz(8),

@@ -44,7 +44,7 @@
 <script>
   // Members get the catalog's first file preloaded. Signed out it would only fetch a 401 and keep it.
   try { if (localStorage.getItem("lt:acct")) { const l = document.createElement("link"); l.rel = "preload"; l.as = "fetch"; l.crossOrigin = "anonymous"; l.href = "/data/home.json"; document.head.appendChild(l); } } catch {}
-  try { const t = localStorage.getItem("lt:theme"); if (/^(light|dark|terminal|amber|midnight|sepia|contrast)$/.test(t)) document.documentElement.dataset.theme = t; } catch {}
+  try { const t = localStorage.getItem("lt:theme"); if (/^(light|dark|contrast)$/.test(t)) document.documentElement.dataset.theme = t; } catch {}
 </script>
 <link rel="modulepreload" href="/js/app.js">
 <link rel="modulepreload" href="/js/data.js">

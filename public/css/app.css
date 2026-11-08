@@ -938,7 +938,7 @@ body.door-tv .door-paircode { font-size: clamp(40px, 9vh, 80px); }
 .topbar { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
 #toast { background: var(--bg-3); color: var(--fg); border: 1px solid var(--line); }
 /* The dark segmented control: selected is lifted, not sunk. */
-:root:not([data-theme="light"]):not([data-theme="sepia"]) .seg button[aria-pressed="true"] { background: var(--fg-2); color: var(--bg); }
+:root:not([data-theme="light"]) .seg button[aria-pressed="true"] { background: var(--fg-2); color: var(--bg); }
 @media (prefers-color-scheme: light) { :root:not([data-theme]) .seg button[aria-pressed="true"] { background: var(--bg); color: var(--fg); } }
 /* Watch, phone: nothing squeezes the like pill. */
 @media (max-width: 719px) {
@@ -1020,7 +1020,7 @@ dialog#sheet.notif h2 { margin: 0; }
 .notif-all { background: none; border: 0; color: var(--accent-text); font: inherit; font-size: var(--t-s); font-weight: 600; min-height: 36px; padding: 0 var(--s3); border-radius: var(--r-pill); cursor: pointer; }
 .notif-all:hover { background: var(--bg-3); }
 .notif-list li { position: relative; touch-action: pan-y; overflow: hidden; }
-.notif-list li > a, .notif-list li > div { padding-right: 52px; }
+dialog#sheet .notif-list li > :is(a, div) { padding-right: 52px; }
 .notif-x { position: absolute; top: 6px; right: 8px; width: 40px; height: 40px; display: grid; place-items: center; background: none; border: 0; border-radius: 50%; color: var(--fg-2); cursor: pointer; }
 .notif-x svg { width: 16px; height: 16px; }
 .notif-x:hover { background: var(--bg-3); color: var(--fg); }
@@ -1149,3 +1149,7 @@ body.focus .notes-pane { display: flex; flex-direction: column; gap: var(--s2); 
 #ptr { position: fixed; top: calc(var(--safe-top) + 8px); left: 50%; transform: translate(-50%, 0); width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--fg-2); opacity: 0; z-index: 70; pointer-events: none; }
 #ptr.ready { border-top-color: var(--accent); }
 html:has(body.on-watch) { overscroll-behavior-y: contain; }
+
+/* Twitch */
+.twitch-frame { position: relative; aspect-ratio: 16 / 9; max-width: 960px; border-radius: var(--r); overflow: hidden; background: #000; }
+.twitch-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }

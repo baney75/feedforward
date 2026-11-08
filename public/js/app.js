@@ -234,11 +234,9 @@ addEventListener("keydown", (e) => {
 
 // ---------- Theme ----------
 const THEMES = [
-  ["", "Match my device", "#0e0e0c", "#ffb224"], ["dark", "Ink", "#0e0e0c", "#ffb224"], ["light", "Paper", "#f8f6f0", "#ffb224"],
-  ["terminal", "Terminal", "#050a06", "#39ff88"], ["amber", "Amber CRT", "#0c0800", "#ffb000"], ["midnight", "Midnight", "#0a0f1e", "#7aa2ff"],
-  ["sepia", "Sepia", "#f4ecdd", "#c2622d"], ["contrast", "High contrast", "#000000", "#ffd400"],
+  ["", "Match my device", "#0e0e0c", "#ffb224"], ["dark", "Dark", "#0e0e0c", "#ffb224"], ["light", "Light", "#f8f6f0", "#ffb224"], ["contrast", "High contrast", "#000000", "#ffd400"],
 ];
-const LIGHT = new Set(["light", "sepia"]);
+const LIGHT = new Set(["light"]);
 function effectiveDark() { const t = document.documentElement.dataset.theme; return t ? !LIGHT.has(t) : !matchMedia("(prefers-color-scheme: light)").matches; }
 function themeIcon() { document.getElementById("themeBtn").innerHTML = icon(effectiveDark() ? "moon" : "sun"); }
 function setTheme(t) {
