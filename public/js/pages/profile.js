@@ -30,12 +30,14 @@ export async function render(el, qs, parts) {
         <p class="prof-stats"><span><b class="mono">${d.likes}</b> likes</span><span><b class="mono">${d.referrals}</b> referred</span><span><b class="mono">${d.comments.length}</b> recent comments</span></p>
       </div>
     </header>
+    <div id="profFeed"></div>
     ${self || teachBtn ? `<div class="acts prof-acts">${self ? `<a class="btn" href="/me">Edit your profile</a>` : ""}${teachBtn}</div>` : ""}
     <section class="set" aria-labelledby="rcH"><h2 class="set-h" id="rcH">Recent comments</h2>
       ${d.comments.length ? `<ul class="rows prof-cmts">${d.comments.map((c) => { const h = itemHref(c.item); return `<li><p class="muted pc-h">On ${h ? `<a class="link" href="${esc(h)}">${itemLabel(c.item)}</a>` : itemLabel(c.item)}<span class="dot"></span>${ago(c.ts)}</p><p class="pc-b">${esc(c.body)}</p></li>`; }).join("")}</ul>`
         : `<p class="muted empty-row">No comments yet.</p>`}
     </section>
   </div>`;
+  if (u.verified && (d.links.x || d.links.youtube)) showFeed(el.querySelector("#profFeed"), u, d.links);
   const b = el.querySelector("[data-teach]");
   if (b) b.onclick = () => {
     const t = b.dataset.teach;
@@ -43,4 +45,16 @@ export async function render(el, qs, parts) {
     busy(b, async () => { await api("/api/teach/" + encodeURIComponent(u.id), { method: "POST", body: { teach: t } }); toast(t ? "Now a tutor" : "Tutor role removed"); go(location.pathname, true); });
   };
   return null;
+}
+
+// Latest posts on X and uploads on YouTube, for verified members. Loads after the page so it never holds it up.
+async function showFeed(box, u, links) {
+  let f;
+  try { f = await api("/api/u/" + encodeURIComponent(u.id) + "/feed"); } catch { return; }
+  if (!box.isConnected) return;
+  const vids = f.videos.length ? `<section class="set" aria-labelledby="pfV"><h2 class="set-h" id="pfV">Latest on YouTube</h2>
+    <ul class="pf-vids">${f.videos.map((v) => `<li><a href="/watch/${esc(v.id)}?title=${encodeURIComponent(v.title)}"><img src="https://i.ytimg.com/vi/${esc(v.id)}/mqdefault.jpg" alt="" width="320" height="180" loading="lazy"><b>${esc(v.title)}</b><span class="muted">${ago(v.ts)}</span></a></li>`).join("")}</ul></section>` : "";
+  const posts = f.posts.length ? `<section class="set" aria-labelledby="pfX"><h2 class="set-h" id="pfX">Latest on X</h2>
+    <ul class="rows pf-posts">${f.posts.map((p) => `<li><a class="pf-post" href="https://x.com/${esc(links.x)}/status/${esc(p.id)}" target="_blank" rel="noopener"><p class="pc-b">${esc(p.text)}</p>${p.photo ? `<img src="${esc(p.photo)}" alt="" loading="lazy">` : ""}<p class="muted pc-h">@${esc(links.x)}<span class="dot"></span>${ago(p.ts)}</p></a></li>`).join("")}</ul></section>` : "";
+  box.innerHTML = vids + posts;
 }

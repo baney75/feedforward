@@ -129,7 +129,7 @@ function liveCounters(el) {
 
 // ---------- Watch ----------
 export function watch(el, qs, id) {
-  const v = D.byId.get(id) || extraVideo(id);
+  const v = D.byId.get(id) || extraVideo(id, qs);
   const p = v.person != null ? D.people[v.person] : null;
   setTitle(v.title);
   const trackSlug = qs.get("track");
@@ -186,9 +186,11 @@ export function watch(el, qs, id) {
   return () => { clearInterval(countdown); stop(); unbind(); };
 }
 
-function extraVideo(id) {
+function extraVideo(id, qs) {
   for (const t of D.learn.tracks) for (const s of t.steps) if (s.kind === "video" && s.id === id) return { id, title: s.title, by: s.by, person: null, topic: -1 };
-  return { id, title: "Video", person: null, topic: -1 };
+  // Profile pages link a member's own uploads with their title, since those aren't in the catalog.
+  const t = qs && (qs.get("title") || "").slice(0, 200);
+  return { id, title: t || "Video", person: null, topic: -1 };
 }
 
 // ---------- Person ----------

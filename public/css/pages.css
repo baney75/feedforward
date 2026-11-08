@@ -326,6 +326,14 @@ main:has(> .pg-chat) { padding-bottom: var(--s4); }
 .pg-profile .prof-stats b { color: var(--fg); font-weight: 600; }
 .pg-profile .prof-acts { margin-bottom: var(--s2); }
 .pg-profile .pc-h { font-size: 13px; }
+.pg-profile .pf-vids { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--s4); }
+.pg-profile .pf-vids a { display: grid; gap: var(--s1); color: inherit; text-decoration: none; min-width: 0; }
+.pg-profile .pf-vids img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--r); background: var(--bg-3); }
+.pg-profile .pf-vids b { font-weight: 600; font-size: 15px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pg-profile .pf-vids span { font-size: 13px; }
+.pg-profile .pf-post { display: grid; gap: var(--s2); color: inherit; text-decoration: none; }
+.pg-profile .pf-post img { max-width: min(100%, 420px); border-radius: var(--r); }
+.pg-profile .pf-post:hover .pc-b { color: var(--accent-text); }
 .pg-profile .pc-b { margin-top: var(--s1); font-size: 15px; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ---------- Research ---------- */

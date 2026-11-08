@@ -132,13 +132,22 @@ export function cleanLinks(input) {
 }
 // The X profile picture, via the public fxtwitter API. Returns "" when it can't be found.
 // fxtwitter sometimes answers 404 for real accounts, so try a few times.
+const FX_UA = { "user-agent": "Mozilla/5.0 (compatible; Feedforward/1.0; +https://feedforward.dbaney.com/about)" };
+const okAvatar = (a) => (a && /^https:\/\/pbs\.twimg\.com\//.test(a) ? a.replace("_normal.", "_200x200.") : "");
+// fxtwitter's profile lookup is case-sensitive for some accounts (baney75 404s, Baney75 works), while the posts
+// endpoint isn't. So try the profile first, then read the avatar off the account's own latest post.
 export async function xAvatar(handle) {
   for (let k = 0; k < 3; k++) {
     try {
-      const r = await fetch(`https://api.fxtwitter.com/${handle}`, { headers: { "user-agent": "Mozilla/5.0 (compatible; Feedforward/1.0; +https://feedforward.dbaney.com/about)" } });
-      const d = await r.json();
-      const a = d && d.user && d.user.avatar_url;
-      if (a && /^https:\/\/pbs\.twimg\.com\//.test(a)) return a.replace("_normal.", "_200x200.");
+      const d = await (await fetch(`https://api.fxtwitter.com/${handle}`, { headers: FX_UA })).json();
+      const a = okAvatar(d && d.user && d.user.avatar_url);
+      if (a) return a;
+    } catch {}
+    try {
+      const d = await (await fetch(`https://api.fxtwitter.com/2/profile/${handle}/statuses`, { headers: FX_UA })).json();
+      const own = (d && d.results || []).find((r) => r.author && String(r.author.screen_name).toLowerCase() === handle.toLowerCase());
+      const a = okAvatar(own && own.author.avatar_url);
+      if (a) return a;
     } catch {}
     await new Promise((res) => setTimeout(res, 400 * (k + 1)));
   }
@@ -402,6 +411,40 @@ on("GET", "/api/u/([\\w]+)", async (req, env, _u, [id]) => {
     env.DB.prepare("SELECT COUNT(*) n FROM users WHERE referred_by = ?").bind(id).first(),
   ]);
   return json({ user: pub(u), links: linksOf(u), comments: c.results, likes: l.n, referrals: refs.n });
+});
+
+// A verified member's latest X posts and YouTube uploads, for their profile. Verified only: the green check is
+// given by an owner or admin, so the site never shows unvetted accounts' posts. Cached 30 minutes in KV.
+export const feedPosts = (d, handle) => (d && d.results || [])
+  .filter((r) => r.author && String(r.author.screen_name).toLowerCase() === handle.toLowerCase() && !r.replying_to && !r.reposted_by)
+  .slice(0, 6)
+  .map((r) => ({ id: String(r.id), text: String(r.text || "").slice(0, 600), ts: r.created_timestamp || 0, likes: r.likes || 0,
+    photo: ((r.media && r.media.photos) || []).map((p) => p.url).find((u) => /^https:\/\/pbs\.twimg\.com\//.test(u)) || "" }));
+export const feedVideos = (xml) => [...String(xml).matchAll(/<entry>([\s\S]*?)<\/entry>/g)].slice(0, 6).map(([, e]) => ({
+  id: (e.match(/<yt:videoId>([\w-]{11})<\/yt:videoId>/) || [])[1],
+  title: ((e.match(/<title>([^<]*)<\/title>/) || [])[1] || "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").slice(0, 200),
+  ts: Math.floor(Date.parse((e.match(/<published>([^<]+)<\/published>/) || [])[1] || 0) / 1000) || 0,
+})).filter((v) => v.id);
+on("GET", "/api/u/([\\w]+)/feed", async (req, env, _u, [id]) => {
+  const u = await env.DB.prepare("SELECT id, verified, links FROM users WHERE id = ? AND banned = 0").bind(id).first();
+  if (!u) return err(404, "No such learner.");
+  const links = linksOf(u), empty = { posts: [], videos: [] };
+  if (!u.verified || (!links.x && !links.youtube)) return json(empty, 200, { "cache-control": "public, max-age=300" });
+  const key = `uf:${u.id}:${links.x || ""}:${links.youtube || ""}`;
+  let out = env.FRESH && (await env.FRESH.get(key, "json"));
+  if (!out) {
+    out = { ...empty };
+    const jobs = [];
+    if (links.x) jobs.push(fetch(`https://api.fxtwitter.com/2/profile/${links.x}/statuses`, { headers: FX_UA }).then((r) => r.json()).then((d) => { out.posts = feedPosts(d, links.x); }).catch(() => {}));
+    if (links.youtube) jobs.push((async () => {
+      const ch = links.youtube.startsWith("channel/") ? links.youtube.slice(8) : await ytChannelId(links.youtube);
+      if (!ch) return;
+      out.videos = feedVideos(await (await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${ch}`)).text());
+    })().catch(() => {}));
+    await Promise.all(jobs);
+    if (env.FRESH) await env.FRESH.put(key, JSON.stringify(out), { expirationTtl: 1800 });
+  }
+  return json(out, 200, { "cache-control": "public, max-age=300" });
 });
 
 on("POST", "/api/suggest", async (req, env, u) => {
