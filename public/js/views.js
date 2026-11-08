@@ -27,6 +27,11 @@ function bindChips(el) {
   }));
 }
 
+// An empty state that helps: an icon, what this place is for, and one way forward.
+function emptyState(ic, title, body, action = "") {
+  return `<div class="empty-card">${icon(ic)}<h2>${title}</h2><p>${body}</p>${action}</div>`;
+}
+
 // ---------- Home ----------
 export function home(el, qs) {
   const topic = topicFromQuery(qs);
@@ -51,7 +56,7 @@ export function home(el, qs) {
   // Members are already in: no pitch, no stats. Topics on top, then where you left off, then today's picks.
   void hello;
   el.innerHTML = `<div class="home"><div class="home-main">
-      <div class="chips-wrap">${chipBar}<button class="chip more-topics" type="button" aria-expanded="false">More topics</button></div>
+      <div class="chips-wrap">${chipBar}</div>
       ${topic === -1 ? keepGoing() || startHere() : ""}
       ${newest ? "" : hero}
       ${topic === -1 ? `<div class="sec-h"><h2>Start learning</h2><a href="/learn">All tracks and labs</a></div><div class="shelf">${tracks}</div>` : ""}
@@ -59,9 +64,6 @@ export function home(el, qs) {
       <div class="grid" id="feed"></div><div id="more" style="height:1px"></div>
     </div>${wire}</div>`;
   bindChips(el);
-  // Wide screens show one row of topics; "More topics" opens the rest.
-  const more = $(".more-topics", el), wrap = $(".chips-wrap", el);
-  if (more) more.onclick = () => { const open = wrap.classList.toggle("open"); more.setAttribute("aria-expanded", open); more.textContent = open ? "Fewer topics" : "More topics"; };
   const stopCounters = liveCounters(el);
   const feed = $("#feed", el);
   let count = 0, postOff = 0, gen = D.gen, sampled = next;
@@ -159,7 +161,7 @@ export function watch(el, qs, id) {
   const upNext = related(v, 14);
   el.innerHTML = `<div class="watch">
     <div style="min-width:0">
-      <div class="player"><div id="yt"></div></div>
+      <div class="player"><div id="yt"></div><button class="pcover" type="button" aria-label="Play ${esc(v.title)}"><img src="${thumb(id, "maxresdefault")}" alt="" onerror="this.onerror=null;this.src='${thumb(id, "hqdefault")}'"><span class="pplay" aria-hidden="true">${icon("play")}</span></button></div>
       ${track ? trackBanner(track, id) : ""}
       <h1>${esc(v.title)}</h1>
       <div class="wbar">
@@ -178,7 +180,11 @@ export function watch(el, qs, id) {
     <aside class="side"><div class="side-h"><h2>Up next</h2><label class="toggle"><input type="checkbox" id="autoplay" ${store.get("autoplay", true) !== false ? "checked" : ""}> Autoplay</label></div>${upNext.map((x) => videoCard(x, { row: true })).join("")}</aside>
   </div>`;
   let countdown = 0;
+  // Our poster covers YouTube's start screen until the video plays. A tap plays it; if the browser refuses,
+  // the cover steps aside so YouTube's own play button can take the tap.
+  const pl = $(".player", el);
   const stop = mountPlayer($("#yt", el), id, {
+    onPlaying: () => pl.classList.add("started"),
     onPlay: () => store.watched(id),
     onEnd: () => {
       if (store.get("autoplay", true) === false || !upNext[0] || track) return;
@@ -190,6 +196,7 @@ export function watch(el, qs, id) {
     },
     onError: () => { const pl = $(".player", el); if (pl) pl.innerHTML = `<div class="noembed"><img src="${thumb(id, "hqdefault")}" alt=""><div><p>The owner only allows this video to play on YouTube.</p><a class="btn primary" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">${icon("yt")}Watch on YouTube</a></div></div>`; },
   });
+  $(".pcover", el).onclick = () => { stop.play(); setTimeout(() => pl.classList.add("started"), 1500); };
   $("#save", el).onclick = (e) => {
     const on = store.toggleSave("v:" + id);
     e.currentTarget.innerHTML = icon(on ? "bookmarked" : "bookmark") + `<span class="lbl">${on ? "Saved" : "Save"}</span>`;
@@ -370,7 +377,7 @@ export async function labPage(el, qs, slug) {
     stop = mod.mount(root, { markDone: () => { if (!store.isDone("lab:" + slug)) { store.done("lab:" + slug); toast("Lab complete"); } } });
   } catch (e) {
     if (el.dataset.seq !== my) return null;
-    $("#lab", el).innerHTML = `<p class="empty">This lab didn't load. Check your connection and try again.</p>`;
+    $("#lab", el).innerHTML = `${emptyState("learn", "This lab didn't load", "Check your connection, then try again.", `<button class="btn primary" type="button" onclick="location.reload()">Try again</button>`)}`;
   }
   return () => { try { stop && stop(); } catch {} };
 }
@@ -398,31 +405,27 @@ export function libraryPage(el, qs) {
   const sp = saved.filter((k) => k.startsWith("p:")).map((k) => D.postById.get(k.slice(2))).filter(Boolean);
   const ss = saved.filter((k) => k.startsWith("s:")).map((k) => D.shorts.find((x) => x.id === k.slice(2))).filter(Boolean);
   const hist = store.history().map((id) => D.byId.get(id)).filter(Boolean);
-  el.innerHTML = `<div class="page-h"><div><h1>Library</h1><p>Saved videos, Shorts and posts, and what you've watched. Sign in with your code to keep them on every device.</p></div><button class="btn" id="themePick" type="button">Theme</button></div>
-    <label class="toggle lib-pref"><input type="checkbox" id="shortsOff"${store.shortsOff() ? " checked" : ""}><span><b>Turn off Shorts</b><span class="muted">Hides Shorts everywhere on this device. Turn them back on any time.</span></span></label>
+  el.innerHTML = `<div class="page-h"><div><h1>Library</h1><p>Saved videos, Shorts and posts, and what you've watched, on every device you sign in on.</p></div></div>
     <div class="tabs" role="group"><button data-tab="saved" aria-pressed="${tab === "saved"}">Saved</button><button data-tab="history" aria-pressed="${tab === "history"}">History</button></div>
     <div id="lib"></div>`;
-  $("#shortsOff", el).onchange = (e) => { store.setShortsOff(e.target.checked); toast(e.target.checked ? "Shorts are off on this device" : "Shorts are back"); };
+
   el.querySelector(".tabs").onclick = (e) => { const b = e.target.closest("[data-tab]"); if (!b) return; history.replaceState(null, "", "/library?tab=" + b.dataset.tab); dispatchEvent(new PopStateEvent("popstate")); };
   const lib = $("#lib", el);
   if (tab === "history") {
-    lib.innerHTML = hist.length ? `<div class="grid">${hist.map((v) => videoCard(v)).join("")}</div><p style="margin-top:32px"><button class="btn" id="clear">Clear history</button></p>` : `<p class="empty">Videos you watch show up here.</p>`;
+    lib.innerHTML = hist.length ? `<div class="grid">${hist.map((v) => videoCard(v)).join("")}</div><p style="margin-top:32px"><button class="btn" id="clear">Clear history</button></p>` : `${emptyState("library", "Nothing watched yet", "Videos you watch show up here, on every device you sign in on.", `<a class="btn primary" href="/">Find something to watch</a>`)}`;
     const c = $("#clear", el); if (c) c.onclick = () => { store.clearHistory(); dispatchEvent(new PopStateEvent("popstate")); };
   } else {
     lib.innerHTML = (sv.length ? `<div class="grid">${sv.map((v) => videoCard(v)).join("")}</div>` : "") +
-      (ss.length ? `<div class="sec-h"><h2>Shorts</h2></div><div class="shelf">${ss.map((x) => `<a class="vcard" href="/shorts/${x.id}"><div class="thumb" style="aspect-ratio:9/16"><img src="https://i.ytimg.com/vi/${x.id}/oardefault.jpg" alt="" loading="lazy"></div><div class="vtext" style="margin-top:8px"><h3 class="vt">${esc(x.title)}</h3></div></a>`).join("")}</div>` : "") + (sp.length ? `<div class="sec-h"><h2>Posts</h2></div><div class="narrow">${sp.map(postCard).join("")}</div>` : "") || `<p class="empty">Tap Save on any video or the bookmark on any post to keep it here.</p>`;
+      (ss.length ? `<div class="sec-h"><h2>Shorts</h2></div><div class="shelf">${ss.map((x) => `<a class="vcard" href="/shorts/${x.id}"><div class="thumb" style="aspect-ratio:9/16"><img src="https://i.ytimg.com/vi/${x.id}/oardefault.jpg" alt="" loading="lazy"></div><div class="vtext" style="margin-top:8px"><h3 class="vt">${esc(x.title)}</h3></div></a>`).join("")}</div>` : "") + (sp.length ? `<div class="sec-h"><h2>Posts</h2></div><div class="narrow">${sp.map(postCard).join("")}</div>` : "") || `${emptyState("bookmark", "Save it for later", "Tap Save on any video, or the bookmark on any post, and it waits here.", `<a class="btn primary" href="/">Browse Home</a>`)}`;
   }
 }
 
 export function aboutPage(el) {
   setTitle("About");
   const m = D.meta;
-  el.innerHTML = `<div class="prose"><pre class="wordmark" aria-hidden="true">  __               _   __                                   _
- / _| ___  ___  __| | / _| ___  _ _ __ __ __  __ _  _ _  __| |
-|  _|/ -_)/ -_)/ _\` ||  _|/ _ \\| '_|\\ V  V / / _\` || '_|/ _\` |
-|_|  \\___|\\___|\\__,_||_|  \\___/|_|   \\_/\\_/  \\__,_||_|  \\__,_|</pre><h1 style="font-size:32px;margin:16px 0">About Feedforward</h1>
+  el.innerHTML = `<div class="prose about"><svg class="about-logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--accent)"/><g fill="var(--accent-ink)"><rect x="15.5" y="15.7" width="8.2" height="32.6" rx="4.1"/><rect x="27.7" y="21.8" width="8.2" height="20.4" rx="4.1"/><circle cx="44" cy="32" r="4.5"/></g></svg><h1>About Feedforward</h1>
     <p>Feedforward is a learning feed for AI. It gathers the full video libraries, the best Shorts and the best recent posts of ${D.people.filter(Boolean).length} people who teach AI well, build it in the open, or run it on their own machines. Then it filters out everything that isn't about AI, computer science or making things.</p>
-    <p>The name has two meanings. It's a feed that moves you forward, and a feedforward network is the first neural network everyone learns: input goes in, flows layer by layer, and an answer comes out. No account, no ads, no tracking, no algorithm trained on you. Everything you do here stays on your device.</p>
+    <p>The name has two meanings. It's a feed that moves you forward, and a feedforward network is the first neural network everyone learns: input goes in, flows layer by layer, and an answer comes out. Feedforward is invite-only, and your account is a code: no email, no password. No ads, no tracking, and no algorithm trained on you. What you watch and save syncs only to your own account.</p>
     <h2>How the feed works</h2>
     <ul><li>Every channel's full upload history is listed with <a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a>. Posts come from each person's public X timeline.</li>
     <li>A language model labels every video title and post by topic and teaching value. Channels that aren't purely technical are filtered to their AI and computer science uploads. Politics, religion, ads and personal posts are dropped, with a word list as a second net.</li>
@@ -454,7 +457,7 @@ export function notFound(el) {
 export function shortsPage(el, qs, startId) {
   setTitle("Shorts");
   if (store.shortsOff()) {
-    el.innerHTML = `<div class="empty shorts-off"><h1>Shorts are off</h1><p>You turned them off on this device. Longer videos, tracks and labs are all still here.</p>
+    el.innerHTML = `<div class="empty shorts-off"><h1>Shorts are off</h1><p>You turned them off on this device. Longer videos, tracks and labs are all still here. Settings live on your profile.</p>
       <div class="row"><a class="btn primary" href="/">Go home</a><button class="btn" type="button" id="shortsOn">Turn Shorts back on</button></div></div>`;
     $("#shortsOn", el).onclick = () => { store.setShortsOff(false); dispatchEvent(new PopStateEvent("popstate")); };
     return;
@@ -477,8 +480,7 @@ export function shortsPage(el, qs, startId) {
   if (!list.length) { el.innerHTML = `<div class="page-h"><div><h1>Shorts</h1></div></div>${chips(topic)}<p class="empty">No shorts in this topic yet.</p>`; bindChips(el); return; }
   el.innerHTML = `<div class="shorts-page">${chips(topic)}<div class="shorts" tabindex="0" aria-label="Shorts. Use the up and down arrow keys to move between them.">${list.slice(0, 40).map(shortSlide).join("")}</div>
     <div class="snav"><button class="icon-btn" data-snav="-1" aria-label="Previous short">${icon("up")}</button><button class="icon-btn" data-snav="1" aria-label="Next short">${icon("down")}</button></div></div>`;
-  el.querySelector(".chips").insertAdjacentHTML("beforeend", `<button class="chip shorts-off-chip" type="button" id="shortsOffBtn">Turn off Shorts</button>`);
-  $("#shortsOffBtn", el).onclick = () => { if (!confirm("Turn off Shorts on this device? You can turn them back on in Library.")) return; store.setShortsOff(true); location.assign("/"); };
+
   bindChips(el);
   const box = $(".shorts", el);
   let shown = 40, active = null, paused = false, tapT = 0, lastTap = 0;
@@ -613,13 +615,15 @@ export function booksPage(el, qs) {
   return bindSocial(el);
 }
 const bookSlug = (b) => b.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+// "Free online (text CC BY-SA 4.0, code MIT, per the d2l-en repo)" -> "Free online". One short muted line.
+const shortLicense = (l) => String(l || "").replace(/\s*\(.*$/, "").replace(/,.*$/, "").slice(0, 40);
 function bookCard(b, k = 0) {
   return `<article class="book">
     <a class="cover" style="--k:${(k * 3) % 4}" href="${esc(b.url)}" target="_blank" rel="noopener" aria-label="Read ${esc(b.title)} free">
-      <span class="free">FREE</span><span class="ct">${esc(b.title)}</span><span class="ca">${esc(b.authors)}</span><span class="cy">${esc(String(b.year || ""))}</span></a>
+      <span class="ct">${esc(b.title)}</span><span class="ca">${esc(b.authors)}</span><span class="cy">${esc(String(b.year || ""))}</span></a>
     <div class="binfo"><span class="topic-tag">${esc(b.level)} · ${topicLabel(topicIndex(b.topic))}</span>
       <h3>${esc(b.title)}</h3><p>${esc(b.why)}</p>${stars("b:" + bookSlug(b))}
-      <p class="muted" style="font-size:13px">${esc(b.authors)}${b.year ? " · " + esc(String(b.year)) : ""} · ${esc(b.license)}${b.notes ? " · " + esc(b.notes) : ""}</p>
+      <p class="bmeta muted">${esc(b.authors)}${b.year ? " · " + esc(String(b.year)) : ""} · ${esc(shortLicense(b.license))}</p>
       <a class="btn" href="${esc(b.url)}" target="_blank" rel="noopener">${icon("books")}Read free${b.format === "pdf" ? " (PDF)" : ""}</a></div>
   </article>`;
 }

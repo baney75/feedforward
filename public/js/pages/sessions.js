@@ -64,8 +64,11 @@ export async function render(el) {
   let open = null, stopChat = null, sessions = [];
   const closeChat = () => { if (stopChat) stopChat(); stopChat = null; if (open) { const b = el.querySelector(`[data-chat="${CSS.escape(open)}"]`); if (b) b.setAttribute("aria-expanded", "false"); const p = $("#chat-" + CSS.escape(open), el); if (p) { p.hidden = true; p.innerHTML = ""; } } open = null; };
 
+  const over = (s) => s.cancelled || now() >= s.starts + s.minutes * 60;
   const row = (s) => {
     const mine = u && u.id === s.host.id, tag = soon(s);
+    // Past sessions are a record: no RSVP, no Join, no Cancel.
+    if (over(s)) return `<article class="ses past" id="${esc(s.id)}"><p class="ses-when"><time datetime="${new Date(s.starts * 1000).toISOString()}">${esc(when(s))}</time><span class="dot"></span>${s.cancelled ? "Cancelled" : "Ended"}</p><h2>${esc(s.title)}</h2><p class="ses-host"><a href="/u/${esc(s.host.id)}">${userAvatar(s.host, "s")}<b>${esc(s.host.name)}</b></a>${badges(s.host)}</p></article>`;
     return `<article class="ses${s.cancelled ? " off" : ""}" id="${esc(s.id)}">
       <p class="ses-when"><time datetime="${new Date(s.starts * 1000).toISOString()}">${esc(when(s))}</time><span class="dot"></span>${s.minutes} min${tag ? `<span class="dot"></span><b class="${live(s) ? "now" : ""}">${tag}</b>` : ""}</p>
       <h2>${esc(s.title)}</h2>
@@ -74,17 +77,24 @@ export async function render(el) {
       ${s.cancelled ? "" : `<div class="acts">
         ${live(s) ? `<a class="btn primary" href="${esc(s.link)}" target="_blank" rel="noopener noreferrer">${icon("ext")}Join</a>` : ""}
         ${s.mine ? `<button class="btn" type="button" data-unrsvp="${esc(s.id)}" aria-pressed="true">${icon("check")}Going</button>` : `<button class="btn" type="button" data-rsvp="${esc(s.id)}">RSVP</button>`}
-        <button class="textbtn" type="button" data-chat="${esc(s.id)}" aria-expanded="false" aria-controls="chat-${esc(s.id)}">Chat</button>
-        ${mine || can("mod") ? `<button class="textbtn danger" type="button" data-cancel="${esc(s.id)}">Cancel session</button>` : ""}
+        <button class="btn" type="button" data-chat="${esc(s.id)}" aria-expanded="false" aria-controls="chat-${esc(s.id)}">${icon("chat")}Chat</button>
+        ${mine || can("mod") ? `<button class="textbtn danger ses-cancel" type="button" data-cancel="${esc(s.id)}">Cancel</button>` : ""}
       </div>
       <div class="ses-chat" id="chat-${esc(s.id)}" hidden></div>`}
     </article>`;
+  };
+  // Live and upcoming first, soonest at the top; past ones folded below, newest first.
+  const render = () => {
+    const up = sessions.filter((s) => !over(s)).sort((a, b) => a.starts - b.starts);
+    const past = sessions.filter(over).sort((a, b) => b.starts - a.starts);
+    const empty = `<div class="empty-card"><h2>Nothing scheduled yet</h2><p>${host ? "Host the first session: it shows up here for everyone." : "Professors and tutors post sessions here. Check back soon."}</p></div>`;
+    return (up.length ? up.map(row).join("") : empty) + (past.length ? `<details class="ses-past"><summary>Past sessions (${past.length})</summary>${past.map(row).join("")}</details>` : "");
   };
   const load = async () => {
     closeChat();
     try {
       sessions = (await api("/api/sessions")).sessions;
-      list.innerHTML = sessions.length ? sessions.map(row).join("") : `<div class="empty"><p>No sessions are scheduled yet.${host ? " Host the first one." : " Check back soon."}</p></div>`;
+      list.innerHTML = render();
       const h = decodeURIComponent(location.hash.slice(1));
       const t = h && document.getElementById(h);
       if (t && list.contains(t)) { t.classList.add("hl"); t.scrollIntoView({ block: "center" }); }
@@ -94,7 +104,7 @@ export async function render(el) {
   if (form) bindHost(form, load);
   await load();
   // Refresh the "Live now" and Join state every minute without refetching.
-  const tick = setInterval(() => { if (!open) list.innerHTML = sessions.length ? sessions.map(row).join("") : list.innerHTML; }, 60000);
+  const tick = setInterval(() => { if (!open) list.innerHTML = render(); }, 60000);
 
   const need = () => { toast("Get your free code first. It takes one tap."); go("/me"); };
   const offs = [

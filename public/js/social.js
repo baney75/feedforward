@@ -14,7 +14,7 @@ export function likeButton(item, { label = true, stacked = false } = {}) {
 
 export function stars(item) {
   const r = stats.ratings[item], my = mine.ratings[item] || 0;
-  return `<div class="stars" role="radiogroup" aria-label="Rate it">${[1, 2, 3, 4, 5].map((k) => `<button role="radio" aria-checked="${my === k}" aria-label="${k} star${k > 1 ? "s" : ""}" data-rate="${esc(item)}" data-stars="${k}" class="${k <= my ? "on" : ""}">${icon("star")}</button>`).join("")}<span class="muted mono">${r ? `${r[0].toFixed(1)} · ${r[1]}` : ""}</span></div>`;
+  return `<div class="stars" role="radiogroup" aria-label="Rate it">${[1, 2, 3, 4, 5].map((k) => `<button role="radio" aria-checked="${my === k}" aria-label="${k} star${k > 1 ? "s" : ""}" data-rate="${esc(item)}" data-stars="${k}" class="${k <= my ? "on" : ""}">${icon("star")}</button>`).join("")}<span class="muted rate-n">${r ? `${r[0].toFixed(1)} · ${r[1]} rating${r[1] === 1 ? "" : "s"}` : my ? "" : "Rate it"}</span></div>`;
 }
 
 const needCode = () => toast("Sign in first.");

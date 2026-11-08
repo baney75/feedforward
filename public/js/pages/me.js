@@ -1,5 +1,6 @@
 // /me: the account page. Signed out: get a code or sign in with one. Signed in: name, photo, code and QR,
 // referral link, badges, agent tokens, sign out. /link#<code>: sign in on this device from a scanned QR.
+import { haptic, hapticsOn, setHaptics } from "../haptics.js";
 import { api, account, signedIn, user, can, createAccount, signIn, signOut, refreshMe, updateUser, setCode } from "../account.js";
 import { esc, toast, badges, userAvatar } from "../ui.js";
 import { icon } from "../icons.js";
@@ -174,7 +175,14 @@ async function signedInView(el) {
       </form>
     </section>
 
-    <section class="set end"><button class="btn" id="themePick" type="button">Theme</button> <button class="btn" id="signOut" type="button">Sign out</button></section>
+    <section class="set" aria-labelledby="setH"><h2 class="set-h" id="setH">Settings</h2>
+      <ul class="rows prefs">
+        <li><span><b>Theme</b><span class="muted">Ink, Paper, Terminal and more</span></span><button class="btn sm" id="themePick" type="button">Change</button></li>
+        <li><label class="switch-row"><span><b>Turn off Shorts</b><span class="muted">Hide Shorts everywhere on this device</span></span><input type="checkbox" role="switch" id="prefShorts"${store.shortsOff() ? " checked" : ""}></label></li>
+        <li><label class="switch-row"><span><b>Haptics</b><span class="muted">A light tap when you like, save or swipe (phones)</span></span><input type="checkbox" role="switch" id="prefHaptics"${hapticsOn() ? " checked" : ""}></label></li>
+      </ul>
+    </section>
+    <section class="set end"><button class="textbtn danger" id="signOut" type="button">Sign out of this device</button></section>
   </div>`;
 
   const offs = [];
@@ -282,6 +290,9 @@ async function signedInView(el) {
       await paintTokens();
     });
   };
+  // Settings
+  $("#prefShorts", el).onchange = (e) => { store.setShortsOff(e.target.checked); toast(e.target.checked ? "Shorts are off on this device" : "Shorts are back"); };
+  $("#prefHaptics", el).onchange = (e) => { setHaptics(e.target.checked); if (e.target.checked) haptic.tick(); };
   // Sign out
   $("#signOut", el).onclick = (e) => {
     if (!confirm("Sign out on this device? You'll need your code to sign back in.")) return;

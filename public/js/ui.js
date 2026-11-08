@@ -29,8 +29,10 @@ export function ago(ts, short = false) {
 export const thumb = (id, q = "mqdefault") => `https://i.ytimg.com/vi/${id}/${q}.jpg`;
 export const topicLabel = (i) => (TOPICS[i] ? TOPICS[i].label : "");
 
+// A picture that fails to load turns into the person's initial instead of an empty circle.
+const initialSvg = (ch) => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><rect width="36" height="36" fill="#2a2925"/><text x="18" y="23.5" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" font-weight="600" fill="#b4afa5">${ch}</text></svg>`);
 export function avatar(p, cls = "") {
-  if (p && p.av) return `<img class="av ${cls}" src="${esc(p.av)}" alt="" loading="lazy" width="36" height="36" referrerpolicy="no-referrer">`;
+  if (p && p.av) return `<img class="av ${cls}" src="${esc(p.av)}" alt="" loading="lazy" width="36" height="36" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${initialSvg(esc((p.name || "?")[0].toUpperCase()))}'">`;
   const ch = esc((p?.name || "?")[0]);
   return `<span class="av ${cls}" aria-hidden="true" style="display:grid;place-items:center;font-weight:600;color:var(--fg-2)">${ch}</span>`;
 }

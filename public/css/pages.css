@@ -488,3 +488,14 @@ main:has(> .pg-chat) { padding-bottom: var(--s4); }
 .pg-profile .pf-repos b { font-size: 15px; overflow-wrap: anywhere; }
 .pg-profile .pf-repos span { font-size: 14px; color: var(--fg-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .pg-profile .pf-repos small { font-size: 13px; }
+
+.pg-sessions .ses-past { margin-top: var(--s6); }
+.pg-sessions .ses-past summary { cursor: pointer; font-weight: 600; color: var(--fg-2); padding: var(--s3) 0; }
+.pg-sessions .ses.past { opacity: .72; }
+.pg-sessions .ses-cancel { margin-left: auto; }
+
+/* Wide screens: single-column pages sit centered in the content area instead of hugging the left edge. */
+@media (min-width: 1280px) { .pg { margin-inline: auto; } }
+
+/* Commands and config wrap at the edge instead of being cut off mid-token. */
+.pg pre.code { white-space: pre-wrap; overflow-wrap: anywhere; }
