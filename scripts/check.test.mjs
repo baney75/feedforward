@@ -189,10 +189,12 @@ test("X videos play through the no-referrer frame, which only Feedforward may em
   // video.twimg.com answers 403 when the referrer is another site, so a bare <video> never plays.
   const ui = read("public/js/ui.js"), xv = read("public/xv.html"), h = read("public/_headers");
   assert.ok(!/<video[^>]*src="\$\{esc\(u\)\}"/.test(ui), "post videos must not use a bare <video src>");
-  assert.match(ui, /src="\/xv\.html#/);
+  // Cloudflare serves /xv.html at /xv (it redirects), so the page, the iframe and the header rule all use /xv.
+  assert.match(ui, /src="\/xv#/);
   assert.match(xv, /<meta name="referrer" content="no-referrer">/);
   assert.match(xv, /video\.twimg\.com/);
-  const block = h.slice(h.indexOf("/xv.html"));
+  const block = h.slice(h.indexOf("\n/xv\n"));
+  assert.ok(block.length > 5, "_headers needs a /xv rule (not /xv.html, which redirects)");
   assert.match(block, /frame-ancestors 'self'/);
   assert.match(block, /Referrer-Policy: no-referrer/);
   assert.match(h, /camera=\(self\)/, "the front door's QR scanner needs the camera");

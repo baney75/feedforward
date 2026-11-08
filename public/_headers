@@ -13,7 +13,7 @@
   Cache-Control: public, max-age=600
 /sw.js
   Cache-Control: no-cache
-/xv.html
+/xv
   ! X-Frame-Options
   ! Content-Security-Policy
   ! Referrer-Policy

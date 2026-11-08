@@ -68,7 +68,7 @@ function media(m) {
   if (m.vd) {
     const [u, poster, w, h] = m.vd;
     // X videos play in a no-referrer frame: X's host refuses requests that name another site as the referrer.
-    out += `<div class="post-media n1 xv" style="aspect-ratio:${w && h ? `${w} / ${h}` : "16 / 9"}"><iframe src="/xv.html#${encodeURIComponent(`${u}|${poster || ""}`)}" title="Video from X" loading="lazy" allow="fullscreen; picture-in-picture" allowfullscreen referrerpolicy="no-referrer"></iframe></div>`;
+    out += `<div class="post-media n1 xv" style="aspect-ratio:${w && h ? `${w} / ${h}` : "16 / 9"}"><iframe src="/xv#${encodeURIComponent(`${u}|${poster || ""}`)}" title="Video from X" loading="lazy" allow="fullscreen; picture-in-picture" allowfullscreen referrerpolicy="no-referrer"></iframe></div>`;
   }
   if (m.cd && !m.ph && !m.vd) {
     const [u, t, d, img] = m.cd;

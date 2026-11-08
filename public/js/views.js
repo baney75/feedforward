@@ -35,11 +35,12 @@ export function home(el, qs) {
   const hello = `<section class="hello"><div><h1>Learn AI from the people <em>building it.</em></h1>
     <p>Videos, posts, free books and hands-on labs from people who teach AI well, build it in the open, or run it at home. No ads, no politics.</p></div>
     <div class="stats" aria-live="polite"><div><b data-count="people">${D.people.filter((p) => p && p.i < 10000).length}</b>people</div><div><b data-count="videos">${D.meta.videos}</b>videos</div><div><b data-count="shorts">${D.meta.shorts || 0}</b>shorts</div><div><b data-count="learners">0</b>learners</div></div></section>`;
-  const picks = todaysPicks(4, tIdx);
+  const disliked = new Set([...mine.dislikes].filter((k) => k.startsWith("v:")).map((k) => k.slice(2)));
+  const picks = todaysPicks(8, tIdx).filter((v) => !disliked.has(v.id)).slice(0, 4);
   const hero = picks.length ? `<section class="hero" aria-label="Today's picks">${videoCard(picks[0], { big: true })}<div class="hero-side">${picks.slice(1).map((v) => videoCard(v, { row: true })).join("")}</div></section>` : "";
   const exclude = new Set(picks.map((v) => v.id));
   // Videos you disliked leave your feed.
-  for (const k of mine.dislikes) if (k.startsWith("v:")) exclude.add(k.slice(2));
+  for (const id of disliked) exclude.add(id);
   const newest = topic === -2;
   const next = sampler({ topic: tIdx, exclude, newest });
   const tracks = (D.learn.tracks || []).slice(0, 4).map(trackCard).join("");

@@ -67,6 +67,8 @@ export async function refreshGate() {
 // so the next person to sign in never uploads someone else's history into their account.
 const SYNCED_KEYS = ["history", "saved", "progress", "days", "historyReset"];
 function clearSynced() {
+  try { localStorage.removeItem("lt:dislikes"); } catch {}
+  mine.dislikes = new Set();
   for (const k of SYNCED_KEYS) { try { localStorage.removeItem("lt:" + k); } catch {} }
   store.set("owner", null);
   // Member-only catalog files cached for offline use go too.
@@ -77,14 +79,17 @@ export async function refreshMe() {
   if (!signedIn()) return null;
   const d = await api("/api/me");
   write({ ...acct, user: d.user });
-  mine.likes = new Set(d.likes); mine.dislikes = new Set(d.dislikes || []); mine.ratings = d.ratings;
+  mine.likes = new Set(d.likes); mine.dislikes = new Set(d.dislikes || []); saveDis(); mine.ratings = d.ratings;
   return d;
 }
 export function updateUser(u) { write({ ...acct, user: { ...acct.user, ...u } }); }
 export function setCode(code) { write({ ...acct, code }); }
 
 // ---------- Your likes and ratings, plus everyone's counts ----------
-export const mine = { likes: new Set(), dislikes: new Set(), ratings: {} };
+// Your dislikes are also kept on this device, so the feed skips them from the first paint, before /api/me answers.
+const readDis = () => { try { return new Set(JSON.parse(localStorage.getItem("lt:dislikes") || "[]")); } catch { return new Set(); } };
+const saveDis = () => { try { localStorage.setItem("lt:dislikes", JSON.stringify([...mine.dislikes].slice(-2000))); } catch {} };
+export const mine = { likes: new Set(), dislikes: readDis(), ratings: {} };
 export const stats = { likes: {}, ratings: {}, comments: {}, ready: null };
 export function loadStats() {
   if (!stats.ready) stats.ready = fetch("/api/stats").then((r) => r.json()).then((d) => Object.assign(stats, d)).catch(() => stats);
@@ -95,6 +100,7 @@ export async function like(item, on, kind = "like") {
   const d = await api("/api/like", { method: "POST", body: { item, on, kind } });
   const [set, other] = kind === "dislike" ? [mine.dislikes, mine.likes] : [mine.likes, mine.dislikes];
   if (on) { set.add(item); other.delete(item); } else set.delete(item);
+  saveDis();
   stats.likes[item] = d.likes;
   dispatchEvent(new CustomEvent("ff:vote", { detail: { item, kind, on } }));
   return d;

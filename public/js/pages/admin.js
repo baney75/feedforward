@@ -273,7 +273,12 @@ async function invites(pane, me) {
   await load();
   const save = (row, body, done) => post("/api/admin/invites/" + row.dataset.inv, body).then(() => { toast(done); return load(); }).catch((e) => toast(e.message));
   // Total uses save when the field changes (0 means no limit).
-  list.addEventListener("change", (e) => { const f = e.target.closest("[data-uses]"); if (f) save(f.closest("[data-inv]"), { max_uses: +f.value || 0 }, +f.value ? `Limit set to ${+f.value}` : "No limit"); });
+  // An empty field is someone mid-edit, not "no limit": put the saved number back.
+  list.addEventListener("change", (e) => {
+    const f = e.target.closest("[data-uses]"); if (!f) return;
+    if (f.value.trim() === "" || !Number.isFinite(+f.value) || +f.value < 0) { f.value = f.defaultValue; return; }
+    save(f.closest("[data-inv]"), { max_uses: Math.floor(+f.value) }, +f.value ? `Limit set to ${Math.floor(+f.value)}` : "No limit");
+  });
   const offs = [
     on(list, "[data-copy]", (b) => copy(b.dataset.copy, "Link copied")),
     on(list, "[data-toggle]", (b) => { const off = b.dataset.toggle === "off"; if (off && !confirm("Turn this invite link off? Nobody can join with it until you turn it back on.")) return; busy(b, () => save(b.closest("[data-inv]"), { disabled: off }, off ? "Invite link turned off" : "Invite link is on again")); }),
