@@ -1,0 +1,8 @@
+{
+  "date": "2026-11-07",
+  "problems": [
+    "agents: CLAUDE.md is none, not an @AGENTS.md import",
+    "readme: README has no ## Install (or Get started/Quick start) heading",
+    "readme: README has no ## License heading or license line"
+  ]
+}
