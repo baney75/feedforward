@@ -1,6 +1,6 @@
 # Connect an agent
 
-Feedforward runs a public MCP server, so an AI agent can search the catalog, define terms, cite papers and plan what to learn next. This page covers setup, the tools, the limits and the security notes.
+Feedforward runs an MCP server, so a member's AI agent can search the catalog, define terms, cite papers and plan what to learn next. This page covers setup, the tools, the limits and the security notes.
 
 For how the server fits into the rest of the system, see [ARCHITECTURE.md](ARCHITECTURE.md). For the project's own coding rules (for agents that edit this repository), see [../AGENTS.md](../AGENTS.md).
 
@@ -9,17 +9,13 @@ For how the server fits into the rest of the system, see [ARCHITECTURE.md](ARCHI
 - **Protocol versions:** 2025-11-25, 2025-06-18, 2025-03-26, 2024-11-05. If the client asks for another, the server answers with 2025-06-18.
 - **Server name:** `feedforward`, version `1.0.0`.
 
-Reading needs no token. A token adds your own library.
+Feedforward is invite-only, so every call needs a member's token (`ffk_...`, from your profile) or the OAuth connector at `/mcp/me`. Calls without one get a 401.
 
 ## Connect
 
 ### Claude Code
 
-```sh
-claude mcp add --transport http feedforward https://feedforward.dbaney.com/mcp
-```
-
-With a token, to use your library and saves:
+With your token:
 
 ```sh
 claude mcp add --transport http feedforward https://feedforward.dbaney.com/mcp \
@@ -63,6 +59,7 @@ List the tools:
 
 ```sh
 curl -s https://feedforward.dbaney.com/mcp \
+  -H "Authorization: Bearer ffk_your_token" \
   -H "content-type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
@@ -71,17 +68,16 @@ Call one:
 
 ```sh
 curl -s https://feedforward.dbaney.com/mcp \
+  -H "Authorization: Bearer ffk_your_token" \
   -H "content-type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"search","arguments":{"query":"attention","kind":"videos"}}}'
 ```
-
-With a token, add `-H "Authorization: Bearer ffk_your_token"`.
 
 Notes for raw callers: `id` is required (a message with no `id` is treated as a notification and gets an empty `202`). Batches (a JSON array) are refused. Request bodies over 20,000 characters are refused. `GET /mcp` returns a short message with status 405.
 
 ## Get a token
 
-1. Open https://feedforward.dbaney.com/me and get a free code. There is no email or password.
+1. Sign in at https://feedforward.dbaney.com (it's invite-only: use a member's invite link, or apply). There is no email or password.
 2. Make a token there. Name it after the agent. Choose **Read** or **Read and save**.
 3. Copy it right away. It starts with `ffk_` and is shown once. Only a hash is stored.
 
@@ -113,7 +109,7 @@ A token has one of two scopes:
 
 | Scope | Can do |
 | --- | --- |
-| `read` | Everything open to anyone, plus `my_library`. |
+| `read` | Search, define, cite, learning paths, sessions, plus `my_library`. |
 | `write` | The same, plus `save`. |
 
 Rate limits are counted per hour. Every `POST` counts, including `initialize`, `ping` and `tools/list`.

@@ -7,7 +7,7 @@ import { TOPICS } from "../data.js";
 import { esc, toast, badges, userAvatar, ago } from "../ui.js";
 import { $, SITE, setTitle, cssReady, loader, copy, go, fmtDate, on, busy, itemHref, itemLabel } from "./_shared.js";
 
-const TABS = [["people", "People"], ["catalog", "Catalog", "admin"], ["reports", "Reports"], ["skills", "Skills"], ["suggestions", "Suggestions", "admin"], ["invites", "Invites", "admin"], ["log", "Log", "admin"]];
+const TABS = [["applications", "Applications"], ["people", "People"], ["catalog", "Catalog", "admin"], ["reports", "Reports"], ["skills", "Skills"], ["suggestions", "Suggestions", "admin"], ["invites", "Invites"], ["log", "Log", "admin"]];
 const ROLE = { user: "Learner", contributor: "Contributor", mod: "Moderator", admin: "Admin", owner: "Founder" };
 const ACTION = { ban: "banned", unban: "unbanned", verify: "verified", unverify: "removed verified from", "remove-avatar": "removed the photo of",
   "hide-comment": "hid comment", "unhide-comment": "unhid comment", "delete-comment": "deleted comment", "cancel-session": "cancelled session", invite: "made invite", "invite:verified": "made verified invite",
@@ -57,15 +57,17 @@ export async function render(el, qs) {
 
 // The numbers staff act on, first. Work waiting is marked; a zero stays quiet.
 async function overview(box, admin) {
-  const [pulse, feed, skills, sessions] = await Promise.all([
+  const [pulse, feed, skills, sessions, apps] = await Promise.all([
     fetch("/api/pulse").then((r) => r.json()).catch(() => ({})),
     api("/api/admin/feed").catch(() => ({ comments: [], suggestions: [] })),
     api("/api/skills").catch(() => ({ skills: [] })),
     api("/api/sessions").catch(() => ({ sessions: [] })),
+    api("/api/admin/applications").catch(() => ({ applications: [] })),
   ]);
   const day = new Date(); day.setHours(0, 0, 0, 0);
   const t0 = day.getTime() / 1000, t1 = t0 + 86400;
   const stats = [
+    ["Applications waiting", apps.applications.filter((a) => a.status === "pending").length, "applications", true],
     ["Learners", pulse.learners ?? "?", "people", false],
     ["Reported comments", feed.comments.filter((c) => c.reports > 0).length, "reports", true],
     ["Skills waiting", skills.skills.filter((s) => s.status === "pending").length, "skills", true],
@@ -213,26 +215,56 @@ async function skills(pane) {
   });
 }
 
+// ---------- Applications ----------
+// Newest pending first. Approving makes the account on the spot; the applicant's own code signs them in.
+async function applications(pane) {
+  const load = async () => {
+    const { applications: list } = await api("/api/admin/applications");
+    const linkOf = (l) => [l.x && `<a class="link" href="https://x.com/${esc(l.x)}" target="_blank" rel="noopener noreferrer">@${esc(l.x)}</a>`, l.github && `<a class="link" href="https://github.com/${esc(l.github)}" target="_blank" rel="noopener noreferrer">github.com/${esc(l.github)}</a>`].filter(Boolean).join('<span class="dot"></span>');
+    pane.innerHTML = list.length ? `<ul class="rows">${list.map((a) => `<li class="sug" data-aid="${esc(a.id)}">
+      <p class="sug-h"><b>${esc(a.name)}</b><span class="muted">${ago(a.created, true)}${linkOf(a.links) ? '<span class="dot"></span>' + linkOf(a.links) : ""}</span>${a.status !== "pending" ? `<span class="kind">${esc(a.status)}${a.decider ? " by " + esc(a.decider) : ""}</span>` : ""}</p>
+      <p class="sug-b">${esc(a.reason)}</p>
+      ${a.status === "pending" ? `<div class="acts"><button class="btn sm primary" type="button" data-dec="approve">Approve</button><button class="textbtn danger" type="button" data-dec="deny">Deny</button></div>` : ""}
+    </li>`).join("")}</ul>` : `<div class="empty"><p>No applications yet.</p></div>`;
+  };
+  await load();
+  return on(pane, "[data-dec]", (b) => {
+    const row = b.closest("[data-aid]");
+    if (b.dataset.dec === "deny" && !confirm("Deny this application?")) return;
+    busy(b, async () => { await post("/api/admin/applications/" + row.dataset.aid, { decision: b.dataset.dec }); toast(b.dataset.dec === "approve" ? "Approved. Their code works now." : "Denied"); await load(); });
+  });
+}
+
 // ---------- Invites ----------
-async function invites(pane) {
+// An invite can carry permissions: a role below the maker's own, and (admins) a teaching role and the check.
+const GRANTABLE = ["user", "contributor", "mod", "admin"];
+const ROLE_LABEL = { user: "Member", contributor: "Contributor", mod: "Moderator", admin: "Admin" };
+async function invites(pane, me) {
+  const myRank = R(me.role), isAdmin = myRank >= R("admin");
+  const roles = GRANTABLE.filter((r) => R(r) < myRank || r === "user");
   pane.innerHTML = `<form class="form inv-form" id="invForm">
       <label class="field">Note <span class="opt">optional, only staff see it</span><input class="input" name="note" maxlength="80" placeholder="Launch day, Discord"></label>
-      <div class="two"><label class="field">Uses <span class="opt">0 is no limit</span><input class="input" name="max_uses" type="number" min="0" max="10000" value="0"></label>
-      <label class="toggle inv-ver"><input type="checkbox" name="verified">Verified: everyone who joins gets the check</label></div>
+      <div class="two">
+        <label class="field">Joins as<select class="input" name="role">${roles.map((r) => `<option value="${r}">${ROLE_LABEL[r]}</option>`).join("")}</select></label>
+        ${isAdmin ? `<label class="field">Teaching role<select class="input" name="teach"><option value="">None</option><option value="tutor">Tutor</option><option value="professor">Professor</option></select></label>` : ""}
+      </div>
+      <div class="two"><label class="field">Uses <span class="opt">0 is no limit</span><input class="input" name="max_uses" type="number" min="0" max="10000" value="1"></label>
+      <label class="field">Expires in days <span class="opt">0 never</span><input class="input" name="days" type="number" min="0" max="365" value="14"></label></div>
+      ${isAdmin ? `<label class="toggle inv-ver"><input type="checkbox" name="verified">Verified: everyone who joins gets the check</label>` : ""}
       <div class="acts"><button class="btn primary" type="submit">Make invite link</button></div>
     </form><ul class="rows" id="invList"></ul>`;
   const list = $("#invList", pane);
   const load = async () => {
     const { invites: inv } = await api("/api/admin/feed");
     list.innerHTML = inv.map((i) => `<li class="inv"><div class="inv-t"><span class="mono">/join/${esc(i.code)}</span>
-      <span class="muted">${i.verified ? "Verified<span class=\"dot\"></span>" : ""}${i.uses}${i.max_uses ? " of " + i.max_uses : ""} used<span class="dot"></span>${fmtDate(i.created, { month: "short", day: "numeric" })}${i.note ? `<span class="dot"></span>${esc(i.note)}` : ""}</span></div>
+      <span class="muted">${i.role && i.role !== "user" ? esc(ROLE_LABEL[i.role] || i.role) + '<span class="dot"></span>' : ""}${i.teach ? esc(i.teach) + '<span class="dot"></span>' : ""}${i.verified ? "Verified<span class=\"dot\"></span>" : ""}${i.expires ? (i.expires * 1000 < Date.now() ? "Expired" : "Expires " + fmtDate(i.expires, { month: "short", day: "numeric" })) + '<span class="dot"></span>' : ""}${i.uses}${i.max_uses ? " of " + i.max_uses : ""} used<span class="dot"></span>${fmtDate(i.created, { month: "short", day: "numeric" })}${i.note ? `<span class="dot"></span>${esc(i.note)}` : ""}</span></div>
       <button class="btn sm" type="button" data-copy="${esc(SITE + "/join/" + i.code)}">Copy</button></li>`).join("") || `<li class="muted empty-row">No invites yet.</li>`;
   };
   $("#invForm", pane).onsubmit = (e) => {
     e.preventDefault();
     const f = e.currentTarget;
     busy(e.submitter, async () => {
-      const d = await post("/api/admin/invites", { note: f.note.value, max_uses: +f.max_uses.value || 0, verified: f.verified.checked });
+      const d = await post("/api/admin/invites", { note: f.note.value, max_uses: +f.max_uses.value || 0, days: +f.days.value || 0, role: f.role.value, teach: f.teach ? f.teach.value : "", verified: !!(f.verified && f.verified.checked) });
       f.reset(); await load(); copy(`${SITE}/join/${d.code}`, "Invite link made and copied");
     });
   };
@@ -283,4 +315,4 @@ async function catalog(pane) {
   });
 }
 
-const PANES = { people, catalog, reports, suggestions, skills, invites, log };
+const PANES = { applications, people, catalog, reports, suggestions, skills, invites, log };

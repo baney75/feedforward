@@ -1,6 +1,7 @@
 // Account client: device-code sign-in, API calls, community stats, sync of history, saves and progress.
 // The session token lives in localStorage. The code is kept on this device only so it can be shown and shared by QR.
 import { store } from "./store.js";
+import { proofOfWork } from "./pow.js";
 
 const KEY = "lt:acct";
 let acct = read();
@@ -28,24 +29,48 @@ export async function api(path, { method = "GET", body, raw, type } = {}) {
 
 const device = () => (/iphone|ipad/i.test(navigator.userAgent) ? "iPhone or iPad" : /android/i.test(navigator.userAgent) ? "Android" : /mac/i.test(navigator.userAgent) ? "Mac" : /win/i.test(navigator.userAgent) ? "Windows" : "Browser");
 
-export async function createAccount() {
-  const pending = store.get("join", null);
-  const d = await api("/api/account", { method: "POST", body: { device: device(), ...(pending || {}) } });
+// Joining needs an invite ({invite} or {ref}). Every front-door call spends a proof of work first.
+export async function createAccount(join = store.get("join", null), { onProgress, extra = {} } = {}) {
+  if (!join || (!join.invite && !join.ref)) throw new Error("Feedforward is invite-only. Use a member's invite link, or apply.");
+  const pow = await proofOfWork(onProgress);
+  const d = await api("/api/account", { method: "POST", body: { device: device(), ...join, ...extra, pow } });
   store.set("join", null);
   write({ token: d.token, code: d.code, user: d.user });
   await sync();
   return d;
 }
-export async function signIn(code) {
-  const d = await api("/api/login", { method: "POST", body: { code, device: device() } });
+export async function signIn(code, { onProgress } = {}) {
+  const pow = await proofOfWork(onProgress);
+  const d = await api("/api/login", { method: "POST", body: { code, device: device(), pow } });
   write({ token: d.token, code: code.trim().toLowerCase().replace(/[\s_]+/g, "-"), user: d.user });
   await sync();
   return d;
 }
+export async function apply(form, { onProgress } = {}) {
+  const pow = await proofOfWork(onProgress);
+  return api("/api/apply", { method: "POST", body: { ...form, pow } });
+}
+// Who sent an invite link, for the front door.
+export async function inviteInfo(code) {
+  const r = await fetch("/api/invite/" + encodeURIComponent(code));
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(d.error || "That invite link isn't valid."), { status: r.status });
+  return d;
+}
+// The read-only gate cookie that lets this browser load member-only files. Refreshed on every start.
+export async function refreshGate() {
+  if (!signedIn()) return false;
+  try { const r = await fetch("/api/gate", { method: "POST", headers: { authorization: "Bearer " + acct.token } }); if (r.status === 401) write(null); return r.ok; } catch { return true; }
+}
 // What this device has synced belongs to the account that synced it. Signing out leaves a clean device,
 // so the next person to sign in never uploads someone else's history into their account.
 const SYNCED_KEYS = ["history", "saved", "progress", "days", "historyReset"];
-function clearSynced() { for (const k of SYNCED_KEYS) { try { localStorage.removeItem("lt:" + k); } catch {} } store.set("owner", null); }
+function clearSynced() {
+  for (const k of SYNCED_KEYS) { try { localStorage.removeItem("lt:" + k); } catch {} }
+  store.set("owner", null);
+  // Member-only catalog files cached for offline use go too.
+  try { caches.keys().then((ks) => ks.filter((k) => k.startsWith("lt-data")).forEach((k) => caches.delete(k))); } catch {}
+}
 export async function signOut() { try { await api("/api/logout", { method: "POST" }); } catch {} clearSynced(); write(null); }
 export async function refreshMe() {
   if (!signedIn()) return null;

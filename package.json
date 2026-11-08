@@ -5,7 +5,7 @@
   "scripts": {
     "data": "python3 -I scripts/build_data.py && python3 -I scripts/build_sources.py",
     "dev": "node scripts/dev.mjs",
-    "test": "node --test scripts/check.test.mjs worker/worker.test.mjs worker/auth.test.mjs worker/profile.test.mjs",
+    "test": "node --test scripts/check.test.mjs worker/worker.test.mjs worker/auth.test.mjs worker/profile.test.mjs worker/gate.test.mjs",
     "deploy": "npm test && npx wrangler@4.154.0 deploy",
     "deploy:redirect": "npx wrangler@4.154.0 deploy -c wrangler.redirect.jsonc"
   }

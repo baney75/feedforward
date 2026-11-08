@@ -4,7 +4,7 @@ import { store } from "./store.js";
 import { toast } from "./ui.js";
 import * as V from "./views.js";
 import { openTV, closeTV, tvIsOpen } from "./tv.js";
-import { signedIn, user, refreshMe, sync, scheduleSync, rememberJoin, loadStats } from "./account.js";
+import { signedIn, user, refreshMe, sync, scheduleSync, loadStats, refreshGate } from "./account.js";
 import { userAvatar } from "./ui.js";
 
 const view = document.getElementById("view");
@@ -15,7 +15,8 @@ const NAV = [
 const EXPLORE = [["/books", "Books"], ["/research", "Research"], ["/dictionary", "Dictionary"], ["/repos", "Repos"], ["/sessions", "Live sessions"], ["/skills", "Skills"], ["/agents", "Connect an agent"]];
 const TABS = ["/", "/shorts", "/wire", "/learn", "/library"];
 // Pages that live in their own lazily loaded module.
-const PAGES = { suggest: "suggest", oauth: "consent", teach: "teach", me: "me", link: "me", chat: "chat", sessions: "sessions", skills: "skills", agents: "agents", admin: "admin", u: "profile", research: "research", dictionary: "dictionary", repos: "repos" };
+// Feedforward is invite-only: signed out, every path shows the front door (gate.js) except /link, the QR sign-in.
+const PAGES = { gate: "gate", suggest: "suggest", oauth: "consent", teach: "teach", me: "me", link: "me", chat: "chat", sessions: "sessions", skills: "skills", agents: "agents", admin: "admin", u: "profile", research: "research", dictionary: "dictionary", repos: "repos" };
 
 function shell() {
   const rail = document.querySelector(".rail");
@@ -43,6 +44,17 @@ let cleanup = null, seq = 0;
 function stopView() { if (cleanup) { try { cleanup(); } catch {} cleanup = null; } }
 // Pages that can paint from the starter bundle; everything else waits for the full catalog.
 const FAST = new Set(["", "learn", "lab", "about", "people", "books", "shorts", ...Object.keys(PAGES), "join"]);
+// A member's start: refresh the gate cookie, then load the catalog. Runs once per sign-in.
+let started = null;
+function startMember() {
+  if (!started) {
+    started = refreshGate().then(() => load());
+    // Member-only reads go after the gate cookie lands.
+    started.then(() => loadStats()).then(async (st) => { await D.ready; applyStats(st); dispatchEvent(new Event("ff:stats")); }).catch(() => {});
+    refreshMe().then(sync).catch(() => {});
+  }
+  return started;
+}
 async function route() {
   const my = ++seq;
   const url = new URL(location.href);
@@ -50,6 +62,16 @@ async function route() {
   const qs = url.searchParams;
   stopView();
   view.onclick = null;
+  const first = path.split("/")[1] || "";
+  const door = !signedIn() && first !== "link";
+  document.body.classList.toggle("door", door);
+  if (door) {
+    view.dataset.seq = my;
+    const out = loadPage("gate", qs, path.split("/").filter(Boolean));
+    out.then((c) => { if (my === seq) cleanup = c; else if (typeof c === "function") c(); });
+    scrollTo(0, 0);
+    return;
+  }
   markNav(path);
   if (path === "/tv") {
     await D.ready; if (my !== seq) return;
@@ -61,9 +83,11 @@ async function route() {
   const parts = path.split("/").filter(Boolean);
   const r = parts[0] || "";
   try {
-    await D.ready;
+    if (signedIn()) await startMember(); else await D.ready;
     if (!FAST.has(r) && !D.isFull) { view.innerHTML = skeleton(); await D.full; }
   } catch (e) {
+    // The gate turned this browser away (signed out elsewhere, or banned): show the front door.
+    if (!signedIn()) { started = null; D.ready = null; return route(); }
     view.innerHTML = `<div class="empty"><p>Feedforward couldn't load its catalog. Check your connection and reload.</p></div>`; return;
   }
   if (my !== seq) return;
@@ -81,11 +105,7 @@ async function route() {
   else if (r === "library") out = V.libraryPage(view, qs);
   else if (r === "about") out = V.aboutPage(view);
   else if (r === "shorts") out = V.shortsPage(view, qs, parts[1]);
-  else if (r === "join" && parts[1]) {
-    // Invite links are 9 characters, referral links 7. Either is remembered until the account is made.
-    rememberJoin(parts[1].length === 9 ? "invite" : "ref", parts[1]);
-    history.replaceState(null, "", "/me"); toast("Welcome! Get your free code to join."); return route();
-  }
+  else if (r === "join") { history.replaceState(null, "", "/"); toast("You're already a member. Share your own invite link from your profile."); return route(); }
   else if (PAGES[r]) out = loadPage(PAGES[r], qs, parts);
   else if (r === "books") out = V.booksPage(view, qs);
   else out = V.notFound(view);
@@ -231,11 +251,17 @@ function acctButton() {
   b.setAttribute("aria-label", u ? `Your profile, ${u.name || "Learner"}` : "Get your free code");
 }
 acctButton();
-addEventListener("ff:account", acctButton);
+// Signing in on the front door, or out anywhere, re-routes: members get the app, everyone else the door.
+let wasIn = signedIn();
+addEventListener("ff:account", () => {
+  acctButton();
+  // A brand-new member is reading their code on the front door; the door lets go when they've kept it.
+  if (sessionStorage.getItem("ff:hold")) return;
+  if (signedIn() === wasIn) return;
+  wasIn = signedIn();
+  if (!wasIn) started = null;
+  route();
+});
 addEventListener("ff:changed", scheduleSync);
-if (signedIn()) refreshMe().then(sync).catch(() => {});
-loadStats().then(async (st) => { await D.ready; applyStats(st); dispatchEvent(new Event("ff:stats")); }).catch(() => {});
-load().then(() => {
-  // Rail stays quiet: no extra lists here.
-}).catch(() => {});
+sessionStorage.removeItem("ff:hold");
 route();

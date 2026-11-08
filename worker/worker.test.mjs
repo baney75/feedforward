@@ -45,10 +45,13 @@ test("refresh keeps on-topic uploads and posts, drops politics, personal posts, 
   assert.equal(again.videos.length, 1, "refresh should not duplicate");
 });
 
-test("/api/fresh serves the stored feed", async () => {
-  const env = { FRESH: kv(), ASSETS: { fetch: () => new Response("asset") } };
+test("/api/fresh serves the stored feed to members only", async () => {
+  const env = { FRESH: kv(), ASSETS: { fetch: () => new Response("asset") }, PEPPER: "test" };
   await W.refresh(env);
-  const r = await W.default.fetch(new Request("https://x/api/fresh"), env);
+  assert.equal((await W.default.fetch(new Request("https://x/api/fresh"), env)).status, 401, "invite-only: no gate, no feed");
+  const { gateCookie } = await import(pathToFileURL(path.join(dir, "gate.js")).href);
+  const cookie = (await gateCookie(env, "abcd123456")).split(";")[0];
+  const r = await W.default.fetch(new Request("https://x/api/fresh", { headers: { cookie } }), env);
   const d = await r.json();
   assert.equal(d.posts.length, 1);
   assert.equal((await (await W.default.fetch(new Request("https://x/"), env)).text()), "asset");

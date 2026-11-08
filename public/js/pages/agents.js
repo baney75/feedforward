@@ -24,7 +24,7 @@ const CLIENTS = [
     "With a token, send it as a header:",
     JSON.stringify({ mcpServers: { feedforward: { type: "http", url: URL_, headers: { Authorization: "Bearer ffk_your_token" } } } }, null, 2)],
 ];
-const CURL = `curl -s ${URL_} \\\n  -H "content-type: application/json" \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"define","arguments":{"term":"attention"}}}'`;
+const CURL = `curl -s ${URL_} \\\n  -H "Authorization: Bearer ffk_your_token" \\\n  -H "content-type: application/json" \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"define","arguments":{"term":"attention"}}}'`;
 const TOKEN_TOOLS = new Set(["save", "my_library"]);
 const ME_URL = `${SITE}/mcp/me`;
 // Click paths checked against the current docs on 2026-11-07:
@@ -77,7 +77,7 @@ export async function render(el, qs) {
     <section class="set" aria-labelledby="safeH">
       <h2 class="set-h" id="safeH">How it stays safe</h2>
       <ul class="safe">
-        <li>Reading needs no token. Search, define, cite, tracks and sessions are open to any agent.</li>
+        <li>Every call needs your token, or the connector's sign-in. Feedforward is invite-only, so agents connect as you.</li>
         <li>A token only adds your own library. A read token can see your saves and history. A read and save token can also save things for you.</li>
         <li>Tokens are stored hashed, so nobody can read them back, not even us. You see each one once.</li>
         <li>Connecting your library in claude.ai or ChatGPT makes a token named after the app, after you approve it on Feedforward.</li>
@@ -93,7 +93,9 @@ export async function render(el, qs) {
   const paint = () => {
     const [, label, lead, plain, tokLead, tok] = CLIENTS.find((c) => c[0] === pick);
     cfg.setAttribute("aria-labelledby", "tab-" + pick);
-    cfg.innerHTML = block(lead, plain, label + " setup") + block(tokLead, tok, label + " setup with a token");
+    // Feedforward is invite-only, so every setup carries the member's token.
+    void plain; void tokLead;
+    cfg.innerHTML = block(lead + " Make a token on your profile first.", tok, label + " setup");
   };
   paint();
   const steps = $("#steps", el);

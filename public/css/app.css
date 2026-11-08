@@ -517,3 +517,78 @@ dialog#sheet .row { display: flex; justify-content: flex-end; gap: var(--s2); }
 .wire-rail .post:nth-of-type(n+9) { display: none; }
 .wire-rail .post-f { display: none; }
 .wire-rail .post-text { color: var(--fg); font-size: 15px; }
+
+/* ---------- Front door (signed out: Feedforward is invite-only) ---------- */
+body.door .topbar, body.door .rail, body.door .tabbar { display: none; }
+body.door main { padding: 0; }
+.door-pg { position: relative; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; background: var(--bg); isolation: isolate; }
+/* The wall: real lessons drifting behind glass. Curiosity, not decoration. */
+.door-wall { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
+.dw-cols { position: absolute; top: -10%; right: -4%; width: min(78vw, 980px); display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; transform: rotate(-7deg); opacity: .62; }
+.dw-col { display: grid; gap: 12px; animation: dw var(--d) linear infinite; animation-direction: var(--dir); will-change: transform; }
+.dw-col img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; display: block; background: var(--bg-3); }
+@keyframes dw { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+@media (prefers-reduced-motion: reduce) { .dw-col { animation: none; } }
+.door-wall::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, var(--bg) 34%, color-mix(in srgb, var(--bg) 78%, transparent) 56%, color-mix(in srgb, var(--bg) 30%, transparent) 100%); }
+.door-main { position: relative; display: flex; flex-direction: column; gap: var(--s4); width: min(100%, 540px); padding: clamp(24px, 6vh, 64px) clamp(16px, 6vw, 72px) var(--s6); }
+.door-brand { display: inline-flex; align-items: center; gap: 12px; color: var(--fg); text-decoration: none; font: 600 22px/1 var(--font); letter-spacing: -.02em; }
+.door-brand svg { width: 36px; height: 36px; }
+.door-eyebrow { display: flex; align-items: center; gap: 10px; margin: var(--s4) 0 0; font: 500 13px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent-text); }
+.door-live { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); animation: door-pulse 2s infinite; }
+@keyframes door-pulse { 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.door-sep { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: .5; }
+#doorCount { color: var(--fg-2); }
+.door-h { margin: 0; font: 700 clamp(40px, 6.4vw, 64px)/1.02 var(--font); letter-spacing: -.035em; color: var(--fg); text-wrap: balance; }
+.door-h em { font-style: normal; color: var(--accent-text); }
+.door-sub { margin: 0; font-size: 17px; line-height: 1.5; color: var(--fg-2); max-width: 46ch; }
+.door-card { margin-top: var(--s2); background: color-mix(in srgb, var(--bg-2) 92%, transparent); border: 1px solid var(--line); border-radius: 16px; padding: var(--s2) var(--s5) var(--s5);
+  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .55); backdrop-filter: blur(10px); }
+.door-tabs { display: flex; gap: var(--s5); border-bottom: 1px solid var(--line); margin: 0 0 var(--s4); overflow-x: auto; scrollbar-width: none; }
+.door-tabs button { height: 46px; font: 600 15px/1 var(--font); color: var(--fg-2); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.door-tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.door-form { display: grid; gap: var(--s3); }
+.door-field { display: grid; gap: 6px; font-size: 14px; font-weight: 500; color: var(--fg-2); }
+.door-field i { font-style: normal; font-weight: 400; opacity: .8; }
+.door-field .input { width: 100%; font-size: 16px; }
+.door-field textarea { resize: vertical; min-height: 84px; }
+.door-two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+.door-trap { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.door-go { min-height: 52px; font-size: 17px; position: relative; overflow: hidden; }
+/* The human check: the button fills as the work finishes. */
+.door-go.checking { background: color-mix(in srgb, var(--accent) 35%, var(--bg-2)); color: var(--fg); }
+.door-go.checking::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: var(--accent); transition: width .2s; z-index: 0; }
+.door-go.checking span { position: relative; z-index: 1; color: var(--accent-ink); mix-blend-mode: normal; }
+.door-scan { min-height: 44px; }
+.door-hint { margin: 0; font-size: 14px; line-height: 1.5; color: var(--fg-2); }
+.door-hint .textbtn { color: var(--accent-text); font-weight: 600; }
+.door-err { margin: 0; color: var(--bad); font-size: 14px; }
+.door-pending { margin: 0 0 var(--s3); padding: var(--s3); border-radius: var(--r); background: color-mix(in srgb, var(--accent) 12%, transparent); font-size: 14px; color: var(--fg); }
+.door-loading { padding: var(--s5) 0; color: var(--fg-2); }
+.door-invite { margin-bottom: var(--s4); }
+.door-from { display: flex; gap: var(--s3); align-items: center; }
+.door-from .av.l { width: 56px; height: 56px; font-size: 22px; }
+.door-kicker { margin: 0; font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent-text); }
+.door-who { margin: 4px 0 0; font: 700 20px/1.25 var(--font); color: var(--fg); }
+.door-who span { font-weight: 500; color: var(--fg-2); }
+.door-grants { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--s3) 0 0; }
+.door-grants span { padding: 4px 10px; border-radius: var(--r-pill); background: var(--bg-3); font-size: 13px; font-weight: 600; color: var(--fg); }
+.door-welcome { display: grid; gap: var(--s3); padding: var(--s2) 0; }
+.door-welcome h2 { margin: 0; font: 700 28px/1.1 var(--font); letter-spacing: -.02em; }
+.door-code { margin: 0; padding: var(--s4); border-radius: var(--r); background: var(--bg); border: 1px dashed color-mix(in srgb, var(--accent) 60%, var(--line)); font-size: clamp(18px, 4.6vw, 22px); color: var(--fg); text-align: center; overflow-wrap: anywhere; }
+.door-acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
+.door-acts .btn { flex: 1; min-height: 48px; }
+.door-foot { margin: var(--s2) 0 0; font-size: 13px; color: var(--fg-2); }
+.door-foot a { color: inherit; }
+.door-cam { position: relative; border-radius: var(--r); overflow: hidden; background: #000; aspect-ratio: 1; max-width: 360px; }
+.door-cam video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.door-cam i { position: absolute; inset: 18%; border: 3px solid var(--accent); border-radius: 18px; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); }
+/* Phones: the wall becomes a band of lessons above the door, fading into it. */
+@media (max-width: 719px) {
+  .dw-cols { top: -6%; right: -30%; width: 150vw; opacity: .5; }
+  .door-wall::after { background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 30%, transparent) 0, color-mix(in srgb, var(--bg) 82%, transparent) 26%, var(--bg) 42%); }
+  .door-main { padding-top: 28px; }
+  .door-eyebrow { margin-top: 16vh; }
+  .door-card { padding: var(--s1) var(--s4) var(--s4); }
+  .door-tabs { gap: var(--s4); }
+  .door-two { grid-template-columns: 1fr; }
+}

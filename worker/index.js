@@ -3,6 +3,8 @@
 import SOURCES from "./sources.json";
 import { handle, xAvatar, setListed } from "./api.js";
 import { mcp } from "./mcp.js";
+import { gatedPath, gateUser } from "./gate.js";
+import { tokenUser, inviteInfo, wsToken } from "./api.js";
 import { oauth, metadata } from "./oauth.js";
 export { ChatRoom } from "./chat.js";
 setListed(SOURCES);
@@ -27,9 +29,58 @@ const guess = (text, fallback) => { for (const [t, re] of GUESS) if (re.test(tex
 
 const json = (d, init = {}) => new Response(JSON.stringify(d), { ...init, headers: { "content-type": "application/json; charset=utf-8", ...(init.headers || {}) } });
 
+// /join/<code>: the app, with a link preview made for this invite ("Donovan Baney invited you to Feedforward").
+const ROLE_NAME = { contributor: "a Contributor", mod: "a Moderator", admin: "an Admin" };
+async function joinPage(req, env, code) {
+  const page = await env.ASSETS.fetch(new Request(new URL("/", req.url), { headers: req.headers }));
+  let info = null;
+  try { info = await inviteInfo(env, code); } catch {}
+  const who = info && !info.gone && info.by && info.by.name && info.by.name !== "Learner" ? info.by.name : "";
+  const title = who ? `${who} invited you to Feedforward` : "You're invited to Feedforward";
+  const grants = info && !info.gone ? [info.role !== "user" && ROLE_NAME[info.role], info.teach && `a ${info.teach}`].filter(Boolean) : [];
+  const desc = (grants.length ? `Join as ${grants.join(" and ")}. ` : "") + "Invite-only: learn AI from the people building it, with videos, labs and live sessions.";
+  const img = new URL("/og-invite.jpg?v=1", req.url).toString(), here = new URL(`/join/${code}`, req.url).toString();
+  const set = (sel, v) => [sel, { element: (e) => e.setAttribute("content", v) }];
+  let rw = new HTMLRewriter();
+  for (const [sel, h] of [
+    set('meta[property="og:title"]', title), set('meta[name="twitter:title"]', title),
+    set('meta[property="og:description"]', desc), set('meta[name="twitter:description"]', desc), set('meta[name="description"]', desc),
+    set('meta[property="og:image"]', img), set('meta[name="twitter:image"]', img), set('meta[property="og:url"]', here),
+    set('meta[property="og:image:alt"]', `${title}. You're invited: learn AI from the people building it.`),
+  ]) rw = rw.on(sel, h);
+  // The invite card is a still image: drop the site video so platforms show the card.
+  rw = rw.on('meta[property^="og:video"]', { element: (e) => e.remove() }).on("title", { element: (e) => e.setInnerContent(title) });
+  const out = rw.transform(page);
+  const r = new Response(out.body, out);
+  r.headers.set("cache-control", "no-store");
+  return r;
+}
+
+// A member: a valid gate cookie, or a signed-in Bearer session (scripts and the app before its cookie lands).
+async function member(req, env) {
+  if (await gateUser(req, env)) return true;
+  const h = req.headers.get("authorization") || "";
+  // Chat sockets carry the session as a "t.<token>" subprotocol, since browsers can't set headers on them.
+  const tok = h.startsWith("Bearer ") ? h.slice(7) : wsToken(req);
+  return !!tok && !tok.startsWith("ffk_") && !!(await tokenUser(env, tok));
+}
+
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
+    // Invite-only: catalog data, labs and community reads need a member. Anonymous MCP use does too; agents
+    // with a personal token (ffk_) are checked by the MCP server itself.
+    const bearer = (req.headers.get("authorization") || "").startsWith("Bearer ");
+    if (gatedPath(url.pathname) || (url.pathname === "/mcp" && !bearer)) {
+      if (!(await member(req, env))) return json({ error: "Feedforward is invite-only. Sign in, use an invite link, or apply." }, { status: 401, headers: { "cache-control": "no-store" } });
+      if (url.pathname.startsWith("/data/") || url.pathname.startsWith("/labs/")) {
+        // Member-only files must never sit in a shared cache.
+        const r = await env.ASSETS.fetch(req);
+        const out = new Response(r.body, r);
+        out.headers.set("cache-control", r.ok ? "private, max-age=600" : "no-store");
+        return out;
+      }
+    }
     if (url.pathname === "/api/fresh") {
       const d = (await env.FRESH.get("fresh", "json")) || { videos: [], posts: [], updated: 0 };
       return json({ videos: d.videos, posts: d.posts, updated: d.updated }, { headers: { "cache-control": "public, max-age=300" } });
@@ -49,6 +100,8 @@ export default {
       if (!obj) return new Response("Not found", { status: 404 });
       return new Response(obj.body, { headers: { "content-type": obj.httpMetadata?.contentType || "image/webp", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'" } });
     }
+    const join = url.pathname.match(/^\/join\/([\w-]{1,40})\/?$/);
+    if (join && req.method === "GET") return joinPage(req, env, join[1]);
     if (url.pathname === "/mcp") return mcp(req, env);
     if (url.pathname === "/mcp/me") return mcp(req, env, { personal: true });
     if (url.pathname.startsWith("/.well-known/oauth-protected-resource")) return json(metadata(req).resource, { headers: { "access-control-allow-origin": "*" } });

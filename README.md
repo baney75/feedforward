@@ -1,6 +1,6 @@
 # Feedforward
 
-**Learn AI from the people building it.** A free learning hub that pulls the best AI, local AI, computer science and 3D printing videos, Shorts and posts from hand-picked people into one calm, fast app, with hands-on labs, free books, papers and a community.
+**Learn AI from the people building it.** A free, invite-only learning hub that pulls the best AI, local AI, computer science and 3D printing videos, Shorts and posts from hand-picked people into one calm, fast app, with hands-on labs, free books, papers and a community.
 
 [![check](https://github.com/baney75/feedforward/actions/workflows/check.yml/badge.svg)](https://github.com/baney75/feedforward/actions/workflows/check.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-ffb224.svg)](LICENSE)
@@ -17,7 +17,8 @@
   - seven labs that run in the browser: a real tokenizer, temperature and top-p sampling, a trainable neural net, a will-it-run memory calculator, a coding-agent loop, a 3D printing slicer, and a small language model running in your tab with tools and free search
 - **Read:** 33 free books (including *Inference Engineering*), 76 landmark papers with one-tap APA, MLA, Chicago and BibTeX citations, a dictionary of 161 fact-checked terms, and the top open-source repos.
 - **Community:**
-  - accounts with no email or password: a three-word device code that works on every device, with QR sign-in
+  - invite-only membership: a member's invite link or a staff invite (which can grant a role), or apply and get in when staff approve
+  - accounts with no email or password: a word code that works on every device, with QR sign-in
   - comments, likes, ratings, live chat rooms, and live sessions hosted by professors and tutors
   - shared agent skills, referral links, and roles with badges
 - **Agents:** an MCP server that claude.ai, ChatGPT, Claude Code, Codex and other clients can add as a connector. See [docs/AGENTS.md](docs/AGENTS.md).
@@ -29,10 +30,11 @@
 
 ## Connect an agent
 
-Add `https://feedforward.dbaney.com/mcp` as a custom connector in claude.ai or ChatGPT. It needs no sign-in. To give the agent your library and saves, add `https://feedforward.dbaney.com/mcp/me`; you approve it on Feedforward with OAuth and can revoke it any time.
+Feedforward is invite-only, so agents connect as you. In claude.ai or ChatGPT, add `https://feedforward.dbaney.com/mcp/me` as a custom connector; you approve it on Feedforward with OAuth and can revoke it any time. For Claude Code and other CLIs, make a token on your profile:
 
 ```sh
-claude mcp add --transport http feedforward https://feedforward.dbaney.com/mcp
+claude mcp add --transport http feedforward https://feedforward.dbaney.com/mcp \
+  --header "Authorization: Bearer ffk_your_token"
 ```
 
 ## Run it yourself

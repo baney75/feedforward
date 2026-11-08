@@ -49,12 +49,22 @@ This is a summary of how the code works today, so you know what to test. The sou
 
 ### Accounts have no passwords
 
-An account is a **device code**: three words and two digits, like `otter-maple-rocket-42`. The Worker picks it from a list of 1,115 words, so there are about 1.4 x 10^11 possible codes. The code is shown once. There is no email.
+An account is a **code**: four words and two digits, like `otter-maple-rocket-acorn-42`. The Worker picks it from a list of 1,115 words, so there are about 1.5 x 10^14 possible codes (accounts from before the change keep their three-word codes). The code is shown once. There is no email.
 
 - Codes are stored only as `SHA-256(PEPPER + code)`. The pepper is a server-side secret that lives outside the repo and outside the database. Local development reads it from `.dev.vars`, which is gitignored.
-- Sign-in returns a **session token**: 40 random characters. Only its SHA-256 hash is stored. The token travels in an `Authorization: Bearer` header, not in a cookie, so another site can't ride a session. (The WebSocket chat takes it as a `t` query parameter, because browsers can't set headers there. The Worker removes it before the request reaches the chat room.)
+- Sign-in returns a **session token**: 40 random characters. Only its SHA-256 hash is stored. The token travels in an `Authorization: Bearer` header, not in a cookie, so another site can't ride a session. (The WebSocket chat takes it as a `t.<token>` subprotocol, because browsers can't set headers there.)
 - Rotating your code deletes every other session. Banning a user deletes all their sessions.
 - The browser keeps your token and code in `localStorage` on your device. Anyone with your device and your code can sign in as you. Treat the code like a password.
+
+### Invite-only
+
+Feedforward is invite-only. `worker/gate.js` holds the rules.
+
+- **What's public:** the app shell and its link previews, icons, the front-door endpoints (`/api/account`, `/api/login`, `/api/logout`, `/api/gate`, `/api/pow`, `/api/apply`, `/api/invite/<code>`), live counts (`/api/pulse`), health and OAuth. Everything else under `/api/*`, the catalog files under `/data/*`, the labs under `/labs/*` and `/mcp` without a token answer 401 to non-members.
+- **The gate cookie:** sign-in sets `__Host-ff_gate`, an HMAC-signed `user.expiry` value (7 days, `HttpOnly`, `Secure`, `SameSite=Lax`), so static files and lab iframes can be gated. It only unlocks reads. Every change still needs the Bearer session, so the cookie adds no CSRF surface. A Bearer session (or a chat socket's `t.<token>`) also counts as a member. Member-only files are sent `Cache-Control: private`.
+- **Joining** needs a staff invite or a member's referral link. A member's link brings in at most 5 people a day (contributors 10, mods 25, admins 100, the owner no cap). Staff invites can grant a role below the maker's own, plus (admins only) a teaching role and the check; the grant is checked again against the maker's role when the invite is used, and limited invites take each use atomically.
+- **Applying:** without an invite, a person applies. They get their code at once; it's stored hashed on the application and becomes their account's code when a mod or admin approves, so no email is needed. Until then, signing in with it says the application is pending.
+- **Bots:** joining, applying and signing in each need a proof of work: a signed challenge from `/api/pow` (single use, 10 minutes) and a nonce whose SHA-256 starts with 18 zero bits, about a second of a phone's time. Joining also refuses work less than 2 seconds old and applying less than 4, so a script can't fill the form instantly. A hidden honeypot field rejects form-fillers, and the per-network limits below still apply.
 
 ### Rate limits
 
@@ -96,7 +106,7 @@ Chat runs in a Cloudflare Durable Object, one per room. The room learns who you 
 
 ### Agent (MCP) tokens
 
-Agents connect to `/mcp`. Reading needs no token. A personal token adds your own library.
+Agents connect to `/mcp` with a member's personal token, or to `/mcp/me` through OAuth. Calls with no token are refused, because Feedforward is invite-only.
 
 - Tokens look like `ffk_` plus 40 random characters. They are shown once, then stored only as a SHA-256 hash.
 - Each token has a **scope**: `read` or `write`. `write` only allows saving items to your own library.
