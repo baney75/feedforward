@@ -239,7 +239,7 @@ function signinPane(pane) {
   pane.innerHTML = `<h2 class="door-title">Sign in</h2>${pending ? `<p class="door-pending"><b>Application received.</b> A person reviews it, usually within a day. Your code works the moment you're approved.</p>` : ""}
     <form class="door-form" id="siForm">
       <label class="door-field"><span>Your code</span>
-        <input class="input mono" name="code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="otter-maple-rocket-acorn-42" value="${pending ? esc(pending.code) : ""}" required></label>
+        <input class="input mono" name="code" data-code enterkeyhint="go" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="otter-river-cedar-acorn-42" value="${pending ? esc(pending.code) : ""}" required></label>
       <div class="door-msg" id="siMsg" aria-live="polite"></div>
       <button class="btn primary door-go" type="submit">Sign in</button>
       ${canScan ? `<button class="btn door-scan" type="button" id="scan">Scan a QR code</button>` : ""}

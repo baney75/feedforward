@@ -11,6 +11,7 @@ import { haptic } from "./haptics.js";
 import { initPalette, togglePalette, toggleKeys, paletteOpen } from "./palette.js";
 import { watchTerms } from "./terms.js";
 import { initGestures } from "./gestures.js";
+import "./code.js";
 
 const view = document.getElementById("view");
 // Six main places. Everything else lives in a quiet Explore list (and on the Learn hub on phones).

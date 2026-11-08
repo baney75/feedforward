@@ -1,34 +1,58 @@
-// Haptics: a light tick for taps that change something (like, save, swipe), a success pattern for moments
-// that matter (you're in, a streak). Android uses the Vibration API. iOS Safari has none, but since iOS 18 a
-// native switch control ticks when it toggles, so a hidden one is toggled inside the same tap.
+// Haptics: a light tick for taps that change something, a success pattern for moments that matter.
+// Android uses the Vibration API. iPhones have no web haptics API: Safari ticks only when a real finger toggles a
+// native switch, and a script clicking one does nothing. So on iPhone every button carries an invisible label wired to
+// a hidden switch, and the tap itself makes the tick. That means taps tick; swipes and timers can't on iPhone.
 // Off with reduced motion, and the viewer can turn it off (lt:haptics = false).
-let sw = null;
 const enabled = () => {
   try { if (localStorage.getItem("lt:haptics") === "false") return false; } catch {}
   return !matchMedia("(prefers-reduced-motion: reduce)").matches;
 };
-function iosTick() {
-  if (!sw) {
-    const label = document.createElement("label");
-    label.setAttribute("aria-hidden", "true");
-    label.style.cssText = "position:fixed;left:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none";
-    const input = document.createElement("input");
-    input.type = "checkbox"; input.setAttribute("switch", ""); input.tabIndex = -1;
-    label.appendChild(input); document.body.appendChild(label);
-    sw = label;
-  }
-  sw.click();
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const ATTR = "data-haptic";
+function label(style) {
+  const l = document.createElement("label");
+  l.setAttribute(ATTR, ""); l.setAttribute("aria-hidden", "true");
+  l.style.cssText = `position:absolute;touch-action:manipulation;-webkit-tap-highlight-color:transparent;${style}`;
+  const i = document.createElement("input");
+  i.type = "checkbox"; i.setAttribute("switch", ""); i.tabIndex = -1;
+  i.style.cssText = "position:absolute;width:1px;height:1px;margin:0;visibility:hidden";
+  i.addEventListener("click", (e) => e.stopPropagation());
+  l.append(i);
+  return l;
+}
+// Submit buttons stay plain: a label inside one would take over its default action. Links navigate through the app,
+// so the tab bar gets labels beside its links that pass the tap along.
+const BUTTONS = "button[type=button]:not(.term):not(:disabled), button:not([type]):not(form button):not(.term):not(:disabled)";
+function scan() {
+  if (!enabled()) return;
+  document.querySelectorAll(BUTTONS).forEach((b) => {
+    if (b.querySelector(`:scope > [${ATTR}]`)) return;
+    if (getComputedStyle(b).position === "static") b.style.position = "relative";
+    b.append(label("inset:0"));
+  });
+  const bar = document.querySelector(".tabbar"), links = bar ? [...bar.querySelectorAll("a")] : [];
+  if (links.length && !bar.querySelector(`:scope > [${ATTR}]`)) links.forEach((a, n) => {
+    const l = label(`top:0;bottom:0;left:${(n * 100) / links.length}%;width:${100 / links.length}%`);
+    l.addEventListener("click", () => a.click());
+    bar.append(l);
+  });
+}
+if (isIOS) {
+  let queued = false;
+  new MutationObserver(() => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; scan(); }); } }).observe(document.documentElement, { childList: true, subtree: true });
+  scan();
 }
 function buzz(pattern) {
-  if (!enabled()) return;
-  if (navigator.vibrate) { try { navigator.vibrate(pattern); return; } catch {} }
-  iosTick();
-  if (Array.isArray(pattern) && pattern.length > 2) setTimeout(iosTick, pattern[0] + pattern[1]);
+  if (enabled() && navigator.vibrate) { try { navigator.vibrate(pattern); } catch {} }
 }
 export const haptic = {
   tick: () => buzz(8),
   success: () => buzz([12, 60, 18]),
   warn: () => buzz([30, 40, 30]),
 };
-export const setHaptics = (on) => { try { localStorage.setItem("lt:haptics", on ? "true" : "false"); } catch {} };
+export const setHaptics = (on) => {
+  try { localStorage.setItem("lt:haptics", on ? "true" : "false"); } catch {}
+  if (!isIOS) return;
+  if (on) scan(); else document.querySelectorAll(`[${ATTR}]`).forEach((l) => l.remove());
+};
 export const hapticsOn = enabled;

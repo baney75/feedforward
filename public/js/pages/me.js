@@ -57,7 +57,7 @@ function signedOutView(el) {
       <h2 id="haveH">I have a code</h2>
       <div class="inline">
         <label class="sr-only" for="codeIn">Your code</label>
-        <input class="input mono" id="codeIn" name="code" required autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="otter-maple-rocket-42" maxlength="60">
+        <input class="input mono" id="codeIn" name="code" data-code enterkeyhint="go" required autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="otter-river-cedar-acorn-42" maxlength="60">
         <button class="btn" type="submit">Sign in</button>
       </div>
     </form>

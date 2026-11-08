@@ -53,7 +53,7 @@ export async function render(el, qs) {
       ${u ? `<p class="consent-who">${userAvatar(u, "s")}<span>Signed in as <b>${esc(u.name || "Learner")}</b></span><button class="textbtn" type="button" id="notMe">Not you?</button></p>
         <div class="acts consent-acts"><button class="btn primary big" type="button" id="allow">Allow</button><button class="btn big" type="button" id="deny">Deny</button></div>`
       : `<form class="set signin-inline" id="si"><h2 class="set-h"><label for="siCode">Sign in with your code to continue</label></h2>
-          <div class="inline"><input class="input mono" id="siCode" required autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="otter-maple-rocket-42" maxlength="60"><button class="btn primary" type="submit">Sign in</button></div>
+          <div class="inline"><input class="input mono" id="siCode" data-code enterkeyhint="go" required autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="otter-river-cedar-acorn-42" maxlength="60"><button class="btn primary" type="submit">Sign in</button></div>
           <p class="hint">No code yet? <a class="link" href="/me" target="_blank" rel="noopener">Get one free</a>, then come back to this tab.</p>
           <div class="acts"><button class="textbtn" type="button" id="deny">Deny</button></div></form>`}
       <p class="hint end-hint">You can revoke access any time on your account page, under Agent tokens.</p>

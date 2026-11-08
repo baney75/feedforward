@@ -17,7 +17,8 @@ export function initGestures({ nav, standalone, stageEl, closeStage }) {
   document.body.appendChild(ptr);
   const PULL = 80;
   const tabs = () => [...document.querySelectorAll(".tabbar a")].map((a) => a.getAttribute("href"));
-  const onTab = () => document.querySelector(".tabbar")?.offsetParent && tabs().includes(location.pathname);
+  const barShown = () => { const b = document.querySelector(".tabbar"); return !!b && getComputedStyle(b).display !== "none"; };
+  const onTab = () => barShown() && tabs().includes(location.pathname);
   let s = null, ticked = false;
   document.addEventListener("touchstart", (e) => {
     s = null; ticked = false;

@@ -1015,7 +1015,16 @@ body.door-tv .door-paircode { font-size: clamp(32px, 8vh, 72px); }
 .icon-btn.bell.has-new::after { content: ""; position: absolute; top: 8px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg); }
 dialog#sheet.notif { margin: calc(var(--top) + 4px) 16px auto auto; padding: 0; width: min(400px, calc(100vw - 16px)); max-height: min(560px, calc(100dvh - var(--top) - 24px)); overflow-y: auto; }
 dialog#sheet.notif h2:focus { outline: none; }
-dialog#sheet.notif h2 { position: sticky; top: 0; background: var(--bg-2); margin: 0; padding: var(--s4); }
+.notif-head { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: var(--s3); background: var(--bg-2); padding: var(--s3) var(--s3) var(--s3) var(--s4); }
+dialog#sheet.notif h2 { margin: 0; }
+.notif-all { background: none; border: 0; color: var(--accent-text); font: inherit; font-size: var(--t-s); font-weight: 600; min-height: 36px; padding: 0 var(--s3); border-radius: var(--r-pill); cursor: pointer; }
+.notif-all:hover { background: var(--bg-3); }
+.notif-list li { position: relative; touch-action: pan-y; overflow: hidden; }
+.notif-list li > a, .notif-list li > div { padding-right: 52px; }
+.notif-x { position: absolute; top: 6px; right: 8px; width: 40px; height: 40px; display: grid; place-items: center; background: none; border: 0; border-radius: 50%; color: var(--fg-2); cursor: pointer; }
+.notif-x svg { width: 16px; height: 16px; }
+.notif-x:hover { background: var(--bg-3); color: var(--fg); }
+.notif-undo { position: sticky; bottom: 0; display: flex; justify-content: space-between; align-items: center; background: var(--bg-3); padding: var(--s1) var(--s2) var(--s1) var(--s4); font-size: var(--t-s); }
 .notif-list { list-style: none; margin: 0; padding: 0 0 var(--s2); }
 .notif-list a, .notif-list li > div { display: flex; gap: var(--s3); align-items: flex-start; padding: var(--s3) var(--s4); color: var(--fg); text-decoration: none; }
 .notif-list a:hover { background: var(--bg-3); }
@@ -1120,7 +1129,7 @@ dialog#keysSheet .row { display: flex; justify-content: flex-end; }
 
 /* Focus mode */
 .notes-pane { display: none; }
-body.focus { background: color-mix(in oklab, var(--bg) 35%, #000); }
+body.focus { background: color-mix(in oklab, var(--bg) 90%, #000); }
 body.focus .topbar, body.focus .rail, body.focus .tabbar { display: none; }
 body.focus main { padding: var(--s4); margin: 0; }
 body.focus .watch { max-width: 1440px; }

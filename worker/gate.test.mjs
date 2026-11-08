@@ -267,6 +267,15 @@ test("pairing: a TV shows a code, a member approves, the TV gets its own session
   assert.equal((await call(env, `/api/pair/${start.d.code}`, { method: "POST", token: owner, body: { check: start.d.check } })).status, 404, "a used code can't be approved again");
 });
 
+test("clearing a notification reaches the member's other devices, and undo wins by time", async () => {
+  const { env, owner } = await setup();
+  const post = (b) => call(env, "/api/sync", { method: "POST", token: owner, body: b });
+  await post({ notifCleared: { "c:1": 1000 } });
+  assert.deepEqual((await post({})).d.data.notifCleared, { "c:1": 1000 });
+  const later = Date.now();
+  assert.equal((await post({ notifCleared: { "c:1": -later } })).d.data.notifCleared["c:1"], -later);
+});
+
 test("notifications: discussion comments, invites and staff queues reach the right member only", async () => {
   const { env, owner } = await setup();
   const t = Math.floor(Date.now() / 1000), db = env.DB.raw;

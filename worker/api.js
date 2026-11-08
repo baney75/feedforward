@@ -1,6 +1,6 @@
 // Feedforward API: device-code accounts, sync, likes, ratings, comments, referrals, invites, roles and moderation.
 // Codes and tokens are only ever stored hashed. Every write is rate limited. Staff actions go to the mod log.
-import { WORDS } from "./words.js";
+import { WORDS } from "../public/js/words.js";
 import { gateCookie, clearGate, powChallenge, checkPow } from "./gate.js";
 
 export const RANK = { user: 1, contributor: 2, mod: 3, admin: 4, owner: 5 };
@@ -455,6 +455,7 @@ on("POST", "/api/sync", async (req, env, u) => {
   out.days = list(b.days, cur.days, 400).sort().reverse();
   out.saved = obj(b.saved, cur.saved);
   out.progress = obj(b.progress, cur.progress);
+  out.notifCleared = obj(b.notifCleared, cur.notifCleared);
   const stmt = env.DB.prepare("INSERT OR REPLACE INTO userdata (user_id, kind, json, updated) VALUES (?, ?, ?, ?)");
   await env.DB.batch(Object.entries(out).map(([k, v]) => stmt.bind(u.id, k, JSON.stringify(v), now())));
   return json({ data: { ...out, historyReset: reset } });

@@ -278,6 +278,38 @@ test("every new shell module is cached for offline", () => {
   for (const f of ["palette", "terms", "gestures", "stage"]) assert.ok(sw.includes(`"/js/${f}.js"`), f);
 });
 
+test("a typed code gets its dashes, whatever word it holds", async () => {
+  const { formatCode, isCode } = await import(path.join(root, "public/js/code.js"));
+  const { WORDS } = await import(path.join(root, "public/js/words.js"));
+  const type = (s) => [...s].reduce((v, c) => formatCode(v + c), "");
+  for (let i = 0; i + 3 < WORDS.length; i += 3) {
+    const code = `${WORDS[i]}-${WORDS[i + 1]}-${WORDS[i + 2]}-${WORDS[i + 3]}-07`;
+    assert.equal(type(code.replaceAll("-", "")), code);
+    assert.ok(isCode(code));
+  }
+  assert.equal(formatCode("Otter River cedar_ACORN 42"), "otter-river-cedar-acorn-42");
+  assert.equal(formatCode("zzzq-qqq-zzz-42"), "zzzq-qqq-zzz-42", "old three-word codes keep working");
+});
+
+test("iPhone haptics come from a real tap on a switch label, never a scripted click", () => {
+  const src = read("public/js/haptics.js");
+  assert.doesNotMatch(src, /\.click\(\);?\s*\n?\s*\}\s*function buzz|iosTick/);
+  assert.match(src, /setAttribute\("switch", ""\)/);
+});
+
+test("notifications: cleared stays cleared, undo restores, a grown queue returns", async () => {
+  const { isCleared, clearItems, unclearItems, settleCleared } = await import("../public/js/notify-state.js");
+  const a = { id: "c:1", kind: "comment", ts: 5 }, q = (n) => ({ id: "apps", kind: "applications", n, ts: 9 });
+  let c = clearItems([a, q(2)], {}, 100);
+  assert.ok(isCleared(a, c) && isCleared(q(2), c));
+  assert.equal(isCleared({ id: "c:2", kind: "comment", ts: 1 }, c), false, "an older item that was never cleared still shows");
+  assert.equal(isCleared(q(3), c), false, "a new application brings the queue back");
+  c = unclearItems([a], c, 200);
+  assert.equal(isCleared(a, c), false);
+  c = settleCleared([q(1)], c, 300);
+  assert.equal(isCleared(q(2), c), false, "shrank to 1, then grew to 2: that is news");
+});
+
 test("member home has no animated counters (reported twice: they looked glitchy)", () => {
   const src = read("public/js/views.js");
   assert.doesNotMatch(src, /data-count|liveCounters/, "the count-up stats row must stay gone");
