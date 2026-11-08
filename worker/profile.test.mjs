@@ -79,8 +79,28 @@ test("a failed source is retried in 2 minutes, not cached for 30", async () => {
   assert.deepEqual(ttls, [120]);
 });
 
-test("a good load is cached for 30 minutes", async () => {
+test("a good load is cached for 30 minutes and kept a week as the last good copy", async () => {
   await feed(env(1));
-  assert.deepEqual(ttls, [1800]);
+  assert.deepEqual(ttls, [1800, 604800]);
+});
+
+test("a source that 404s once is retried and still shows posts", async () => {
+  const e = env(1);
+  const real = globalThis.fetch; let n = 0;
+  globalThis.fetch = async (url) => (String(url).includes("/statuses") && n++ === 0 ? new Response(JSON.stringify({ code: 404 }), { status: 404 }) : real(url));
+  const f = await feed(e);
+  assert.deepEqual(f.posts.map((p) => p.id), ["1", "4"]);
+  assert.deepEqual(ttls.slice(0, 1), [1800]);
+});
+
+test("when every try fails, the last good copy is shown", async () => {
+  const e = env(1);
+  await feed(e);                                   // a good load saves the last good copy
+  const real = globalThis.fetch;
+  globalThis.fetch = async (url) => (String(url).includes("fxtwitter") ? new Response(JSON.stringify({ code: 404 }), { status: 404 }) : real(url));
+  // Expire the 30-minute copy, keep the week-long one.
+  const kvGet = e.FRESH.get; e.FRESH.get = async (k, t) => (k.startsWith("uf:") ? null : kvGet(k, t));
+  const f = await feed(e);
+  assert.deepEqual(f.posts.map((p) => p.id), ["1", "4"]);
 });
 
