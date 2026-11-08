@@ -52,6 +52,7 @@ html, body { width: 1200px; height: 630px; overflow: hidden; background: var(--b
 #head { font: 600 76px/1.02 var(--font); letter-spacing: -0.03em; }
 #head .w { display: inline-block; margin-right: .22em; }
 #head .hot { color: var(--accent-text); }
+#cta { font: 600 30px/1 var(--font); color: #1b1300; background: #ffb224; padding: 18px 30px; border-radius: 999px; white-space: nowrap; letter-spacing: -0.01em; }
 #chip { font: 500 20px/1 var(--mono); color: var(--fg); background: var(--bg-2); border: 1px solid var(--line);
   border-radius: 999px; padding: 11px 16px 11px 14px; white-space: nowrap; }
 #chip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); margin-right: 10px;
@@ -75,15 +76,17 @@ html, body { width: 1200px; height: 630px; overflow: hidden; background: var(--b
   <div id="net"></div>
   <div id="cap" class="abs"></div>
   <svg id="logo" class="abs" viewBox="0 0 64 64" aria-hidden="true">
-    <defs><clipPath id="reveal"><circle id="revealC" cx="45" cy="32" r="0"/></clipPath></defs>
+    <defs><clipPath id="reveal"><circle id="revealC" cx="44" cy="32" r="0"/></clipPath></defs>
     <g clip-path="url(#reveal)">
       <rect width="64" height="64" rx="15" fill="#ffb224"/>
-      <path d="M17.5 17l15 15-15 15" fill="none" stroke="#1b1300" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="45" cy="32" r="6.5" fill="#1b1300"/>
+      <rect x="15.5" y="15.7" width="8.2" height="32.6" rx="4.1" fill="#1b1300"/>
+      <rect x="27.7" y="21.8" width="8.2" height="20.4" rx="4.1" fill="#1b1300"/>
+      <circle cx="44" cy="32" r="4.5" fill="#1b1300"/>
     </g>
   </svg>
   <div id="word" class="abs"></div>
   <div id="head" class="abs"></div>
+  <div id="cta" class="abs">Start learning free &rarr;</div>
   <div id="chip" class="abs"><i></i>feedforward.dbaney.com</div>
   <div id="band" class="abs"></div>
   <div id="url" class="abs"></div>
@@ -148,10 +151,10 @@ const glyphs = [];                      // {el, row, idx, kind, tOn}
     }
   }
 })();
-// Where the logo has to sit so its chevron lands on ">" and its dot on the output "@".
+// Where the logo has to sit so its output dot lands on the network's output node.
 const OUT_CX = NET_X + 18.5 * CW, OUT_CY = NET_Y + MID * LH + 24;
 const BLOOM_S = 3.15;                   // px per logo unit (64 units -> ~195px)
-const BLOOM = { x: OUT_CX - 45 * BLOOM_S, y: OUT_CY - 32 * BLOOM_S, s: BLOOM_S * 64 };
+const BLOOM = { x: OUT_CX - 44 * BLOOM_S, y: OUT_CY - 32 * BLOOM_S, s: BLOOM_S * 64 };
 
 /* ---------- 2. Wordmark and lockup ---------- */
 const wordEl = document.getElementById("word");
@@ -229,6 +232,7 @@ HEAD.forEach((line, li) => {
 });
 const HEAD_X = 64, HEAD_Y = 172;
 const T_HEAD = 3.40, T_HEAD_OUT = 5.50;
+const ctaEl = document.getElementById("cta"), T_CTA = 3.95, CTA_Y = HEAD_Y + 192;
 const bandEl = document.getElementById("band");
 const cells = DATA.stats.map(([n, label], i) => {
   const c = document.createElement("div"); c.className = "cell";
@@ -308,7 +312,7 @@ function render(t, tf = t) {
   L = { x: lerp(L.x, CORNER.logo.x, m2), y: lerp(L.y, CORNER.logo.y, m2), s: lerp(L.s, CORNER.logo.s, m2) };
   // the bloom lands with a small overshoot-and-settle on top of the reveal
   const pop = 1 + 0.035 * Math.sin(Math.PI * prog(t, T_FIRE + 0.18, T_FIRE + 0.48));
-  const ox = L.x + L.s * (45 / 64) * (1 - pop), oy = L.y + L.s * .5 * (1 - pop);
+  const ox = L.x + L.s * (44 / 64) * (1 - pop), oy = L.y + L.s * .5 * (1 - pop);
   const lo = outAll(t);
   // sized, not scaled, so the SVG rasterizes fresh at its real size every frame
   const ls = (L.s * pop).toFixed(3) + "px"; logoEl.style.width = ls; logoEl.style.height = ls;
@@ -348,6 +352,12 @@ function render(t, tf = t) {
     s.style.filter = p < 1 || q > 0 ? `blur(${(6 * (1 - p) + 4 * q).toFixed(2)}px)` : "none";
   });
   place(headEl, HEAD_X, HEAD_Y, "", 1);
+
+  /* Call to action: rises in under the headline once it has landed, leaves with it. */
+  {
+    const p = outExpo(prog(t, T_CTA, T_CTA + 0.5)), q = inCubic(prog(t, T_HEAD_OUT + 0.08, T_HEAD_OUT + 0.3));
+    place(ctaEl, HEAD_X, CTA_Y + 16 * (1 - p), "", p * (1 - q));
+  }
 
   /* Chip: in with the band, out as the big URL arrives. */
   {
