@@ -43,7 +43,7 @@ function markNav(path) {
     if (h === cur && !(top === "/watch" || top === "/search")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
   // Phones have five tabs: everything under Explore belongs to Learn, so one tab is always lit.
-  if (LEARN_KIDS.has(cur)) document.querySelector('.tabbar a[href="/learn"]')?.setAttribute("aria-current", "page");
+  if (LEARN_KIDS.has(cur) && top !== "/p") document.querySelector('.tabbar a[href="/learn"]')?.setAttribute("aria-current", "page");
 }
 
 // ---------- Router ----------
@@ -74,6 +74,8 @@ async function route() {
   const qs = url.searchParams;
   stopView();
   view.onclick = null;
+  document.getElementById("toast")?.classList.remove("on");
+  document.body.classList.toggle("on-watch", url.pathname.startsWith("/watch/"));
   const first = path.split("/")[1] || "";
   const door = !signedIn() && first !== "link";
   document.body.classList.toggle("door", door);

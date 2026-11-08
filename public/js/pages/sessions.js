@@ -56,7 +56,7 @@ export async function render(el) {
   const u = user();
   const host = !!(u && (u.teach || can("admin")));
   el.innerHTML = `<div class="pg pg-sessions">
-    <header class="page-h"><div><h1>Live sessions</h1><p>Professors and tutors teach live. RSVP, then join from here when it starts. Times are in your time zone.</p></div></header>
+    <header class="page-h"><div><h1>Live sessions</h1><p>RSVP, then join here when it starts.</p></div></header>
     ${host ? hostForm() : ""}
     <div id="list">${loader("loading sessions")}</div>
   </div>`;
@@ -76,7 +76,7 @@ export async function render(el) {
       <p class="ses-host"><a href="/u/${esc(s.host.id)}">${userAvatar(s.host, "s")}<b>${esc(s.host.name)}</b></a>${badges(s.host)}<span class="dot"></span><span>${s.going} going</span></p>
       ${s.cancelled ? "" : `<div class="acts">
         ${live(s) ? `<a class="btn primary" href="${esc(s.link)}" target="_blank" rel="noopener noreferrer">${icon("ext")}${mine ? "Start session" : "Join"}</a>` : ""}
-        ${live(s) || mine ? "" : s.mine ? `<button class="btn" type="button" data-unrsvp="${esc(s.id)}" aria-pressed="true">${icon("check")}Going</button>` : `<button class="btn" type="button" data-rsvp="${esc(s.id)}">RSVP</button>`}
+        ${live(s) || mine ? "" : s.mine ? `<button class="btn going" type="button" data-unrsvp="${esc(s.id)}" aria-pressed="true">${icon("check")}Going</button>` : `<button class="btn" type="button" data-rsvp="${esc(s.id)}">RSVP</button>`}
         <button class="btn" type="button" data-chat="${esc(s.id)}" aria-expanded="false" aria-controls="chat-${esc(s.id)}">${icon("chat")}Chat</button>
         ${mine || can("mod") ? `<button class="textbtn danger ses-cancel" type="button" data-cancel="${esc(s.id)}">Cancel session</button>` : ""}
       </div>

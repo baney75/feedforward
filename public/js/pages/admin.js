@@ -24,7 +24,7 @@ export async function render(el, qs) {
   const tabs = TABS.filter((t) => !t[2] || can(t[2])).sort((a, b) => (admin ? 0 : (a[0] === "reports" ? -1 : b[0] === "reports" ? 1 : 0)));
   let tab = tabs.some((t) => t[0] === qs.get("tab")) ? qs.get("tab") : tabs[0][0];
   el.innerHTML = `<div class="pg pg-admin">
-    <header class="page-h"><div><h1>${admin ? "Admin" : "Moderation"}</h1><p>${admin ? "Run the community and the catalog." : "Keep comments, chat and skills kind and on topic."} You can act on people below your role (${esc(ROLE[me.role] || me.role)}).</p></div></header>
+    <header class="page-h"><div><h1>${admin ? "Admin" : "Moderation"}</h1></div></header>
     <div class="tabs admin-tabs" role="group" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-tab="${k}" aria-pressed="${k === tab}">${l}</button>`).join("")}</div>
     <div id="pane"></div>
   </div>`;
@@ -233,7 +233,7 @@ const ROLE_LABEL = { user: "Member", contributor: "Contributor", mod: "Moderator
 async function invites(pane, me) {
   const myRank = R(me.role), isAdmin = myRank >= R("admin");
   const roles = GRANTABLE.filter((r) => R(r) < myRank || r === "user");
-  pane.innerHTML = `<form class="form inv-form" id="invForm">
+  pane.innerHTML = `<ul class="rows" id="invList"></ul><details class="inv-new"><summary class="btn primary">New invite link</summary><form class="form inv-form" id="invForm">
       <label class="field">Note <span class="opt">optional, only staff see it</span><input class="input" name="note" maxlength="80" placeholder="Launch day, Discord"></label>
       <div class="two">
         <label class="field">Joins as<select class="input" name="role">${roles.map((r) => `<option value="${r}">${ROLE_LABEL[r]}</option>`).join("")}</select></label>
@@ -243,7 +243,7 @@ async function invites(pane, me) {
       <label class="field">Expires in days <span class="opt">0 never</span><input class="input" name="days" type="number" min="0" max="365" value="14"></label></div>
       ${isAdmin ? `<label class="toggle inv-ver"><input type="checkbox" name="verified">Verified: everyone who joins gets the check</label>` : ""}
       <div class="acts"><button class="btn primary" type="submit">Make invite link</button></div>
-    </form><ul class="rows" id="invList"></ul>`;
+    </form></details>`;
   const list = $("#invList", pane);
   const load = async () => {
     const { invites: inv } = await api("/api/admin/feed");
@@ -251,7 +251,7 @@ async function invites(pane, me) {
     inv.sort((a, b) => dead(a) - dead(b));
     list.innerHTML = `<li class="inv-h"><h2 class="set-h">Invite links</h2></li>` + inv.map((i) => dead(i) ? `<li class="inv off" data-inv="${esc(i.code)}"><div class="inv-t"><span class="mono">/join/${esc(i.code)}</span><span class="muted">Expired ${fmtDate(i.expires, { month: "short", day: "numeric" })}<span class="dot"></span>${i.uses || 0} used</span></div></li>` : `<li class="inv${i.disabled ? " off" : ""}" data-inv="${esc(i.code)}"><div class="inv-t"><span class="mono">/join/${esc(i.code)}</span>
       <span class="muted">${i.disabled ? "Off<span class=\"dot\"></span>" : ""}${i.role && i.role !== "user" ? esc(ROLE_LABEL[i.role] || i.role) + '<span class="dot"></span>' : ""}${i.teach ? esc(i.teach) + '<span class="dot"></span>' : ""}${i.verified ? "Verified<span class=\"dot\"></span>" : ""}${i.expires ? (i.expires * 1000 < Date.now() ? "Expired" : "Expires " + fmtDate(i.expires, { month: "short", day: "numeric" })) + '<span class="dot"></span>' : ""}${i.uses} used${i.note ? `<span class="dot"></span>${esc(i.note)}` : ""}</span></div>
-      <div class="inv-acts"><label class="inv-uses"><span class="sr-only">Total uses for /join/${esc(i.code)}, 0 for no limit</span><input class="input mono" type="number" min="0" max="10000" value="${i.max_uses}" data-uses aria-describedby="usesHint"><span class="muted">uses</span></label>
+      <div class="inv-acts"><label class="inv-uses"><span class="sr-only">Total uses for /join/${esc(i.code)}, 0 for no limit</span><input class="input mono" type="number" min="0" max="10000" value="${i.max_uses}" data-uses aria-describedby="usesHint"><span class="muted">total</span></label>
       <button class="btn sm" type="button" data-toggle="${i.disabled ? "on" : "off"}">${i.disabled ? "Turn on" : "Turn off"}</button>
       <button class="btn sm" type="button" data-copy="${esc(SITE + "/join/" + i.code)}"${i.disabled ? " disabled" : ""}>Copy</button></div></li>`).join("") || `<li class="muted empty-row">No invites yet.</li>`;
   };
@@ -260,7 +260,7 @@ async function invites(pane, me) {
     const f = e.currentTarget;
     busy(e.submitter, async () => {
       const d = await post("/api/admin/invites", { note: f.note.value, max_uses: +f.max_uses.value || 0, days: +f.days.value || 0, role: f.role.value, teach: f.teach ? f.teach.value : "", verified: !!(f.verified && f.verified.checked) });
-      f.reset(); await load(); copy(`${SITE}/join/${d.code}`, "Invite link made and copied");
+      f.reset(); f.closest("details").open = false; await load(); copy(`${SITE}/join/${d.code}`, "Invite link made and copied");
     });
   };
   await load();
@@ -313,7 +313,7 @@ async function catalog(pane) {
     e.preventDefault();
     const f = e.currentTarget, b = Object.fromEntries(new FormData(f));
     if (!b.x.trim() && !b.yt.trim()) return toast("Add an X handle or a YouTube channel.");
-    busy(e.submitter, async () => { await post("/api/admin/people", b); toast(`${b.name} added`); f.reset(); await load(); });
+    busy(e.submitter, async () => { await post("/api/admin/people", b); toast(`${b.name} added`); f.reset(); f.closest("details").open = false; await load(); });
   };
   await load();
   return on(list, "[data-rm]", (b) => {

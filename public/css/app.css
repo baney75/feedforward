@@ -931,3 +931,46 @@ body.door-tv .door-paircode { font-size: clamp(40px, 9vh, 80px); }
   body.on-shorts main { padding-top: var(--safe-top); }
   .shorts { --sh: calc(100dvh - var(--safe-top) - var(--tab) - env(safe-area-inset-bottom)); }
 }
+
+/* ---------- Council round 2: versus YouTube, Netflix, X ---------- */
+/* Touch shows press, never a stuck hover. */
+@media (hover: none) { .btn:hover { background: var(--bg-2); } .btn.primary:hover { filter: none; background: var(--accent); } .chip:hover { background: var(--bg-3); } .chip[aria-pressed="true"]:hover { background: var(--fg); } .btn:active, .chip:active { opacity: .7; } }
+.topbar { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+#toast { background: var(--bg-3); color: var(--fg); border: 1px solid var(--line); }
+/* The dark segmented control: selected is lifted, not sunk. */
+:root:not([data-theme="light"]):not([data-theme="sepia"]) .seg button[aria-pressed="true"] { background: var(--fg-2); color: var(--bg); }
+@media (prefers-color-scheme: light) { :root:not([data-theme]) .seg button[aria-pressed="true"] { background: var(--bg); color: var(--fg); } }
+/* Watch, phone: nothing squeezes the like pill. */
+@media (max-width: 719px) {
+  .wbar { display: flex; flex-wrap: wrap; } .wbar .who { flex: 1 0 100%; }
+  .wbar .btn, .wbar .vote { flex: none; } .wbar a[aria-label="Watch on YouTube"] .lbl { display: none; }
+  .watch h1 { font-size: var(--t-l); }
+}
+@media (min-width: 720px) and (max-width: 1179px) { .wbar a[aria-label="Watch on YouTube"] .lbl { display: none; } }
+/* Watch, laptop: the video gets the room, as on YouTube. */
+@media (min-width: 1180px) { body.on-watch .rail { display: none; } body.on-watch main { padding-left: var(--s5); } }
+/* Home: one compact resume row. */
+.start-here .meter { min-width: 160px; }
+/* Posts: one row of controls, one centered column. */
+.wire-solo { max-width: 680px; margin: 0 auto; }
+@media (max-width: 719px) { .posts-h h1 { display: none; } .posts-h { margin-top: 0; } }
+/* Shorts. */
+.sover { background: linear-gradient(transparent, rgba(0, 0, 0, .86) 45%); }
+.short { position: relative; }
+@media (min-width: 720px) {
+  body.on-shorts { overflow: hidden; }
+  .snav { position: static; transform: none; align-self: center; }
+}
+.sacts [aria-label="Open on YouTube"] { display: none; }
+/* Learn. */
+.meter i b { background: var(--accent); }
+.track-go { margin-top: var(--s3); }
+/* TV sign-in: a code stays on one line. */
+.door-paircode { white-space: nowrap; font-size: clamp(28px, 7vh, 64px); }
+body.door-tv .door-paircode { font-size: clamp(32px, 8vh, 72px); }
+/* Door forms get the fold on every size. */
+.door-focus .door-eyebrow, .door-focus .door-sub { display: none; }
+@media (min-width: 720px) { .door-focus .door-h { font-size: 32px; } }
+/* Keep the pair button readable after an error. */
+#pairOk:disabled { opacity: .6; }
+@media (max-width: 719px) { .book .cover { display: none; } .results h1 { font-size: var(--t-l); } .az, .az-rail { display: none; } }

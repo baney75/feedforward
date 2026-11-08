@@ -55,7 +55,7 @@ export async function render(el, qs) {
     <section class="set" aria-labelledby="appsH">
       <h2 class="set-h" id="appsH">Add to claude.ai or ChatGPT</h2>
       <ul class="rows urls">
-        <li><div class="url-t"><b>Your library</b><span class="muted">Adds your saves and history. You approve it on Feedforward and can revoke it any time.</span><span class="mono url">${esc(ME_URL)}</span></div><button class="btn sm" type="button" data-copy="${esc(ME_URL)}" aria-label="Copy the library address">Copy</button></li>
+        <li><div class="url-t"><b>Connector address</b><span class="muted">Adds your saves and history. You approve it on Feedforward and can revoke it any time.</span><span class="mono url">${esc(ME_URL)}</span></div><button class="btn sm" type="button" data-copy="${esc(ME_URL)}" aria-label="Copy the library address">Copy</button></li>
       </ul>
       <div class="seg app-seg" role="tablist" aria-label="App">${APPS.map(([k, l], i) => `<button type="button" role="tab" id="app-${k}" data-app="${k}" aria-selected="${i === 0}" aria-pressed="${i === 0}" aria-controls="steps">${l}</button>`).join("")}</div>
       <div id="steps" role="tabpanel"></div>

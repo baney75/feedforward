@@ -512,3 +512,15 @@ main:has(> .pg-chat) { padding-bottom: var(--s4); }
 .pg-admin .inv-h { padding: var(--s5) 0 var(--s2); border: 0; }
 .pg-pair .hint.err { color: var(--bad); }
 .pg pre { white-space: pre; overflow-x: auto; }
+
+/* ---------- Council round 2 ---------- */
+.pg .btn.going { background: color-mix(in srgb, var(--ok) 18%, var(--bg-2)); border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
+.pg-chat .msg.mine, .pg-chat .msg.mine:hover, .pg-chat .msg.mine.open { background: none; }
+.pg-profile .prof-h { position: relative; } .pg-profile .prof-acts { margin: 0 0 0 auto; align-self: flex-start; }
+.pg-admin .inv-new { margin-top: var(--s4); } .pg-admin .inv-new > summary { list-style: none; width: fit-content; cursor: pointer; }
+.pg-admin .inv-new > summary::-webkit-details-marker { display: none; }
+.pg-admin input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+.pg-admin input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+.pg .ref-link { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Explore pages share a left edge. */
+.pg.pg-research, .pg.pg-dictionary, .pg.pg-repos { margin-left: 0; margin-right: auto; }

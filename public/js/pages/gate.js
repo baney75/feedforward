@@ -52,12 +52,6 @@ export async function render(el, qs, parts) {
       <h2>Lessons inside</h2>
       <ul>${PEEK.map(([id, t, by]) => `<li><img src="https://i.ytimg.com/vi/${id}/mqdefault.jpg" alt="" width="320" height="180" loading="lazy"><b>${esc(t)}</b><span>${esc(by)}</span></li>`).join("")}</ul>
     </section>
-    <section class="door-how" aria-label="How it works">
-      <ol>
-                <li><b>Keep your code</b><span>Four words and two digits. It's your account on every device: no email, no password.</span></li>
-        <li><b>Learn</b><span>Videos, Shorts, posts, labs and live sessions from the best teachers in AI.</span></li>
-      </ol>
-    </section>
     <p class="door-foot">Open source on <a href="https://github.com/baney75/feedforward" target="_blank" rel="noopener">GitHub</a>. Questions? <a href="mailto:support@dbaney.com">support@dbaney.com</a></p>
   </div>`;
 
@@ -211,7 +205,8 @@ function invitePane(pane, { code = "" } = {}) {
       }).catch((err) => { sessionStorage.removeItem("ff:hold"); fail(msg, err); });
     };
   }).catch((e) => {
-    const old = /expired|used up|turned off/i.test(e.message || "");
+    const old = /expired|used up|turned off/i.test(e.message || ""), missing = /not found|isn't|no such|invalid|doesn't/i.test(e.message || "") || e.status === 404;
+    if (!old && !missing) { pane.innerHTML = `<div class="door-dead"><h2 class="door-title">Couldn't check your invite</h2><p class="door-hint">${esc(human(e))}</p><button class="btn primary door-go" type="button" data-retry>Try again</button></div>`; pane.querySelector("[data-retry]").onclick = () => invitePane(pane, { code }); return; }
     pane.innerHTML = `<div class="door-dead"><h2 class="door-title">${old ? "This invite has ended" : "This invite link doesn't work"}</h2><p class="door-hint">${esc(old ? e.message.replace(/ Ask for a new one\./, "") + " The person who sent it can make a new one." : "Make sure you copied all of it.")}</p><button class="btn primary door-go" type="button" data-apply>Apply instead</button><button class="btn door-go" type="button" data-other>I have another invite</button></div>`;
     pane.querySelector("[data-other]").onclick = () => { history.replaceState(null, "", "/"); invitePane(pane); };
     pane.querySelector("[data-apply]").onclick = () => goTab("apply");
@@ -237,7 +232,7 @@ function welcome(pane, code) {
 
 function signinPane(pane) {
   const pending = store.get("application");
-  const canScan = "BarcodeDetector" in window && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+  const canScan = onlyPhone() && "BarcodeDetector" in window && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
   pane.innerHTML = `<h2 class="door-title">Sign in</h2>${pending ? `<p class="door-pending"><b>Application received.</b> A person reviews it, usually within a day. Your code works the moment you're approved.</p>` : ""}
     <form class="door-form" id="siForm">
       <label class="door-field"><span>Your code</span>
@@ -297,7 +292,7 @@ function applyPane(pane) {
     pane.innerHTML = `<div class="door-welcome"><p class="door-kicker">Application in review</p><h2>We'll let you in soon.</h2>
       <p class="door-code mono">${esc(pending.code)}</p>
       <p class="door-hint">Save this code. It's your account, and nobody can recover it. A person reviews each application, usually within a day. Come back and sign in with it any time.</p>
-      <div class="door-acts"><button class="btn" type="button" id="copyCode">Copy code</button><button class="btn primary" type="button" id="check">Check now</button></div>
+      <div class="door-acts"><button class="btn primary" type="button" id="copyCode">Copy code</button><button class="btn" type="button" id="check">Check now</button></div>
       <p class="door-hint"><button class="textbtn" type="button" id="again">Start a new application</button></p></div>`;
     $("#copyCode", pane).onclick = () => copy(pending.code, "Code copied");
     $("#check", pane).onclick = () => goTab("signin");

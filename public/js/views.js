@@ -64,6 +64,7 @@ export function home(el, qs) {
       <div class="grid" id="feed"></div><div id="more" style="height:1px"></div>
     </div>${wire}</div>`;
   bindChips(el);
+  el.querySelector('.chip[aria-pressed="true"]')?.scrollIntoView({ inline: "center", block: "nearest" });
   const stopCounters = liveCounters(el);
   const feed = $("#feed", el);
   let count = 0, postOff = 0, gen = D.gen, sampled = next;
@@ -112,10 +113,9 @@ function keepGoing() {
     const k = t.steps.findIndex((s, i) => !stepDone(t, s, i));
     const st = t.steps[k];
     const href = st.kind === "video" ? `/watch/${st.id}?track=${t.slug}` : st.kind === "lab" ? `/lab/${st.slug}?track=${t.slug}` : `/learn/${t.slug}`;
-    next = `<a class="nextup" href="${href}"><span class="topic-tag">Your track · step ${k + 1} of ${n}</span><b>${esc(t.title)}</b>${meter(d, n)}<span class="btn primary">Continue${icon("right")}</span></a>`;
+    next = `<a class="start-here" href="${href}"><span class="topic-tag">Step ${k + 1} of ${n}</span><b>${esc(t.title)}</b><span class="muted">${meter(d, n)}</span><span class="btn primary">Continue${icon("right")}</span></a>`;
   }
-  return `<div class="sec-h"><h2>Keep going</h2>${store.streak() ? `<span class="streak">${icon("flame")}${store.streak()}-day streak</span>` : ""}</div>
-    <div class="shelf">${next}${hist.map((v) => videoCard(v)).join("")}</div>`;
+  return `${next}${hist.length ? `<div class="sec-h"><h2>Keep watching</h2>${store.streak() ? `<span class="streak">${icon("flame")}${store.streak()}-day streak</span>` : ""}</div><div class="shelf">${hist.map((v) => videoCard(v)).join("")}</div>` : ""}`;
 }
 
 const shownCounts = {};
@@ -255,11 +255,10 @@ export function wirePage(el, qs) {
   const topic = topicFromQuery(qs);
   const sort = qs.get("sort") || "best";
   setTitle("Posts");
-  el.innerHTML = `<div class="wire-wrap"><div style="min-width:0">
-      <div class="page-h"><div><h1>Posts</h1><p>Posts from the people on Feedforward, kept only when they're about AI, computer science or making. No politics, no drama.</p></div>
+  el.innerHTML = `<div class="wire-solo"><div style="min-width:0">
+      <div class="page-h posts-h"><div><h1>Posts</h1></div>
       <div class="seg" role="group" aria-label="Sort">${[["best", "Best"], ["latest", "Latest"]].map(([k, l]) => `<button data-sort="${k}" aria-pressed="${sort === k}">${l}</button>`).join("")}</div></div>
-      ${chips(topic)}<div id="list" style="margin-top:8px"></div><div id="more" style="height:1px"></div></div>
-    <aside><div class="box"><h2>Most active</h2>${D.people.filter((p) => p.np).sort((a, b) => b.np - a.np).slice(0, 12).map((p) => `<a class="pcard row" href="/p/${p.slug}">${avatar(p, "s")}<div style="min-width:0"><b style="font-size:15px">${esc(p.name)}</b></div></a>`).join("")}<a class="link" href="/people" style="font-size:14px">Everyone</a></div></aside></div>`;
+      ${chips(topic)}<div id="list" style="margin-top:8px"></div><div id="more" style="height:1px"></div></div></div>`;
   bindChips(el);
   el.querySelector(".seg").onclick = (e) => { const b = e.target.closest("[data-sort]"); if (b) setParam("sort", b.dataset.sort === "best" ? null : b.dataset.sort); };
   let off = 0;
@@ -270,6 +269,13 @@ export function wirePage(el, qs) {
 }
 
 // ---------- Learn ----------
+function stepHref(t, s) { return s.kind === "video" ? `/watch/${s.id}?track=${t.slug}` : s.kind === "lab" ? `/lab/${s.slug}?track=${t.slug}` : s.url; }
+function nextStep(t) {
+  const k = t.steps.findIndex((s, i) => !stepDone(t, s, i));
+  if (k < 0) return "";
+  const s = t.steps[k], ext = s.kind === "read";
+  return `<a class="btn primary track-go" href="${esc(stepHref(t, s))}"${ext ? ' target="_blank" rel="noopener"' : ""}>${icon("play")}${k ? "Continue" : "Start"}: step ${k + 1} of ${t.steps.length}</a>`;
+}
 function trackProgress(t) {
   const n = t.steps.length;
   const d = t.steps.filter((s, k) => stepDone(t, s, k)).length;
@@ -291,7 +297,7 @@ function labCard(l) {
 }
 export function learnPage(el) {
   setTitle("Learn");
-  el.innerHTML = `<div class="page-h"><div><h1>Learn</h1><p>Short tracks that take you from zero to building, using the best videos on Feedforward in the right order. Labs let you poke at the ideas yourself.</p></div></div>
+  el.innerHTML = `<div class="page-h"><div><h1>Learn</h1></div></div>
     <nav class="hub" aria-label="More ways to learn">${[["/chat", "chat", "Chat"], ["/people", "people", "People"], ["/books", "books", "Books"], ["/research", "learn", "Research"], ["/dictionary", "search", "Dictionary"], ["/sessions", "tv", "Live sessions"], ["/skills", "labs", "Skills"], ["/repos", "topic", "Repos"], ["/agents", "info", "Connect an agent"]].map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("")}</nav>
     <div class="tracks">${D.learn.tracks.map(trackCard).join("")}</div>
     <div class="sec-h"><h2>Labs</h2><span class="muted" style="font-size:14px">Interactive. Runs in your browser.</span></div>
@@ -305,7 +311,7 @@ export function trackPage(el, qs, slug) {
   const render = () => {
     const [d, n] = trackProgress(t);
     el.innerHTML = `<nav class="crumbs"><a href="/learn">Learn</a>${icon("right")}<span>Track ${D.learn.tracks.indexOf(t) + 1}</span></nav>
-      <div class="page-h track-h"><div><h1>${esc(t.title)}</h1><p>${esc(t.blurb)}</p>${meter(d, n)}</div></div>
+      <div class="page-h track-h"><div><h1>${esc(t.title)}</h1>${meter(d, n)}${nextStep(t)}</div></div>
       <ol class="steps">${t.steps.map((s, k) => step(t, s, k)).join("")}</ol>
       ${t.quiz && t.quiz.length ? `<section class="quiz"><div class="sec-h"><h2>Check yourself</h2></div>${t.quiz.map((q, k) => quiz(t, q, k)).join("")}</section>` : ""}`;
   };
@@ -421,7 +427,7 @@ export function libraryPage(el, qs) {
 export function aboutPage(el) {
   setTitle("About");
   const m = D.meta;
-  el.innerHTML = `<div class="prose about"><svg class="about-logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--accent)"/><g fill="var(--accent-ink)"><rect x="15.5" y="15.7" width="8.2" height="32.6" rx="4.1"/><rect x="27.7" y="21.8" width="8.2" height="20.4" rx="4.1"/><circle cx="44" cy="32" r="4.5"/></g></svg><h1>About Feedforward</h1>
+  el.innerHTML = `<div class="prose about"><svg hidden class="about-logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--accent)"/><g fill="var(--accent-ink)"><rect x="15.5" y="15.7" width="8.2" height="32.6" rx="4.1"/><rect x="27.7" y="21.8" width="8.2" height="20.4" rx="4.1"/><circle cx="44" cy="32" r="4.5"/></g></svg><h1>About Feedforward</h1>
     <p>Feedforward is a learning feed for AI. It gathers the full video libraries, the best Shorts and the best recent posts of ${D.people.filter(Boolean).length} people who teach AI well, build it in the open, or run it on their own machines. Then it filters out everything that isn't about AI, computer science or making things.</p>
     <p>The name has two meanings. It's a feed that moves you forward, and a feedforward network is the first neural network everyone learns: input goes in, flows layer by layer, and an answer comes out. Feedforward is invite-only, and your account is a code: no email, no password. No ads, no tracking, and no algorithm trained on you. What you watch and save syncs only to your own account.</p>
     <h2>How the feed works</h2>
@@ -503,7 +509,8 @@ export function shortsPage(el, qs, startId) {
     // out at 720x1280 and scaled down to the frame: YouTube sees a big player and keeps its controls hidden.
     const frame = slide.querySelector(".sframe");
     const fit = () => {
-      const s = Math.min(frame.clientWidth / 720, frame.clientHeight / 1280);
+      // On big screens, zoom slightly so the frame crops off YouTube's own title and logo bands.
+      const s = Math.min(frame.clientWidth / 720, frame.clientHeight / 1280) * (innerWidth >= 720 ? 1.14 : 1);
       frame.style.setProperty("--ys", s.toFixed(4));
       frame.style.setProperty("--yx", ((frame.clientWidth - 720 * s) / 2).toFixed(1) + "px");
       frame.style.setProperty("--yy", ((frame.clientHeight - 1280 * s) / 2).toFixed(1) + "px");
@@ -620,7 +627,7 @@ function bookCard(b, k = 0) {
     <a class="cover" style="--k:${(k * 3) % 4}" href="${esc(b.url)}" target="_blank" rel="noopener" aria-label="Read ${esc(b.title)} free">
       <span class="ct">${esc(b.title)}</span><span class="ca">${esc(b.authors)}</span><span class="cy">${esc(String(b.year || ""))}</span></a>
     <div class="binfo"><span class="topic-tag">${esc(b.level)} · ${topicLabel(topicIndex(b.topic))}</span>
-      <h3>${esc(b.title)}</h3><p>${esc(b.why)}</p>${stars("b:" + bookSlug(b))}
+      <h3>${esc(b.title)}</h3><p>${esc(b.why)}</p>
       <p class="bmeta muted">${esc(b.authors)}${b.year ? " · " + esc(String(b.year)) : ""} · ${esc(shortLicense(b.license))}</p>
       <a class="btn" href="${esc(b.url)}" target="_blank" rel="noopener">${icon("books")}Read free${b.format === "pdf" ? " (PDF)" : ""}</a></div>
   </article>`;

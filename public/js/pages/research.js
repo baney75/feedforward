@@ -59,7 +59,6 @@ export async function render(el, qs) {
       ${p.why ? `<p class="paper-why">${esc(p.why)}</p>` : ""}
       <div class="acts paper-acts">
         <button class="btn sm" type="button" data-cite="${esc(p.id)}" aria-expanded="false" aria-controls="cite-${esc(p.id)}">Cite</button>
-        ${likeButton("r:" + p.id)}
         ${pdf ? `<a class="textbtn" href="${esc(pdf)}" target="_blank" rel="noopener">PDF</a>` : ""}
         ${abs ? `<a class="textbtn" href="${esc(abs)}" target="_blank" rel="noopener">Abstract</a>` : ""}
       </div>

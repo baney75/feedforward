@@ -27,11 +27,11 @@ export async function render(el, qs, parts) {
       <div class="me-id"><h1>${esc(u.name)}${badges(u)}</h1>
         <p class="muted">${roles.length ? esc(roles.join(", ")) + '<span class="dot"></span>' : ""}Joined ${fmtDate(u.created, { month: "long", year: "numeric" })}</p>
         ${linkChips(d.links)}
-        <p class="prof-stats"><span><b>${d.likes}</b> like${d.likes === 1 ? "" : "s"}</span><span><b>${d.referrals}</b> invited</span><span><b>${d.comments.length}</b> comment${d.comments.length === 1 ? "" : "s"}</span></p>
+        <p class="prof-stats"><span><b>${d.likes}</b> like${d.likes === 1 ? "" : "s"}</span><span><b>${d.comments.length}</b> comment${d.comments.length === 1 ? "" : "s"}</span></p>
       </div>
+      ${self || teachBtn ? `<div class="acts prof-acts">${self ? `<a class="btn" href="/me">Edit</a>` : ""}${teachBtn}</div>` : ""}
     </header>
     <div id="profFeed"></div>
-    ${self || teachBtn ? `<div class="acts prof-acts">${self ? `<a class="btn" href="/me">Edit your profile</a>` : ""}${teachBtn}</div>` : ""}
     <section class="set" aria-labelledby="rcH"><h2 class="set-h" id="rcH">Recent comments</h2>
       ${d.comments.length ? `<ul class="rows prof-cmts">${d.comments.map((c) => { const h = itemHref(c.item); return `<li><p class="muted pc-h">On ${h ? `<a class="link" href="${esc(h)}">${itemLabel(c.item)}</a>` : itemLabel(c.item)}<span class="dot"></span>${ago(c.ts)}</p><p class="pc-b">${esc(c.body)}</p></li>`; }).join("")}</ul>`
         : `<p class="muted empty-row">No comments yet.</p>`}
@@ -50,7 +50,9 @@ export async function render(el, qs, parts) {
 // Latest posts on X and uploads on YouTube, for verified members. Loads after the page so it never holds it up.
 async function showFeed(box, u, links) {
   let f;
-  try { f = await api("/api/u/" + encodeURIComponent(u.id) + "/feed"); } catch { return; }
+  box.innerHTML = `<div class="skel" role="status" aria-label="Loading"><i></i></div>`;
+  const get = () => api("/api/u/" + encodeURIComponent(u.id) + "/feed");
+  try { f = await get().catch(() => new Promise((r) => setTimeout(r, 1200)).then(get)); } catch { box.innerHTML = ""; return; }
   if (!box.isConnected) return;
   const vids = f.videos.length ? `<section class="set" aria-labelledby="pfV"><h2 class="set-h" id="pfV">Latest on YouTube</h2>
     <ul class="pf-vids">${f.videos.map((v) => `<li><a href="https://www.youtube.com/watch?v=${esc(v.id)}" target="_blank" rel="noopener"><img src="https://i.ytimg.com/vi/${esc(v.id)}/mqdefault.jpg" alt="" width="320" height="180" loading="lazy"><b>${esc(v.title)}</b><span class="muted">${ago(v.ts)}</span></a></li>`).join("")}</ul></section>` : "";

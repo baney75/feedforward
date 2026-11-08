@@ -104,7 +104,6 @@ export function postCard(post) {
         <span title="Likes">${icon("heart")}${num(post.l)}</span>
         ${post.v ? `<span title="Views">${icon("eye")}${num(post.v)}</span>` : ""}
         <button data-save="p:${post.id}" aria-pressed="${saved}" aria-label="Save post">${icon(saved ? "bookmarked" : "bookmark")}</button>
-        <a href="${url}" target="_blank" rel="noopener" aria-label="Open on X">${icon("x")}</a>
       </div>
     </div>
   </article>`;
