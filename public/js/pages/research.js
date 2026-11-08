@@ -1,4 +1,5 @@
 // /research: landmark papers with why each matters, links to read them, and citations in four styles.
+import { gatedFetch } from "../data.js";
 import { TOPICS } from "../data.js";
 import { loadStats } from "../account.js";
 import { esc } from "../ui.js";
@@ -30,7 +31,7 @@ export async function render(el, qs) {
   </div>`;
   let papers = [];
   try {
-    const r = await fetch("/data/papers.json");
+    const r = await gatedFetch("/data/papers.json");
     if (r.ok) papers = (await r.json()).papers || [];
   } catch {}
   loadStats().catch(() => {});

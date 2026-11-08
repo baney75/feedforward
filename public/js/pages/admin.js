@@ -25,7 +25,6 @@ export async function render(el, qs) {
   let tab = tabs.some((t) => t[0] === qs.get("tab")) ? qs.get("tab") : tabs[0][0];
   el.innerHTML = `<div class="pg pg-admin">
     <header class="page-h"><div><h1>${admin ? "Admin" : "Moderation"}</h1><p>${admin ? "Run the community and the catalog." : "Keep comments, chat and skills kind and on topic."} You can act on people below your role (${esc(ROLE[me.role] || me.role)}).</p></div></header>
-    <section class="pulse" id="pulse" aria-label="Overview">${loader()}</section>
     <div class="tabs admin-tabs" role="group" aria-label="Sections">${tabs.map(([k, l]) => `<button type="button" data-tab="${k}" aria-pressed="${k === tab}">${l}</button>`).join("")}</div>
     <div id="pane"></div>
   </div>`;
@@ -50,35 +49,27 @@ export async function render(el, qs) {
     show();
   };
   const offs = [on(el, "[data-tab]", (b) => pick(b.dataset.tab)), on(el, "[data-goto]", (b) => { pick(b.dataset.goto); $(".admin-tabs", el).scrollIntoView({ block: "start", behavior: "smooth" }); })];
-  overview($("#pulse", el), admin);
+  overview(el, admin);
+  el.querySelector('.admin-tabs [aria-pressed="true"]')?.scrollIntoView({ inline: "center", block: "nearest" });
   await show();
   return () => { offs.forEach((f) => f()); if (offPane) offPane(); };
 }
 
 // The numbers staff act on, first. Work waiting is marked; a zero stays quiet.
-async function overview(box, admin) {
-  const [pulse, feed, skills, sessions, apps] = await Promise.all([
+async function overview(el, admin) {
+  const [pulse, feed, skills, apps] = await Promise.all([
     fetch("/api/pulse").then((r) => r.json()).catch(() => ({})),
     api("/api/admin/feed").catch(() => ({ comments: [], suggestions: [] })),
     api("/api/skills").catch(() => ({ skills: [] })),
-    api("/api/sessions").catch(() => ({ sessions: [] })),
     api("/api/admin/applications").catch(() => ({ applications: [] })),
   ]);
-  const day = new Date(); day.setHours(0, 0, 0, 0);
-  const t0 = day.getTime() / 1000, t1 = t0 + 86400;
-  const stats = [
-    ["Applications waiting", apps.applications.filter((a) => a.status === "pending").length, "applications", true],
-    ["Learners", pulse.learners ?? "?", "people", false],
-    ["Reported comments", feed.comments.filter((c) => c.reports > 0).length, "reports", true],
-    ["Skills waiting", skills.skills.filter((s) => s.status === "pending").length, "skills", true],
-    admin ? ["Open suggestions", feed.suggestions.filter((s) => s.status === "open").length, "suggestions", true] : null,
-    ["Sessions today", sessions.sessions.filter((s) => !s.cancelled && s.starts >= t0 && s.starts < t1).length, "", false],
-  ].filter(Boolean);
-  box.innerHTML = stats.map(([label, n, tab, work]) => {
-    const due = work && n > 0;
-    const inner = `<b class="mono">${esc(String(n))}</b><span>${label}</span>`;
-    return tab ? `<button type="button" class="stat${due ? " due" : ""}" data-goto="${tab}" aria-label="${esc(label)}: ${esc(String(n))}${due ? ", needs a look" : ""}">${inner}</button>` : `<div class="stat">${inner}</div>`;
-  }).join("");
+  const counts = { applications: [apps.applications.filter((a) => a.status === "pending").length, true], people: [pulse.learners || 0, false],
+    reports: [feed.comments.filter((c) => c.reports > 0).length, true], skills: [skills.skills.filter((s) => s.status === "pending").length, true],
+    suggestions: [admin ? feed.suggestions.filter((s) => s.status === "open").length : 0, true] };
+  for (const [k, [n, work]] of Object.entries(counts)) {
+    const b = el.querySelector(`.admin-tabs [data-tab="${k}"]`);
+    if (b && n > 0) b.insertAdjacentHTML("beforeend", ` <span class="tab-n${work ? " due" : ""}">${n}</span>`);
+  }
 }
 
 const R = (role) => RANK[role] || 0;
@@ -256,7 +247,9 @@ async function invites(pane, me) {
   const list = $("#invList", pane);
   const load = async () => {
     const { invites: inv } = await api("/api/admin/feed");
-    list.innerHTML = inv.map((i) => `<li class="inv${i.disabled ? " off" : ""}" data-inv="${esc(i.code)}"><div class="inv-t"><span class="mono">/join/${esc(i.code)}</span>
+    const dead = (i) => i.expires && i.expires * 1000 < Date.now();
+    inv.sort((a, b) => dead(a) - dead(b));
+    list.innerHTML = `<li class="inv-h"><h2 class="set-h">Invite links</h2></li>` + inv.map((i) => dead(i) ? `<li class="inv off" data-inv="${esc(i.code)}"><div class="inv-t"><span class="mono">/join/${esc(i.code)}</span><span class="muted">Expired ${fmtDate(i.expires, { month: "short", day: "numeric" })}<span class="dot"></span>${i.uses || 0} used</span></div></li>` : `<li class="inv${i.disabled ? " off" : ""}" data-inv="${esc(i.code)}"><div class="inv-t"><span class="mono">/join/${esc(i.code)}</span>
       <span class="muted">${i.disabled ? "Off<span class=\"dot\"></span>" : ""}${i.role && i.role !== "user" ? esc(ROLE_LABEL[i.role] || i.role) + '<span class="dot"></span>' : ""}${i.teach ? esc(i.teach) + '<span class="dot"></span>' : ""}${i.verified ? "Verified<span class=\"dot\"></span>" : ""}${i.expires ? (i.expires * 1000 < Date.now() ? "Expired" : "Expires " + fmtDate(i.expires, { month: "short", day: "numeric" })) + '<span class="dot"></span>' : ""}${i.uses} used${i.note ? `<span class="dot"></span>${esc(i.note)}` : ""}</span></div>
       <div class="inv-acts"><label class="inv-uses"><span class="sr-only">Total uses for /join/${esc(i.code)}, 0 for no limit</span><input class="input mono" type="number" min="0" max="10000" value="${i.max_uses}" data-uses aria-describedby="usesHint"><span class="muted">uses</span></label>
       <button class="btn sm" type="button" data-toggle="${i.disabled ? "on" : "off"}">${i.disabled ? "Turn on" : "Turn off"}</button>

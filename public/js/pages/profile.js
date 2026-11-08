@@ -27,7 +27,7 @@ export async function render(el, qs, parts) {
       <div class="me-id"><h1>${esc(u.name)}${badges(u)}</h1>
         <p class="muted">${roles.length ? esc(roles.join(", ")) + '<span class="dot"></span>' : ""}Joined ${fmtDate(u.created, { month: "long", year: "numeric" })}</p>
         ${linkChips(d.links)}
-        <p class="prof-stats"><span><b class="mono">${d.likes}</b> likes</span><span><b class="mono">${d.referrals}</b> referred</span><span><b class="mono">${d.comments.length}</b> recent comments</span></p>
+        <p class="prof-stats"><span><b>${d.likes}</b> like${d.likes === 1 ? "" : "s"}</span><span><b>${d.referrals}</b> invited</span><span><b>${d.comments.length}</b> comment${d.comments.length === 1 ? "" : "s"}</span></p>
       </div>
     </header>
     <div id="profFeed"></div>
@@ -57,6 +57,6 @@ async function showFeed(box, u, links) {
   const posts = f.posts.length ? `<section class="set" aria-labelledby="pfX"><h2 class="set-h" id="pfX">Latest on X</h2>
     <ul class="rows pf-posts">${f.posts.map((p) => `<li><a class="pf-post" href="https://x.com/${esc(links.x)}/status/${esc(p.id)}" target="_blank" rel="noopener"><p class="pc-b">${esc(p.text)}</p>${p.photo ? `<img src="${esc(p.photo)}" alt="" loading="lazy">` : ""}<p class="muted pc-h">@${esc(links.x)}<span class="dot"></span>${ago(p.ts)}</p></a></li>`).join("")}</ul></section>` : "";
   const repos = (f.repos || []).length ? `<section class="set" aria-labelledby="pfG"><h2 class="set-h" id="pfG">On GitHub</h2>
-    <ul class="pf-repos">${f.repos.map((r) => `<li><a href="${esc(r.url)}" target="_blank" rel="noopener"><b class="mono">${esc(r.name)}</b>${r.desc ? `<span>${esc(r.desc)}</span>` : ""}<small class="muted">${r.lang ? esc(r.lang) + '<span class="dot"></span>' : ""}${r.stars ? `${r.stars} star${r.stars === 1 ? "" : "s"}<span class="dot"></span>` : ""}updated ${ago(r.ts)}</small></a></li>`).join("")}</ul></section>` : "";
-  box.innerHTML = vids + repos + posts;
+    <ul class="pf-repos">${f.repos.map((r) => `<li><a href="${esc(r.url)}" target="_blank" rel="noopener"><b>${esc(r.name)}</b>${r.desc && r.desc.trim() ? `<span>${esc(r.desc.trim())}</span>` : ""}<small class="muted">${r.lang ? esc(r.lang) + '<span class="dot"></span>' : ""}${r.stars ? `${r.stars} star${r.stars === 1 ? "" : "s"}<span class="dot"></span>` : ""}updated ${ago(r.ts)}</small></a></li>`).join("")}</ul></section>` : "";
+  box.innerHTML = posts + vids + repos;
 }

@@ -13,8 +13,9 @@ const view = document.getElementById("view");
 const NAV = [
   ["/", "home", "Home"], ["/shorts", "shorts", "Shorts"], ["/wire", "wire", "Posts"], ["/learn", "learn", "Learn"], ["/chat", "chat", "Chat"], ["/library", "library", "Library"],
 ];
-const EXPLORE = [["/books", "Books"], ["/research", "Research"], ["/dictionary", "Dictionary"], ["/repos", "Repos"], ["/sessions", "Live sessions"], ["/skills", "Skills"], ["/agents", "Connect an agent"]];
+const EXPLORE = [["/people", "People"], ["/books", "Books"], ["/research", "Research"], ["/dictionary", "Dictionary"], ["/repos", "Repos"], ["/sessions", "Live sessions"], ["/skills", "Skills"], ["/agents", "Connect an agent"]];
 const TABS = ["/", "/shorts", "/wire", "/learn", "/library"];
+const LEARN_KIDS = new Set(["/people", "/books", "/research", "/dictionary", "/repos", "/sessions", "/skills", "/agents", "/chat"]);
 // Pages that live in their own lazily loaded module.
 // Feedforward is invite-only: signed out, every path shows the front door (gate.js) except /link, the QR sign-in.
 const PAGES = { gate: "gate", pair: "pair", suggest: "suggest", oauth: "consent", teach: "teach", me: "me", link: "me", chat: "chat", sessions: "sessions", skills: "skills", agents: "agents", admin: "admin", u: "profile", research: "research", dictionary: "dictionary", repos: "repos" };
@@ -24,7 +25,7 @@ function shell() {
   const noShorts = store.shortsOff(), nav = NAV.filter(([h]) => !(noShorts && h === "/shorts"));
   rail.innerHTML = nav.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("") +
     `<hr><div class="rail-h">Explore</div><div class="explore">${EXPLORE.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</div>` +
-    `<div class="foot"><a href="/tv">TV mode</a> · <a href="/people">People</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="mailto:support@dbaney.com">support@dbaney.com</a> · <a href="https://github.com/baney75/feedforward">GitHub</a><br><button class="textbtn" type="button" id="railInstall">Install app</button> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
+    `<div class="foot"><a href="/tv">TV mode</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="mailto:support@dbaney.com">support@dbaney.com</a> · <a href="https://github.com/baney75/feedforward">GitHub</a><br><button class="textbtn" type="button" id="railInstall">Install app</button> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
   const tabbar = document.querySelector(".tabbar"), tabs = nav.filter(([h]) => TABS.includes(h));
   tabbar.style.setProperty("--tabs", tabs.length);
   tabbar.innerHTML = tabs.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("");
@@ -41,6 +42,8 @@ function markNav(path) {
     const h = a.getAttribute("href");
     if (h === cur && !(top === "/watch" || top === "/search")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
+  // Phones have five tabs: everything under Explore belongs to Learn, so one tab is always lit.
+  if (LEARN_KIDS.has(cur)) document.querySelector('.tabbar a[href="/learn"]')?.setAttribute("aria-current", "page");
 }
 
 // ---------- Router ----------
@@ -98,7 +101,10 @@ async function route() {
   } catch (e) {
     // The gate turned this browser away (signed out elsewhere, or banned): show the front door.
     if (!signedIn()) { started = null; D.ready = null; return route(); }
-    view.innerHTML = `<div class="empty"><p>Feedforward couldn't load its catalog. Check your connection and reload.</p></div>`; return;
+    barDone();
+    view.innerHTML = `<div class="empty-card" role="alert">${icon("info")}<h2>Videos didn’t load</h2><p>Check your connection, then try again.</p><button class="btn primary" type="button" id="retryCatalog">Try again</button></div>`;
+    document.getElementById("retryCatalog").onclick = () => { started = null; D.ready = null; route(); };
+    return;
   }
   if (my !== seq) return;
   view.dataset.seq = my;
@@ -140,7 +146,7 @@ async function loadPage(name, qs, parts) {
     view.innerHTML = "";
     return await mod.render(view, qs, parts);
   } catch (e) {
-    if (view.dataset.seq === my) view.innerHTML = `<div class="empty"><p>This page didn't load. Check your connection and try again.</p></div>`;
+    if (view.dataset.seq === my) { barDone(); view.innerHTML = `<div class="empty-card" role="alert">${icon("info")}<h2>This page didn’t load</h2><p>Check your connection, then try again.</p><button class="btn primary" type="button" onclick="location.reload()">Try again</button></div>`; }
     return null;
   }
 }

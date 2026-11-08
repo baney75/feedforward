@@ -41,7 +41,7 @@ export function videoCard(v, { big = false, row = false } = {}) {
   const p = D.people[v.person];
   const watched = store.hasWatched(v.id);
   const img = `<div class="thumb"><img src="${thumb(v.id, big ? "hqdefault" : "mqdefault")}" alt="" loading="lazy" width="320" height="180">${v.sec ? `<span class="dur">${dur(v.sec)}</span>` : ""}${watched ? '<span class="seen" title="Watched"></span>' : ""}</div>`;
-  const sub = `<span class="who">${esc(p.name)}</span><br>${num(v.views)} views${v.ts ? `<span class="dot"></span>${ago(v.ts)}` : ""}${v.fresh ? ' <span class="badge">New</span>' : ""}`;
+  const sub = `<span class="who">${esc(p.name)}</span><br>${v.views ? num(v.views) + " views" : ""}${v.views && v.ts ? `<span class="dot"></span>` : ""}${v.ts ? ago(v.ts) : ""}${v.fresh ? ' <span class="badge">New</span>' : ""}`;
   if (row) return `<a class="vrow" href="/watch/${v.id}">${img}<div class="vtext"><h3 class="vt">${esc(v.title)}</h3><div class="vsub">${sub}</div></div></a>`;
   return `<a class="vcard${big ? " big" : ""}" href="/watch/${v.id}"${big ? "" : ""}>${img}<div class="vmeta">${avatar(p)}<div class="vtext"><h3 class="vt">${esc(v.title)}</h3><div class="vsub">${sub}</div></div></div></a>`;
 }

@@ -1,5 +1,6 @@
 // /dictionary: AI and CS terms in plain words. Each entry opens to a longer definition, related terms,
 // references and the best videos on it from the catalog. Deep links: /dictionary#<slug>.
+import { gatedFetch } from "../data.js";
 import { TOPICS, load, D, search } from "../data.js";
 import { esc } from "../ui.js";
 import { icon } from "../icons.js";
@@ -17,7 +18,7 @@ export async function render(el, qs) {
     <div id="body">${loader("loading terms")}</div>
   </div>`;
   let terms = [];
-  try { const r = await fetch("/data/glossary.json"); if (r.ok) terms = (await r.json()).terms || []; } catch {}
+  try { const r = await gatedFetch("/data/glossary.json"); if (r.ok) terms = (await r.json()).terms || []; } catch {}
   const body = $("#body", el);
   if (!terms.length) { body.innerHTML = `<div class="empty"><p>The dictionary is on its way. Check back soon.</p></div>`; return null; }
   terms.sort((a, b) => a.term.localeCompare(b.term, undefined, { sensitivity: "base" }));

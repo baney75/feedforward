@@ -1,4 +1,5 @@
 // /repos: open source repos worth studying or using, from public/data/repos.json (scripts/build_repos.mjs).
+import { gatedFetch } from "../data.js";
 import { TOPICS } from "../data.js";
 import { esc, num, ago } from "../ui.js";
 import { icon } from "../icons.js";
@@ -14,9 +15,9 @@ export async function render(el, qs) {
     <div id="body">${loader("loading repos")}</div>
   </div>`;
   let data = null;
-  try { const r = await fetch("/data/repos.json"); if (r.ok) data = await r.json(); } catch {}
+  try { const r = await gatedFetch("/data/repos.json"); if (r.ok) data = await r.json(); } catch {}
   const body = $("#body", el);
-  if (!data || !data.repos || !data.repos.length) { body.innerHTML = `<div class="empty"><p>The repo list didn't load. Try again in a moment.</p></div>`; return null; }
+  if (!data || !data.repos || !data.repos.length) { body.innerHTML = `<div class="empty"><p>The repo list didn't load. <button class="textbtn" type="button" onclick="location.reload()">Try again</button></p></div>`; return null; }
   const repos = data.repos.filter((r) => /^https:\/\/github\.com\//.test(r.url));
   const order = TOPICS.map((t) => t.code);
   const topics = [...new Set(repos.map((r) => r.topic))].sort((a, b) => order.indexOf(a) - order.indexOf(b));

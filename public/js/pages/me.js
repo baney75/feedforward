@@ -114,11 +114,12 @@ async function signedInView(el) {
 
   el.innerHTML = `<div class="pg narrow-pg pg-me">
     <header class="me-h">
-      <button class="av-edit" id="avBtn" type="button" aria-label="Change your photo">${userAvatar(u, "l")}<span class="av-pen">${icon("share")}</span></button>
+      <button class="av-edit" id="avBtn" type="button" aria-label="Change your photo">${userAvatar(u, "l")}<span class="av-pen">${icon("pencil")}</span></button>
       <input type="file" id="avFile" accept="image/png,image/jpeg,image/webp" hidden>
       <div class="me-id">
         <h1>${esc(u.name || "Learner")}${badges(u)}</h1>
         <p class="muted">Joined ${fmtDate(u.created, { month: "long", year: "numeric" })}<span class="dot"></span><a class="link" href="/u/${esc(u.id)}">Public profile</a></p>
+        ${u.verified ? "" : `<p class="hint top">Not verified yet. Verified members can comment. You get the check by joining with a verified invite, or when staff review your account.</p>`}
         ${u.uploaded ? `<p class="photo-note"><button class="textbtn" id="avDel" type="button">${links.x ? "Use your X photo" : "Remove photo"}</button></p>` : ""}
       </div>
     </header>
@@ -142,18 +143,18 @@ async function signedInView(el) {
     </section>
 
     <section class="set" aria-labelledby="codeH">
-      <h2 class="set-h" id="codeH">Your code</h2>
+      <h2 class="set-h" id="codeH">Sign-in code</h2>
       <div class="code-row">
         <span class="mono code-mask" id="codeText" aria-live="polite">${mask()}</span>
         <div class="acts"><button class="btn" id="showCode" type="button" aria-pressed="false" aria-controls="qrBox">Show</button><button class="btn" id="copyCode" type="button">Copy</button></div>
       </div>
       <div class="qr-box" id="qrBox" hidden></div>
-      <p class="hint">Anyone with this code can use your account. Keep it private. <button class="textbtn" id="rotate" type="button">Rotate code</button></p>
+      <p class="hint">Use it to sign in on another device. Anyone with it can use your account. <button class="textbtn" id="rotate" type="button">Get a new code</button></p>
     </section>
 
     <section class="set" aria-labelledby="refH">
       <h2 class="set-h" id="refH">Invite friends</h2>
-      <div class="code-row"><span class="mono ref-link" title="${esc(refLink)}">/join/${esc(u.ref)}</span><div class="acts"><button class="btn" id="copyRef" type="button">Copy link</button></div></div>
+      <div class="code-row"><span class="mono ref-link" title="${esc(refLink)}">${esc(refLink.replace("https://", ""))}</span><div class="acts"><button class="btn" id="copyRef" type="button">Copy link</button></div></div>
       <p class="hint"><b class="mono">${refs}</b> ${refs === 1 ? "person has" : "people have"} joined with your link.</p>
     </section>
 

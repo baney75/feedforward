@@ -28,7 +28,7 @@ async function listView(el) {
   const pending = can("mod") ? skills.filter((s) => s.status === "pending") : [];
   const shown = skills.filter((s) => s.status === "approved" || (me && s.by.id === me.id && !pending.includes(s)));
   const row = (s) => `<li class="sk"><a href="/skills?id=${esc(s.id)}">
-      <span class="sk-top"><b class="mono">${esc(s.name)}</b>${s.status !== "approved" ? `<span class="kind">${s.status === "pending" ? "Waiting for review" : "Declined"}</span>` : ""}<span class="sk-likes muted mono" aria-label="${s.likes} likes">${s.likes ? icon("heart") + num(s.likes) : ""}</span></span>
+      <span class="sk-top"><b>${esc(s.name)}</b>${s.status !== "approved" ? `<span class="kind">${s.status === "pending" ? "Waiting for review" : "Declined"}</span>` : ""}<span class="sk-likes muted mono" aria-label="${s.likes} likes">${s.likes ? icon("heart") + num(s.likes) : ""}</span></span>
       <span class="sk-sum">${esc(s.summary)}</span>
       <span class="sk-meta muted">${userAvatar(s.by, "s")}${esc(s.by.name)}${badges(s.by)}${tagList(s.tags).length ? `<span class="dot"></span><span class="tag">${tagList(s.tags).map(esc).join(" ")}</span>` : ""}</span>
     </a></li>`;

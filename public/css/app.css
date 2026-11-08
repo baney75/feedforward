@@ -867,3 +867,54 @@ input[role="switch"]:checked::after { transform: translateX(18px); background: v
 .binfo .bmeta { font-size: 13px; color: var(--fg-2); }
 .rate-n { font-size: 13px; }
 @media (min-width: 1280px) { .prose { margin-inline: auto; } }
+
+/* ---------- Design council pass ---------- */
+/* Bars are solid: nothing shows through them. */
+@media (max-width: 719px) { .tabbar { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+.home .chips-wrap { background: var(--bg); backdrop-filter: none; -webkit-backdrop-filter: none; transition: top .22s cubic-bezier(.2, .8, .2, 1); }
+body.bar-away .home .chips-wrap { top: var(--safe-top); }
+/* The first chip snaps to the gutter, not the screen edge. */
+.chips { scroll-padding-inline: var(--s4); }
+@media (min-width: 720px) { .chips { scroll-padding-inline: 0; } }
+/* Touch targets. */
+@media (pointer: coarse), (max-width: 719px) { .btn { min-height: 44px; } .btn.sm { min-height: 40px; } }
+/* Plex Mono ships 400 and 500 only: never fake a bold. Counts read in the UI face with even digits. */
+b.mono, .mono b { font-weight: 500; }
+.post-f, .pcard small, .track .num, .meter, .labcard .lk, .muted.mono { font-family: var(--font); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.stats b { font-family: var(--font); font-variant-numeric: tabular-nums; }
+.meter i { background: color-mix(in srgb, var(--fg) 18%, var(--bg-3)); }
+.track-h .meter { max-width: 320px; margin-top: var(--s3); }
+/* Learn: one row of links on small screens, none beside a sidebar that already lists them. */
+@media (min-width: 1180px) { .hub { display: none; } }
+@media (max-width: 1179px) { .hub { display: flex; overflow-x: auto; scrollbar-width: none; gap: var(--s2); margin: 0 calc(-1 * var(--s4)) var(--s5); padding: 0 var(--s4); scroll-padding-inline: var(--s4); }
+  .hub::-webkit-scrollbar { display: none; } .hub a { flex: none; min-height: 44px; padding: 0 14px; border-radius: var(--r-pill); } }
+/* Search. */
+.page-search { margin-bottom: var(--s4); } .page-search input { width: 100%; height: 48px; border-radius: var(--r-pill); padding: 0 var(--s4); }
+@media (max-width: 719px) { .search-blank-h { display: none; } }
+.search-none { color: var(--fg-2); margin-top: var(--s4); max-width: 60ch; }
+@media (hover: none) { .kbd-only { display: none; } }
+/* Dialogs hold the page still. */
+html:has(dialog[open]) { overflow: hidden; }
+/* Sessions: live reads as live. */
+.ses-when b.now { color: #fff; background: var(--bad); padding: 2px 8px; border-radius: var(--r-pill); font-size: 12px; }
+/* Door. */
+.dw-cols { opacity: .22; filter: blur(10px); }
+:root[data-theme="light"] .dw-cols { opacity: .08; filter: blur(10px) grayscale(1); }
+@media (prefers-color-scheme: light) { :root:not([data-theme]) .dw-cols { opacity: .08; filter: blur(10px) grayscale(1); } }
+input[aria-invalid="true"] { border-color: var(--bad) !important; }
+#siMsg { margin-top: -4px; }
+.door-joinas { margin: 12px 0 0; font-size: 15px; color: var(--fg-2); } .door-joinas b { color: var(--fg); font-weight: 600; }
+.door-dead { display: grid; gap: 12px; } .door-dead .door-title { margin: 0; }
+.door-off { position: sticky; top: 0; z-index: 5; margin: 0; padding: 10px 16px; text-align: center; font-size: 14px; background: var(--bg-3); color: var(--fg); }
+.door-focus .door-peek, .door-focus .door-how { display: none; }
+@media (max-width: 719px) { .door-focus .door-h, .door-focus .door-sub, .door-focus .door-eyebrow { display: none; } }
+/* TV sign-in: the code and QR are the page, sized for a couch. */
+body.door-tv .door-h, body.door-tv .door-sub, body.door-tv .door-eyebrow, body.door-tv .door-how, body.door-tv .door-foot { display: none; }
+body.door-tv .door-pair { grid-template-columns: minmax(0, min(52vh, 480px)) 1fr; gap: clamp(24px, 5vw, 72px); }
+body.door-tv .door-title { font-size: clamp(24px, 5vh, 48px); }
+body.door-tv .door-pair ol, body.door-tv .door-hint { font-size: clamp(16px, 3vh, 28px); }
+body.door-tv .door-paircode { font-size: clamp(40px, 9vh, 80px); }
+@media (max-width: 719px) { body.door-tv .door-pair { grid-template-columns: 1fr; justify-items: center; } body.door-tv .door-qr { width: min(280px, 100%); } }
+/* TV: while the poster shows, say what's on and what you can do. */
+#tv.covered .osd, #tv.covered .tvtop { opacity: 1; }
+@media (orientation: portrait) { .tvcover img { object-fit: contain; } }

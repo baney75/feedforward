@@ -51,7 +51,7 @@ const canReply = () => signedIn() && !!user() && (user().verified || can("contri
 export async function comments(el, item) {
   el.innerHTML = `<section class="comments" aria-label="Comments"><div class="sec-h"><h2>Comments</h2><span class="muted" id="cn"></span></div>
     ${canReply() ? `<form class="compose"><label class="sr-only" for="cbody">Add a comment</label><textarea id="cbody" rows="2" maxlength="1500" placeholder="Add a thoughtful comment" required></textarea><button class="btn primary" type="submit">Post</button></form>`
-      : `<p class="muted signin-line">Replies are for verified members, so every voice here is a real person. Talk it through in your communities any time.</p>`}
+      : `<p class="muted signin-line">Only verified members can comment, so every voice here is a real person. <a class="link" href="/me">How to get verified</a> or <a class="link" href="/chat">talk it through in Chat</a>.</p>`}
     <div class="clist"><div class="skel" role="status" aria-label="Loading comments"><i></i><i></i><i></i></div></div></section>`;
   const list = el.querySelector(".clist");
   const me = user();

@@ -70,15 +70,15 @@ export async function render(el) {
     // Past sessions are a record: no RSVP, no Join, no Cancel.
     if (over(s)) return `<article class="ses past" id="${esc(s.id)}"><p class="ses-when"><time datetime="${new Date(s.starts * 1000).toISOString()}">${esc(when(s))}</time><span class="dot"></span>${s.cancelled ? "Cancelled" : "Ended"}</p><h2>${esc(s.title)}</h2><p class="ses-host"><a href="/u/${esc(s.host.id)}">${userAvatar(s.host, "s")}<b>${esc(s.host.name)}</b></a>${badges(s.host)}</p></article>`;
     return `<article class="ses${s.cancelled ? " off" : ""}" id="${esc(s.id)}">
-      <p class="ses-when"><time datetime="${new Date(s.starts * 1000).toISOString()}">${esc(when(s))}</time><span class="dot"></span>${s.minutes} min${tag ? `<span class="dot"></span><b class="${live(s) ? "now" : ""}">${tag}</b>` : ""}</p>
+      <p class="ses-when"><time datetime="${new Date(s.starts * 1000).toISOString()}">${esc(when(s))}</time><span class="dot"></span>${s.minutes} min${tag ? `<span class="dot"></span><b class="${live(s) ? "now" : ""}">${tag}</b>${mine ? `<span class="dot"></span><span>You're hosting</span>` : ""}` : ""}</p>
       <h2>${esc(s.title)}</h2>
       ${s.about ? `<p class="ses-about">${esc(s.about)}</p>` : ""}
       <p class="ses-host"><a href="/u/${esc(s.host.id)}">${userAvatar(s.host, "s")}<b>${esc(s.host.name)}</b></a>${badges(s.host)}<span class="dot"></span><span>${s.going} going</span></p>
       ${s.cancelled ? "" : `<div class="acts">
-        ${live(s) ? `<a class="btn primary" href="${esc(s.link)}" target="_blank" rel="noopener noreferrer">${icon("ext")}Join</a>` : ""}
-        ${s.mine ? `<button class="btn" type="button" data-unrsvp="${esc(s.id)}" aria-pressed="true">${icon("check")}Going</button>` : `<button class="btn" type="button" data-rsvp="${esc(s.id)}">RSVP</button>`}
+        ${live(s) ? `<a class="btn primary" href="${esc(s.link)}" target="_blank" rel="noopener noreferrer">${icon("ext")}${mine ? "Start session" : "Join"}</a>` : ""}
+        ${live(s) || mine ? "" : s.mine ? `<button class="btn" type="button" data-unrsvp="${esc(s.id)}" aria-pressed="true">${icon("check")}Going</button>` : `<button class="btn" type="button" data-rsvp="${esc(s.id)}">RSVP</button>`}
         <button class="btn" type="button" data-chat="${esc(s.id)}" aria-expanded="false" aria-controls="chat-${esc(s.id)}">${icon("chat")}Chat</button>
-        ${mine || can("mod") ? `<button class="textbtn danger ses-cancel" type="button" data-cancel="${esc(s.id)}">Cancel</button>` : ""}
+        ${mine || can("mod") ? `<button class="textbtn danger ses-cancel" type="button" data-cancel="${esc(s.id)}">Cancel session</button>` : ""}
       </div>
       <div class="ses-chat" id="chat-${esc(s.id)}" hidden></div>`}
     </article>`;

@@ -28,7 +28,7 @@ export async function render(el, qs, parts) {
   const joinCode = parts[0] === "join" && parts[1] ? parts[1] : "";
   const pending = store.get("application");
   // A TV gets the pairing screen: scan with your phone, approve, done.
-  let tab = isTV() ? "pair" : joinCode ? "invite" : pending ? "signin" : "invite";
+  let tab = isTV() ? "pair" : joinCode ? "invite" : pending ? "apply" : "invite";
   if (tab === "pair") document.body.classList.add("door-tv");
 
   el.innerHTML = `<div class="door-pg">
@@ -54,8 +54,7 @@ export async function render(el, qs, parts) {
     </section>
     <section class="door-how" aria-label="How it works">
       <ol>
-        <li><b>Get an invite, or apply</b><span>A member's link gets you straight in. Applications are read by people, not bots.</span></li>
-        <li><b>Keep your code</b><span>Four words and two digits. It's your account on every device: no email, no password.</span></li>
+                <li><b>Keep your code</b><span>Four words and two digits. It's your account on every device: no email, no password.</span></li>
         <li><b>Learn</b><span>Videos, Shorts, posts, labs and live sessions from the best teachers in AI.</span></li>
       </ol>
     </section>
@@ -84,6 +83,7 @@ export async function render(el, qs, parts) {
   const show = (k, opts) => {
     tab = k;
     el.querySelector(".door-signin").hidden = k === "signin";
+    el.querySelector(".door-pg")?.classList.toggle("door-focus", k !== "invite" || !!(opts && opts.code));
     PANES[k](pane, opts);
     if (opts && opts.focus) pane.querySelector("input, textarea")?.focus();
   };
@@ -91,6 +91,8 @@ export async function render(el, qs, parts) {
   el.addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) { e.preventDefault(); show(b.dataset.tab, { focus: true }); } });
   goTab = show;
   show(tab, { code: joinCode });
+  const net = () => { let b = el.querySelector(".door-off"); if (navigator.onLine) return b?.remove(); if (!b) el.querySelector(".door-pg").insertAdjacentHTML("afterbegin", `<p class="door-off" role="status">You're offline. Apply and Join will work again once you reconnect.</p>`); };
+  addEventListener("online", net); addEventListener("offline", net); net();
   return () => {};
 }
 
@@ -148,7 +150,10 @@ async function withCheck(btn, label, fn) {
   try { return await fn(set); }
   finally { btn.disabled = false; btn.classList.remove("checking"); btn.style.removeProperty("--p"); btn.innerHTML = was; }
 }
-const fail = (box, e) => { box.innerHTML = `<p class="door-err" role="alert">${esc(e.message || "Something went wrong. Try again.")}</p>`; };
+const NET = /load failed|failed to fetch|networkerror|network error/i;
+const human = (e) => (e instanceof TypeError || NET.test(e.message || "") ? "Couldn't reach Feedforward. Check your connection and try again. Your answers are still here." : e.message || "Something went wrong. Try again.");
+const fail = (box, e) => { box.innerHTML = `<p class="door-err" role="alert">${esc(human(e))}</p>`; };
+const onlyPhone = () => matchMedia("(max-width: 719px)").matches;
 
 function codeOf(input) {
   const s = String(input || "").trim();
@@ -160,7 +165,7 @@ function invitePane(pane, { code = "" } = {}) {
   if (!code) {
     // A stranger's main path is applying; an invite link or a code is the quick side door.
     pane.innerHTML = `<button class="btn primary door-go door-apply-main" type="button" data-tab="apply">Apply for an invite</button>
-    <p class="door-hint door-center">Takes a minute. A person reviews every application, usually within a day. You get your code right away and sign in with it once you're approved: no email needed.</p>
+    <p class="door-hint door-center">Takes a minute. A person reviews every application, usually within a day.</p>
     <div class="door-or" role="separator"><span>Already invited?</span></div>
     <form class="door-form door-row" id="invForm">
       <label class="door-field door-span"><span class="sr-only">Invite link or code</span>
@@ -180,15 +185,15 @@ function invitePane(pane, { code = "" } = {}) {
   pane.innerHTML = `<div class="door-loading">Checking your invite...</div>`;
   inviteInfo(code).then((inv) => {
     const by = inv.by || {}, named = by.name && by.name !== "Learner";
-    const grants = [inv.role && inv.role !== "user" && ROLE[inv.role], inv.teach && inv.teach[0].toUpperCase() + inv.teach.slice(1), inv.verified && "Verified"].filter(Boolean);
+    const joinAs = (inv.role && inv.role !== "user" && ROLE[inv.role]) || (inv.teach && inv.teach[0].toUpperCase() + inv.teach.slice(1)) || "";
     pane.innerHTML = `<div class="door-invite">
         <div class="door-from">${userAvatar(by, "l")}<div><p class="door-kicker">You're invited</p><p class="door-who">${named ? `${esc(by.name)}${badges(by)}` : "A member"} <span>invited you</span></p></div></div>
-        ${grants.length ? `<p class="door-grants">${grants.map((g) => `<span>${esc(g)}</span>`).join("")}</p>` : ""}
+        ${joinAs ? `<p class="door-joinas">You'll join as a <b>${esc(joinAs.toLowerCase())}</b>.</p>` : ""}
       </div>
       <form class="door-form" id="joinForm">
         <label class="door-field"><span>Your name <i>optional</i></span><input class="input" name="name" maxlength="40" autocomplete="name" placeholder="How people will see you"></label>
         <input class="door-trap" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-        <button class="btn primary door-go" type="submit">Accept invite</button>
+        <button class="btn primary door-go" type="submit">${joinAs ? `Join as ${esc(joinAs.toLowerCase())}` : "Accept invite"}</button>
         <div class="door-msg" aria-live="polite"></div>
       </form>`;
     let ready = prepare();
@@ -206,8 +211,8 @@ function invitePane(pane, { code = "" } = {}) {
       }).catch((err) => { sessionStorage.removeItem("ff:hold"); fail(msg, err); });
     };
   }).catch((e) => {
-    pane.innerHTML = `<div class="door-msg"></div><p class="door-hint"><button class="textbtn" type="button" data-other>Use a different invite</button> or <button class="textbtn" type="button" data-apply>apply</button>.</p>`;
-    fail($(".door-msg", pane), e);
+    const old = /expired|used up|turned off/i.test(e.message || "");
+    pane.innerHTML = `<div class="door-dead"><h2 class="door-title">${old ? "This invite has ended" : "This invite link doesn't work"}</h2><p class="door-hint">${esc(old ? e.message.replace(/ Ask for a new one\./, "") + " The person who sent it can make a new one." : "Make sure you copied all of it.")}</p><button class="btn primary door-go" type="button" data-apply>Apply instead</button><button class="btn door-go" type="button" data-other>I have another invite</button></div>`;
     pane.querySelector("[data-other]").onclick = () => { history.replaceState(null, "", "/"); invitePane(pane); };
     pane.querySelector("[data-apply]").onclick = () => goTab("apply");
   });
@@ -233,24 +238,25 @@ function welcome(pane, code) {
 function signinPane(pane) {
   const pending = store.get("application");
   const canScan = "BarcodeDetector" in window && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
-  pane.innerHTML = `<h2 class="door-title">Sign in</h2>${pending ? `<p class="door-pending"><b>Your application is in review.</b> Sign in with its code to check. It works the moment you're approved.</p>` : ""}
+  pane.innerHTML = `<h2 class="door-title">Sign in</h2>${pending ? `<p class="door-pending"><b>Application received.</b> A person reviews it, usually within a day. Your code works the moment you're approved.</p>` : ""}
     <form class="door-form" id="siForm">
       <label class="door-field"><span>Your code</span>
         <input class="input mono" name="code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="otter-maple-rocket-acorn-42" value="${pending ? esc(pending.code) : ""}" required></label>
+      <div class="door-msg" id="siMsg" aria-live="polite"></div>
       <button class="btn primary door-go" type="submit">Sign in</button>
       ${canScan ? `<button class="btn door-scan" type="button" id="scan">Scan a QR code</button>` : ""}
-      <button class="btn door-scan" type="button" data-tab="pair">Sign in with my phone</button>
-      <p class="door-hint">Signed in on another device? Open your profile there, show your QR code, and point this phone's camera at it.</p>
-      <div class="door-msg" aria-live="polite"></div>
+      ${onlyPhone() ? "" : `<button class="btn door-scan" type="button" data-tab="pair">Sign in with my phone</button>`}
+      <p class="door-hint">${onlyPhone() ? "Signed in on another device? Show the QR code from your profile there, and scan it with this phone's camera." : "Lost your code? Open your profile on a device that's signed in. It's shown there."}</p>
     </form>
     <p class="door-back"><button class="textbtn" type="button" data-tab="invite">I have an invite</button><span class="door-sep" aria-hidden="true"></span><button class="textbtn" type="button" data-tab="apply">Apply</button></p>`;
-  const msg = $(".door-msg", pane), form = $("#siForm", pane);
+  const msg = $("#siMsg", pane), form = $("#siForm", pane);
+  form.code.addEventListener("input", () => form.code.removeAttribute("aria-invalid"));
   let ready = prepare();
   const go = (code) => withCheck(form.querySelector(".door-go"), "Checking you're human", async (p) => {
     const r = ready; ready = prepare();   // each challenge is single use
     try { await signIn(code, { onProgress: p, ready: r }); store.set("application", null); }
     catch (e) { if (e.status === 409) { msg.innerHTML = `<p class="door-pending" role="status">${esc(e.message)}</p>`; return; } throw e; }
-  }).catch((e) => fail(msg, e));
+  }).catch((e) => { form.code.setAttribute("aria-invalid", "true"); fail(msg, e); });
   form.onsubmit = (e) => { e.preventDefault(); msg.innerHTML = ""; go(form.code.value); };
   const scan = $("#scan", pane);
   if (scan) scan.onclick = () => scanQR().then((text) => {
@@ -290,7 +296,7 @@ function applyPane(pane) {
   if (pending) {
     pane.innerHTML = `<div class="door-welcome"><p class="door-kicker">Application in review</p><h2>We'll let you in soon.</h2>
       <p class="door-code mono">${esc(pending.code)}</p>
-      <p class="door-hint">This code is your account. It signs you in the moment you're approved, so keep it. Check any time from Sign in.</p>
+      <p class="door-hint">Save this code. It's your account, and nobody can recover it. A person reviews each application, usually within a day. Come back and sign in with it any time.</p>
       <div class="door-acts"><button class="btn" type="button" id="copyCode">Copy code</button><button class="btn primary" type="button" id="check">Check now</button></div>
       <p class="door-hint"><button class="textbtn" type="button" id="again">Start a new application</button></p></div>`;
     $("#copyCode", pane).onclick = () => copy(pending.code, "Code copied");
@@ -303,7 +309,7 @@ function applyPane(pane) {
     <label class="door-field"><span>Your name</span><input class="input" name="name" maxlength="40" autocomplete="name" required></label>
     <label class="door-field"><span>What do you want to learn or build?</span>
       <textarea class="input" name="reason" rows="3" minlength="20" maxlength="600" required placeholder="I want to run models on my own GPU and understand how they work."></textarea></label>
-    <details class="door-more"><summary>Add your X or GitHub <i>optional, helps us say yes</i></summary>
+    <details class="door-more"><summary>Add your X or GitHub <i>(optional, helps us say yes)</i></summary>
     <div class="door-two">
       <label class="door-field"><span>X handle</span><input class="input" name="x" maxlength="16" autocomplete="off" autocapitalize="off" placeholder="@you"></label>
       <label class="door-field"><span>GitHub</span><input class="input" name="github" maxlength="40" autocomplete="off" autocapitalize="off" placeholder="you"></label>

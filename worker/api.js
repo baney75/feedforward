@@ -242,7 +242,7 @@ on("POST", "/api/login", async (req, env) => {
     const a = await env.DB.prepare("SELECT status FROM applications WHERE code_hash = ?").bind(h).first();
     if (a && a.status === "pending") return json({ error: "Your application is still being reviewed. This code will let you in the moment it's approved.", status: "pending" }, 409);
     if (a && a.status === "denied") return json({ error: "This application wasn't approved. A member's invite link still gets you in.", status: "denied" }, 403);
-    return err(404, "No account has that code.");
+    return err(404, "That code doesn't match an account. Check the four words and two digits.");
   }
   if (u.banned) return err(403, "This account is suspended.");
   const token = await session(env, u.id, b.device);
@@ -337,6 +337,7 @@ on("GET", "/api/pair/poll", async (req, env) => {
 on("GET", "/api/pair/([A-Za-z0-9]{6})", async (req, env, u, [code]) => {
   if (!u) return err(401, "Sign in first.");
   const p = await env.FRESH.get("pair:" + code.toUpperCase(), "json");
+  if (!p) return err(404, "No screen is showing that code. Check it and try again.");
   if (!p || p.state !== "waiting") return err(404, "That code has expired. Show a new one on the other screen.");
   return json({ device: p.device, at: p.at });
 });

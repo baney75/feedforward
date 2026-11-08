@@ -27,6 +27,7 @@ const P = {
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   shuffle: '<path d="M16 4h4v4"/><path d="M4 20 20 4"/><path d="M20 16v4h-4"/><path d="m14.5 14.5 5.5 5.5"/><path d="M4 4l5 5"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  pencil: '<path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1z"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.5"/>',
   shorts: '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="m10.5 9.2 4 2.8-4 2.8z" fill="currentColor"/>',
   books: '<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H9v18H5.5A1.5 1.5 0 0 1 4 19.5z"/><path d="M9 3h3.5A1.5 1.5 0 0 1 14 4.5V21H9"/><path d="m14.5 5.2 3.4-.9a1.5 1.5 0 0 1 1.8 1.1l3.4 12.7a1.5 1.5 0 0 1-1 1.8l-3.4.9"/>',

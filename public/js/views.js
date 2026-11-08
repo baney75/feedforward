@@ -52,7 +52,7 @@ export function home(el, qs) {
   const tracks = (D.learn.tracks || []).slice(0, 4).map(trackCard).join("");
   const chipBar = chips(topic, { extra: [{ v: -2, label: "Newest" }] });
 
-  const wire = `<aside class="wire-rail" aria-label="The Wire"><div class="sec-h"><h2>The Wire</h2><a href="/wire">See all</a></div><div id="wireList">${topPosts({ topic: tIdx, limit: 30 }).map(postCard).join("")}</div></aside>`;
+  const wire = `<aside class="wire-rail" aria-label="Posts"><div class="sec-h"><h2>Posts</h2><a href="/wire">See all</a></div><div id="wireList">${topPosts({ topic: tIdx, limit: 30 }).map(postCard).join("")}</div></aside>`;
   // Members are already in: no pitch, no stats. Topics on top, then where you left off, then today's picks.
   void hello;
   el.innerHTML = `<div class="home"><div class="home-main">
@@ -82,7 +82,7 @@ export function home(el, qs) {
       html += videoCard(v);
       if (!wideWire() && (count + k + 1) % (innerWidth < 720 ? 6 : 12) === (innerWidth < 720 ? 4 : 8)) {
         const ps = topPosts({ topic: tIdx, limit: 3, offset: postOff }); postOff += 3;
-        if (ps.length) html += `<section class="feed-break inline-posts" aria-label="From the Wire"><div class="sec-h"><h2>From the Wire</h2><a href="/wire">See all</a></div>${ps.map(postCard).join("")}</section>`;
+        if (ps.length) html += `<section class="feed-break inline-posts" aria-label="Latest posts"><div class="sec-h"><h2>Latest posts</h2><a href="/wire">See all</a></div>${ps.map(postCard).join("")}</section>`;
       }
     });
     count += vids.length;
@@ -175,7 +175,7 @@ export function watch(el, qs, id) {
       ${p ? `<div class="why"><span class="muted">Why ${esc(p.name)} is on Feedforward</span><br>${esc(p.why)}</div>` : ""}
       <section class="upnext-inline" aria-label="Up next"><div class="sec-h" style="margin-top:0"><h2>Up next</h2></div><div class="shelf">${upNext.slice(0, 10).map((x) => videoCard(x)).join("")}</div></section>
       <div id="cmts"></div>
-      ${posts.length ? `<div class="sec-h"><h2>${esc(p.name)} on the Wire</h2><a href="/p/${p.slug}?tab=posts">All posts</a></div>${posts.map(postCard).join("")}` : ""}
+      ${posts.length ? `<div class="sec-h"><h2>Posts by ${esc(p.name)}</h2><a href="/p/${p.slug}?tab=posts">All posts</a></div>${posts.map(postCard).join("")}` : ""}
     </div>
     <aside class="side"><div class="side-h"><h2>Up next</h2><label class="toggle"><input type="checkbox" id="autoplay" ${store.get("autoplay", true) !== false ? "checked" : ""}> Autoplay</label></div>${upNext.map((x) => videoCard(x, { row: true })).join("")}</aside>
   </div>`;
@@ -256,12 +256,12 @@ export function peoplePage(el) {
 export function wirePage(el, qs) {
   const topic = topicFromQuery(qs);
   const sort = qs.get("sort") || "best";
-  setTitle("The Wire");
+  setTitle("Posts");
   el.innerHTML = `<div class="wire-wrap"><div style="min-width:0">
-      <div class="page-h"><div><h1>The Wire</h1><p>Posts from the people on Feedforward, kept only when they're about AI, computer science or making. No politics, no drama.</p></div>
+      <div class="page-h"><div><h1>Posts</h1><p>Posts from the people on Feedforward, kept only when they're about AI, computer science or making. No politics, no drama.</p></div>
       <div class="seg" role="group" aria-label="Sort">${[["best", "Best"], ["latest", "Latest"]].map(([k, l]) => `<button data-sort="${k}" aria-pressed="${sort === k}">${l}</button>`).join("")}</div></div>
       ${chips(topic)}<div id="list" style="margin-top:8px"></div><div id="more" style="height:1px"></div></div>
-    <aside><div class="box"><h2>On the Wire</h2>${D.people.filter((p) => p.np).sort((a, b) => b.np - a.np).slice(0, 12).map((p) => `<a class="pcard row" href="/p/${p.slug}">${avatar(p, "s")}<div style="min-width:0"><b style="font-size:15px">${esc(p.name)}</b></div></a>`).join("")}<a class="link" href="/people" style="font-size:14px">Everyone</a></div></aside></div>`;
+    <aside><div class="box"><h2>Most active</h2>${D.people.filter((p) => p.np).sort((a, b) => b.np - a.np).slice(0, 12).map((p) => `<a class="pcard row" href="/p/${p.slug}">${avatar(p, "s")}<div style="min-width:0"><b style="font-size:15px">${esc(p.name)}</b></div></a>`).join("")}<a class="link" href="/people" style="font-size:14px">Everyone</a></div></aside></div>`;
   bindChips(el);
   el.querySelector(".seg").onclick = (e) => { const b = e.target.closest("[data-sort]"); if (b) setParam("sort", b.dataset.sort === "best" ? null : b.dataset.sort); };
   let off = 0;
@@ -293,8 +293,8 @@ function labCard(l) {
 }
 export function learnPage(el) {
   setTitle("Learn");
-  el.innerHTML = `<div class="page-h"><div><h1>Learn</h1><p>Short tracks that take you from zero to building, using the best videos on Feedforward in the right order. Labs let you poke at the ideas yourself. Progress stays on this device.</p></div></div>
-    <nav class="hub" aria-label="More ways to learn">${[["/books", "books", "Free books"], ["/research", "learn", "Research papers"], ["/dictionary", "search", "Dictionary"], ["/sessions", "tv", "Live sessions"], ["/skills", "labs", "Agent skills"], ["/repos", "topic", "Top repos"], ["/chat", "chat", "Chat"], ["/agents", "info", "Connect an agent"]].map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("")}</nav>
+  el.innerHTML = `<div class="page-h"><div><h1>Learn</h1><p>Short tracks that take you from zero to building, using the best videos on Feedforward in the right order. Labs let you poke at the ideas yourself.</p></div></div>
+    <nav class="hub" aria-label="More ways to learn">${[["/chat", "chat", "Chat"], ["/people", "people", "People"], ["/books", "books", "Books"], ["/research", "learn", "Research"], ["/dictionary", "search", "Dictionary"], ["/sessions", "tv", "Live sessions"], ["/skills", "labs", "Skills"], ["/repos", "topic", "Repos"], ["/agents", "info", "Connect an agent"]].map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("")}</nav>
     <div class="tracks">${D.learn.tracks.map(trackCard).join("")}</div>
     <div class="sec-h"><h2>Labs</h2><span class="muted" style="font-size:14px">Interactive. Runs in your browser.</span></div>
     <div class="labs">${D.learn.labs.map(labCard).join("")}</div>`;
@@ -307,7 +307,7 @@ export function trackPage(el, qs, slug) {
   const render = () => {
     const [d, n] = trackProgress(t);
     el.innerHTML = `<nav class="crumbs"><a href="/learn">Learn</a>${icon("right")}<span>Track ${D.learn.tracks.indexOf(t) + 1}</span></nav>
-      <div class="page-h"><div><h1>${esc(t.title)}</h1><p>${esc(t.blurb)}</p></div><div style="min-width:220px">${meter(d, n)}</div></div>
+      <div class="page-h track-h"><div><h1>${esc(t.title)}</h1><p>${esc(t.blurb)}</p>${meter(d, n)}</div></div>
       <ol class="steps">${t.steps.map((s, k) => step(t, s, k)).join("")}</ol>
       ${t.quiz && t.quiz.length ? `<section class="quiz"><div class="sec-h"><h2>Check yourself</h2></div>${t.quiz.map((q, k) => quiz(t, q, k)).join("")}</section>` : ""}`;
   };
@@ -389,8 +389,8 @@ export function searchPage(el, qs) {
   const input = document.getElementById("q"); if (input && input.value !== q) input.value = q;
   const r = search(q);
   const none = !r.people.length && !r.videos.length && !r.posts.length;
-  el.innerHTML = `<div class="results"><div class="page-h"><div><h1>${q ? `Results for "${esc(q)}"` : "Search"}</h1></div></div>
-    ${q && none ? `<p class="empty">Nothing matched. Try fewer words, or a name like "Karpathy" or a topic like "quantization".</p>` : ""}
+  el.innerHTML = `<div class="results"><div class="page-h${q ? "" : " search-blank-h"}"><div><h1>${q ? `Results for "${esc(q)}"` : "Search"}</h1></div></div>${q ? "" : `<form class="only-phone page-search" role="search" onsubmit="event.preventDefault();const v=this.q.value.trim();if(v)location.assign('/search?q='+encodeURIComponent(v))"><input class="input" name="q" type="search" placeholder="Search videos, people and posts" aria-label="Search" enterkeyhint="search"></form>`}
+    ${q && none ? `<p class="search-none">Nothing matched. Try fewer words, or <a class="link" href="/search?q=karpathy">Karpathy</a> or <a class="link" href="/search?q=quantization">quantization</a>.</p>` : ""}
     ${!q ? `<p class="muted">Try <a class="link" href="/search?q=llama.cpp">llama.cpp</a>, <a class="link" href="/search?q=attention">attention</a>, <a class="link" href="/search?q=claude code">claude code</a> or <a class="link" href="/search?q=fusion 360">fusion 360</a>.</p>` : ""}
     ${r.people.length ? `<h2>People</h2><div class="people">${r.people.map(personCard).join("")}</div>` : ""}
     ${r.videos.length ? `<h2>Videos</h2><div class="grid">${r.videos.map((v) => videoCard(v)).join("")}</div>` : ""}
@@ -427,13 +427,13 @@ export function aboutPage(el) {
     <p>Feedforward is a learning feed for AI. It gathers the full video libraries, the best Shorts and the best recent posts of ${D.people.filter(Boolean).length} people who teach AI well, build it in the open, or run it on their own machines. Then it filters out everything that isn't about AI, computer science or making things.</p>
     <p>The name has two meanings. It's a feed that moves you forward, and a feedforward network is the first neural network everyone learns: input goes in, flows layer by layer, and an answer comes out. Feedforward is invite-only, and your account is a code: no email, no password. No ads, no tracking, and no algorithm trained on you. What you watch and save syncs only to your own account.</p>
     <h2>How the feed works</h2>
-    <ul><li>Every channel's full upload history is listed with <a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a>. Posts come from each person's public X timeline.</li>
-    <li>A language model labels every video title and post by topic and teaching value. Channels that aren't purely technical are filtered to their AI and computer science uploads. Politics, religion, ads and personal posts are dropped, with a word list as a second net.</li>
-    <li>"For you" gives every person an equal share, then picks the better of a few random draws, so small channels aren't buried by big ones. Nothing you've watched repeats.</li>
-    <li>A small server job checks every channel and account for new uploads and posts throughout the day, so the feed stays current.</li></ul>
+    <ul><li>Every video from every person listed here, updated through the day.</li>
+    <li>Off-topic videos and posts are filtered out, so politics, ads and personal posts never reach you.</li>
+    <li>"For you" gives small channels the same chance as big ones. Nothing you've watched repeats.</li>
+</ul>
     <p class="muted" style="font-size:15px">Right now: ${num(m.videos)} videos, ${num(m.posts)} posts. Catalog built ${new Date(m.built * 1000).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}.${D.fresh ? ` ${D.fresh} new since then.` : ""}</p>
-    <h2>Keyboard</h2>
-    <ul class="keys"><li><kbd>/</kbd> search</li><li><kbd>T</kbd> TV mode: one great video after another</li><li><kbd>Shift</kbd> + <kbd>N</kbd> play something new</li><li>In TV mode: <kbd>N</kbd> next, <kbd>P</kbd> previous, <kbd>Space</kbd> pause, <kbd>←</kbd> <kbd>→</kbd> 10 seconds, <kbd>1</kbd> to <kbd>9</kbd> jump, <kbd>Esc</kbd> exit</li></ul>
+    <h2 class="kbd-only">Keyboard</h2>
+    <ul class="keys kbd-only"><li><kbd>/</kbd> search</li><li><kbd>T</kbd> TV mode: one great video after another</li><li><kbd>Shift</kbd> + <kbd>N</kbd> play something new</li><li>In TV mode: <kbd>N</kbd> next, <kbd>P</kbd> previous, <kbd>Space</kbd> pause, <kbd>←</kbd> <kbd>→</kbd> 10 seconds, <kbd>1</kbd> to <kbd>9</kbd> jump, <kbd>Esc</kbd> exit</li></ul>
     <h2>Install it</h2>
     <p>Feedforward is a web app. On a phone, use your browser's Share or menu button and choose Add to Home Screen. On a computer, use the install button in the address bar. It opens like an app and remembers what you saved.</p>
     <p><button class="btn primary" id="aboutInstall">${icon("install")}Install Feedforward</button></p>

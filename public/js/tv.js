@@ -87,7 +87,7 @@ function load(v) {
   store.watched(v.id);
   // Our poster covers YouTube's start screen until the video is really playing.
   const cover = el.querySelector(".tvcover");
-  if (cover) { cover.querySelector("img").src = `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`; el.classList.add("covered"); }
+  if (cover) { const im = cover.querySelector("img"); im.onerror = () => { im.onerror = null; im.src = `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`; }; im.src = `https://i.ytimg.com/vi/${v.id}/maxresdefault.jpg`; el.classList.add("covered"); }
   if (tv.player && tv.player.loadVideoById) tv.player.loadVideoById(v.id);
   showUI();
 }
