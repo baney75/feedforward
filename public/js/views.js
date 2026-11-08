@@ -38,9 +38,6 @@ export function home(el, qs) {
   const tIdx = topic >= 0 ? topic : -1;
   setTitle(topic >= 0 ? TOPICS[topic].label : "");
   const m = D.meta;
-  const hello = `<section class="hello"><div><h1>Learn AI from the people <em>building it.</em></h1>
-    <p>Videos, posts, free books and hands-on labs from people who teach AI well, build it in the open, or run it at home. No ads, no politics.</p></div>
-    <div class="stats" aria-live="polite"><div><b data-count="people">${D.people.filter((p) => p && p.i < 10000).length}</b>people</div><div><b data-count="videos">${D.meta.videos}</b>videos</div><div><b data-count="shorts">${D.meta.shorts || 0}</b>shorts</div><div><b data-count="learners">0</b>learners</div></div></section>`;
   const disliked = new Set([...mine.dislikes].filter((k) => k.startsWith("v:")).map((k) => k.slice(2)));
   const picks = todaysPicks(8, tIdx).filter((v) => !disliked.has(v.id)).slice(0, 4);
   const hero = picks.length ? `<section class="hero" aria-label="Today's picks">${videoCard(picks[0], { big: true })}<div class="hero-side">${picks.slice(1).map((v) => videoCard(v, { row: true })).join("")}</div></section>` : "";
@@ -54,7 +51,6 @@ export function home(el, qs) {
 
   const wire = `<aside class="wire-rail" aria-label="Posts"><div class="sec-h"><h2>Posts</h2><a href="/wire">See all</a></div><div id="wireList">${topPosts({ topic: tIdx, limit: 30 }).map(postCard).join("")}</div></aside>`;
   // Members are already in: no pitch, no stats. Topics on top, then where you left off, then today's picks.
-  void hello;
   el.innerHTML = `<div class="home"><div class="home-main">
       <div class="chips-wrap">${chipBar}</div>
       ${topic === -1 ? keepGoing() || startHere() : ""}
@@ -65,7 +61,6 @@ export function home(el, qs) {
     </div>${wire}</div>`;
   bindChips(el);
   el.querySelector('.chip[aria-pressed="true"]')?.scrollIntoView({ inline: "center", block: "nearest" });
-  const stopCounters = liveCounters(el);
   const feed = $("#feed", el);
   let count = 0, postOff = 0, gen = D.gen, sampled = next;
   const shown = new Set(exclude);
@@ -92,7 +87,7 @@ export function home(el, qs) {
   add();
   $("#reshuffle", el).onclick = () => dispatchEvent(new PopStateEvent("popstate"));
   const stopFeed = infinite($("#more", el), add);
-  return () => { stopFeed(); stopCounters(); };
+  return () => { stopFeed(); };
 }
 
 // For someone who hasn't started a track: one clear way to begin, above the videos.
@@ -116,37 +111,6 @@ function keepGoing() {
     next = `<a class="start-here" href="${href}"><span class="topic-tag">Step ${k + 1} of ${n}</span><b>${esc(t.title)}</b><span class="muted">${meter(d, n)}</span><span class="btn primary">Continue${icon("right")}</span></a>`;
   }
   return `${next}${hist.length ? `<div class="sec-h"><h2>Keep watching</h2>${store.streak() ? `<span class="streak">${icon("flame")}${store.streak()}-day streak</span>` : ""}</div><div class="shelf">${hist.map((v) => videoCard(v)).join("")}</div>` : ""}`;
-}
-
-const shownCounts = {};
-// Live counters: count up from zero on first paint, then refresh every minute from /api/pulse.
-function liveCounters(el) {
-  const els = [...el.querySelectorAll("[data-count]")];
-  if (!els.length) return () => {};
-  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const show = (b, n) => (b.textContent = n >= 10000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, "") + "K" : n.toLocaleString());
-  const tween = (b, to) => {
-    const from = +(b.dataset.now || 0);
-    shownCounts[b.dataset.count] = to;
-    if (still || from === to) { b.dataset.now = to; return show(b, to); }
-    const t0 = performance.now(), dur = 1100;
-    const step = (t) => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 4); show(b, Math.round(from + (to - from) * e)); if (k < 1) requestAnimationFrame(step); else b.dataset.now = to; };
-    requestAnimationFrame(step);
-  };
-  const base = Object.fromEntries(els.map((b) => [b.dataset.count, +b.textContent || 0]));
-  // Count up once per visit. After that a re-render shows the last numbers at once, so nothing jumps.
-  els.forEach((b) => { if (shownCounts[b.dataset.count] != null) { b.dataset.now = shownCounts[b.dataset.count]; show(b, shownCounts[b.dataset.count]); } });
-  els.forEach((b) => tween(b, shownCounts[b.dataset.count] ?? base[b.dataset.count]));
-  const pull = async () => {
-    try {
-      const p = await (await fetch("/api/pulse")).json();
-      const val = { people: base.people + (p.extraPeople || 0), videos: base.videos + (D.fresh ? D.videos.filter((v) => v.fresh).length : 0), shorts: base.shorts, learners: p.learners || 0 };
-      els.forEach((b) => tween(b, val[b.dataset.count]));
-    } catch {}
-  };
-  pull();
-  const timer = setInterval(() => { if (!document.hidden) pull(); }, 60000);
-  return () => clearInterval(timer);
 }
 
 // ---------- Watch ----------

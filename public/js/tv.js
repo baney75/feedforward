@@ -114,7 +114,7 @@ export async function openTV(startId) {
       playerVars: { autoplay: 1, rel: 0, playsinline: 1, controls: 0, modestbranding: 1, iv_load_policy: 3 },
       events: { onStateChange: (e) => { if (e.data === 1) $tv().classList.remove("covered"); if (e.data === 0) go(1); }, onError: () => go(1, true) },
     });
-  } catch { fallbackIframe(document.getElementById("tvp"), first.id); }
+  } catch { fallbackIframe(document.getElementById("tvp"), first.id); el.classList.remove("covered"); }
   load(first);
   try { if (matchMedia("(min-width: 720px)").matches) await el.requestFullscreen?.(); } catch {}
   tv.tick = setInterval(() => {

@@ -82,11 +82,13 @@ export async function tokenUser(env, tok) {
   // Agent and connector tokens (ffk_) only reach /mcp. They never act on the account API, so they can't mint tokens.
   if (!tok || tok.startsWith("ffk_") || tok.length < 20 || tok.length > 100) return null;
   const th = await sha(tok);
-  const u = await env.DB.prepare("SELECT u.*, s.seen FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?").bind(th).first();
+  const u = await env.DB.prepare("SELECT u.*, s.seen, s.device session_device FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?").bind(th).first();
   if (!u || u.banned) return null;
   if (now() - u.seen > 3600) await env.DB.prepare("UPDATE sessions SET seen = ? WHERE token_hash = ?").bind(now(), th).run();
   return u;
 }
+// A screen signed in by pairing can watch, save and comment. It can't change the account or use staff tools.
+const PAIRED = "Paired ";
 async function session(env, userId, device) {
   const tok = rid(40);
   await env.DB.prepare("INSERT INTO sessions (token_hash, user_id, created, seen, device) VALUES (?, ?, ?, ?, ?)").bind(await sha(tok), userId, now(), now(), String(device || "").slice(0, 60)).run();
@@ -156,7 +158,8 @@ export async function xAvatar(handle) {
 }
 const me = (u) => ({ ...pub(u), ref: u.ref_code, banned: !!u.banned, links: linksOf(u), uploaded: !!u.avatar });
 const log = (env, actor, action, target) => env.DB.prepare("INSERT INTO modlog (actor, action, target, ts) VALUES (?, ?, ?, ?)").bind(actor, action, target, now()).run();
-const staff = (u, min) => u && !u.banned && RANK[u.role] >= RANK[min];
+const staff = (u, min) => u && !u.banned && !paired(u) && RANK[u.role] >= RANK[min];
+const paired = (u) => String(u.session_device || "").startsWith(PAIRED);
 
 async function body(req, max = 20000) {
   const t = await req.text();
@@ -319,9 +322,12 @@ on("POST", "/api/pair/start", async (req, env) => {
   if (!(await rate(env, "pair:" + ip(req), 20, 3600))) return err(429, "Too many codes from here. Wait a few minutes.");
   const b = await body(req).catch(() => ({}));
   const code = pairCode(), secret = rid(32);
-  const device = String(b.device || "TV").replace(/[^\w .()-]/g, "").slice(0, 30) || "TV";
-  await env.FRESH.put("pair:" + code, JSON.stringify({ s: await sha(secret), device, at: now(), state: "waiting" }), { expirationTtl: 600 });
-  return json({ code, secret, expires: 600 });
+  // The label is ours, never the caller's: the phone must not be told a story by whoever asked for the code.
+  const device = b.device === "Browser" ? "Browser" : "TV";
+  // A second number shown only on the screen: a link or QR can carry the code, but approving needs someone looking.
+  const check = String(crypto.getRandomValues(new Uint8Array(1))[0] % 90 + 10);
+  await env.FRESH.put("pair:" + code, JSON.stringify({ s: await sha(secret), device, check, at: now(), state: "waiting" }), { expirationTtl: 600 });
+  return json({ code, secret, check, expires: 600 });
 });
 on("GET", "/api/pair/poll", async (req, env) => {
   if (!(await rate(env, "pairpoll:" + ip(req), 400, 600))) return err(429, "Slow down.");
@@ -347,7 +353,11 @@ on("POST", "/api/pair/([A-Za-z0-9]{6})", async (req, env, u, [code]) => {
   const key = "pair:" + code.toUpperCase();
   const p = await env.FRESH.get(key, "json");
   if (!p || p.state !== "waiting") return err(404, "That code has expired. Show a new one on the other screen.");
-  const token = await session(env, u.id, p.device);
+  const b = await body(req).catch(() => ({}));
+  if (String(b.check || "") !== p.check) return err(403, "That number doesn't match the one on the screen.");
+  // KV can't claim atomically, so the single-use counter decides which approval wins.
+  if (!(await rate(env, "pairclaim:" + code.toUpperCase(), 1, 600))) return err(404, "That code has already been used.");
+  const token = await session(env, u.id, PAIRED + p.device);
   await env.FRESH.put(key, JSON.stringify({ ...p, state: "approved", uid: u.id, token }), { expirationTtl: 120 });
   await log(env, u.id, "pair", p.device);
   return json({ ok: true, device: p.device });
@@ -388,6 +398,7 @@ on("PATCH", "/api/me", async (req, env, u) => {
 });
 
 on("POST", "/api/me/code", async (req, env, u) => {
+  if (u && paired(u)) return err(403, "Change your code on a device you signed in to with it.");
   if (!u) return err(401, "Sign in first.");
   if (!(await rate(env, "rotate:" + u.id, 5, 86400))) return err(429, "Try again tomorrow.");
   const code = newCode();
@@ -913,6 +924,7 @@ on("GET", "/api/tokens", async (req, env, u) => {
   return json({ tokens: rows.results });
 });
 on("POST", "/api/tokens", async (req, env, u) => {
+  if (u && paired(u)) return err(403, "Make tokens on a device you signed in to with your code.");
   if (!u || u.banned) return err(401, "Sign in first.");
   if (!(await rate(env, "tok:" + u.id, 10, 86400))) return err(429, "That's plenty for today.");
 

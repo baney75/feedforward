@@ -13,7 +13,7 @@ export async function render(el) {
   el.innerHTML = `<div class="pg narrow-pg pg-pair">
     <header class="page-h"><div><h1>Sign in on another screen</h1><p>Enter the code shown on your TV or computer. Only approve a screen you can see.</p></div></header>
     <form class="form" id="pairForm"><label class="field">Code<input class="input mono pair-in" name="code" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABC-DEF" value="${esc(fromHash ? fromHash.slice(0, 3) + "-" + fromHash.slice(3) : "")}" required></label>
-      <div id="pairInfo"></div>
+      <label class="field">Number on that screen<input class="input mono" name="check" inputmode="numeric" maxlength="2" autocomplete="off" placeholder="00" required></label><div id="pairInfo"></div>
       <div class="acts"><button class="btn primary" type="submit" id="pairOk" disabled>Approve</button></div></form></div>`;
   const form = $("#pairForm", el), info = $("#pairInfo", el);
   const norm = () => form.code.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -27,7 +27,7 @@ export async function render(el) {
   form.onsubmit = (e) => {
     e.preventDefault();
     busy(e.submitter, async () => {
-      const d = await api("/api/pair/" + norm(), { method: "POST" });
+      const d = await api("/api/pair/" + norm(), { method: "POST", body: { check: form.check.value.trim() } });
       haptic.success();
       el.querySelector(".pg-pair").innerHTML = `<header class="page-h"><div><h1>Signed in</h1><p>Your ${esc(d.device)} is signed in. Enjoy.</p></div></header><a class="btn primary" href="/">Back to Feedforward</a>`;
       toast("Signed in");

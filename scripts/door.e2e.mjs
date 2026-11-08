@@ -79,6 +79,7 @@ let code, codeOfMember;
   await phone.p.goto(`${BASE}/pair#${code}`);
   await phone.p.waitForSelector("#pairInfo .hint b", { timeout: 10000 });
   ok("the phone shows what it's about to sign in");
+  await phone.p.fill('#pairForm input[name="check"]', (await tv.p.textContent(".door-paircheck")).trim());
   await phone.p.click('#pairForm button[type="submit"]');
   await phone.p.waitForSelector(".pg-pair h1", { timeout: 10000 });
   await tv.p.waitForFunction(() => !document.body.classList.contains("door"), null, { timeout: 15000 });

@@ -219,3 +219,8 @@ test("every gated data file retries with the member's session when the gate cook
     assert.doesNotMatch(src, /[^d]fetch\("\/data\//, `${page} must not fetch gated data directly`);
   }
 });
+
+test("member home has no animated counters (reported twice: they looked glitchy)", () => {
+  const src = read("public/js/views.js");
+  assert.doesNotMatch(src, /data-count|liveCounters/, "the count-up stats row must stay gone");
+});

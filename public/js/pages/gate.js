@@ -76,18 +76,20 @@ export async function render(el, qs, parts) {
   const pane = $("#doorPane", el);
   const show = (k, opts) => {
     tab = k;
+    clearTimeout(pairTimer);
     el.querySelector(".door-signin").hidden = k === "signin";
     el.querySelector(".door-pg")?.classList.toggle("door-focus", k !== "invite" || !!(opts && opts.code));
     PANES[k](pane, opts);
     if (opts && opts.focus) pane.querySelector("input, textarea")?.focus();
   };
   // Any [data-tab] control switches what the card shows.
-  el.addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) { e.preventDefault(); show(b.dataset.tab, { focus: true }); } });
+  const onTab = (e) => { const b = e.target.closest("[data-tab]"); if (b) { e.preventDefault(); show(b.dataset.tab, { focus: true }); } };
+  el.addEventListener("click", onTab);
   goTab = show;
   show(tab, { code: joinCode });
   const net = () => { let b = el.querySelector(".door-off"); if (navigator.onLine) return b?.remove(); if (!b) el.querySelector(".door-pg").insertAdjacentHTML("afterbegin", `<p class="door-off" role="status">You're offline. Apply and Join will work again once you reconnect.</p>`); };
   addEventListener("online", net); addEventListener("offline", net); net();
-  return () => {};
+  return () => { el.removeEventListener("click", onTab); clearTimeout(pairTimer); removeEventListener("online", net); removeEventListener("offline", net); };
 }
 
 // Switch the card from anywhere in this module (set by render).
@@ -114,9 +116,10 @@ async function pairPane(pane) {
     <div class="door-qr">${await qrSvg(url, "QR code: scan with your phone to sign this screen in")}</div>
     <div class="door-pair-t">
       <h2 class="door-title">Sign in with your phone</h2>
-      <ol><li>Point your phone's camera at the code.</li><li>Tap <b>Approve</b> on your phone.</li></ol>
+      <ol><li>Point your phone's camera at the code.</li><li>Enter the number below and tap <b>Approve</b>.</li></ol>
       <p class="door-hint">Or open <b>${esc(SITE.replace("https://", ""))}/pair</b> and enter</p>
       <p class="door-paircode mono" aria-label="Pairing code ${esc(d.code.split("").join(" "))}">${esc(pretty)}</p>
+      <p class="door-hint">and this number: <b class="door-paircheck mono">${esc(d.check)}</b></p>
       <p class="door-hint" id="pairState">Waiting for your phone...</p>
     </div></div>
     ${isTV() ? "" : `<p class="door-back"><button class="textbtn" type="button" data-tab="signin">Type my code instead</button></p>`}`;

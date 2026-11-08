@@ -125,7 +125,7 @@ export function chips(active, { all = "All", extra = [] } = {}) {
 let toastTimer;
 export function toast(msg) {
   const t = document.getElementById("toast");
-  t.textContent = msg; t.classList.add("on");
+  t.textContent = msg; t.classList.add("on"); t.dataset.at = Date.now();
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2200);
 }
 

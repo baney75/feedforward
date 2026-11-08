@@ -74,7 +74,7 @@ async function route() {
   const qs = url.searchParams;
   stopView();
   view.onclick = null;
-  document.getElementById("toast")?.classList.remove("on");
+  { const t = document.getElementById("toast"); if (t && Date.now() - +(t.dataset.at || 0) > 500) t.classList.remove("on"); }
   document.body.classList.toggle("on-watch", url.pathname.startsWith("/watch/"));
   const first = path.split("/")[1] || "";
   const door = !signedIn() && first !== "link";
