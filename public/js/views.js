@@ -246,7 +246,7 @@ export function personPage(el, qs, slug) {
 
 export function peoplePage(el) {
   setTitle("People");
-  el.innerHTML = `<div class="page-h"><div><h1>People</h1><p>Everyone on Feedforward, and why they're here. Picked for teaching, building in the open, and getting the details right.</p></div></div>
+  el.innerHTML = `<div class="page-h"><div><h1>People</h1><p>Picked for teaching and building in the open.</p></div></div>
     ${TOPICS.map((t) => { const ps = D.people.filter((p) => p.topic === t.code); return ps.length ? `<div class="sec-h"><h2>${t.label}</h2></div><div class="people">${ps.map(personCard).join("")}</div>` : ""; }).join("")}`;
 }
 
@@ -349,7 +349,7 @@ function step(t, s, k) {
   const markable = s.kind !== "lab";
   return `<li class="step${done ? " done" : ""}"><span class="tick">${done ? icon("check") : k + 1}</span><div style="min-width:0">
     <span class="kind">${kind}</span>${s.kind === "video" ? "" : `<h3>${esc(title)}</h3>`}${s.note ? `<p>${esc(s.note)}</p>` : ""}${body}
-    ${markable ? `<div class="act"><button class="btn" data-mark="${key}">${icon("check")}${done ? "Done" : "Mark done"}</button></div>` : ""}</div></li>`;
+    ${markable ? `<div class="act"><button class="btn${done ? " is-done" : ""}" data-mark="${key}">${icon("check")}${done ? "Done" : "Mark done"}</button></div>` : ""}</div></li>`;
 }
 function quiz(t, q, k) {
   return `<div class="q"><h3>${esc(q.q)}</h3><div class="opts">${q.options.map((o, i) => `<button data-q="${k}" data-opt="${i}">${esc(o)}</button>`).join("")}</div><div class="fb" aria-live="polite"></div></div>`;
@@ -393,7 +393,7 @@ export function searchPage(el, qs) {
   const input = document.getElementById("q"); if (input && input.value !== q) input.value = q;
   const r = search(q);
   const none = !r.people.length && !r.videos.length && !r.posts.length;
-  el.innerHTML = `<div class="results"><div class="page-h${q ? "" : " search-blank-h"}"><div><h1>${q ? `Results for "${esc(q)}"` : "Search"}</h1></div></div>${q ? "" : `<form class="only-phone page-search" role="search" onsubmit="event.preventDefault();const v=this.q.value.trim();if(v)location.assign('/search?q='+encodeURIComponent(v))"><input class="input" name="q" type="search" placeholder="Search videos, people and posts" aria-label="Search" enterkeyhint="search"></form>`}
+  el.innerHTML = `<div class="results"><div class="page-h search-h"><div><h1>${!q ? "Search" : none ? `No results for "${esc(q)}"` : `Results for "${esc(q)}"`}</h1></div></div>${`<form class="only-phone page-search" role="search" onsubmit="event.preventDefault();const v=this.q.value.trim();if(v)location.assign('/search?q='+encodeURIComponent(v))"><input class="input" name="q" type="search" value="${esc(q)}" placeholder="Search videos, people and posts" aria-label="Search" enterkeyhint="search"></form>`}
     ${q && none ? `<p class="search-none">Nothing matched. Try fewer words, or <a class="link" href="/search?q=karpathy">Karpathy</a> or <a class="link" href="/search?q=quantization">quantization</a>.</p>` : ""}
     ${!q ? `<p class="muted">Try <a class="link" href="/search?q=llama.cpp">llama.cpp</a>, <a class="link" href="/search?q=attention">attention</a>, <a class="link" href="/search?q=claude code">claude code</a> or <a class="link" href="/search?q=fusion 360">fusion 360</a>.</p>` : ""}
     ${r.people.length ? `<h2>People</h2><div class="people">${r.people.map(personCard).join("")}</div>` : ""}
@@ -409,7 +409,7 @@ export function libraryPage(el, qs) {
   const sp = saved.filter((k) => k.startsWith("p:")).map((k) => D.postById.get(k.slice(2))).filter(Boolean);
   const ss = saved.filter((k) => k.startsWith("s:")).map((k) => D.shorts.find((x) => x.id === k.slice(2))).filter(Boolean);
   const hist = store.history().map((id) => D.byId.get(id)).filter(Boolean);
-  el.innerHTML = `<div class="page-h"><div><h1>Library</h1><p>Saved videos, Shorts and posts, and what you've watched, on every device you sign in on.</p></div></div>
+  el.innerHTML = `<div class="page-h"><div><h1>Library</h1></div></div>
     <div class="tabs" role="group"><button data-tab="saved" aria-pressed="${tab === "saved"}">Saved</button><button data-tab="history" aria-pressed="${tab === "history"}">History</button></div>
     <div id="lib"></div>`;
 
