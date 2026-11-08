@@ -7,7 +7,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { powChallenge, checkPow, gateCookie, gateUser, gatedPath, liveSession, forgetSessions, POW_BITS } from "./gate.js";
-import { handle, sha } from "./api.js";
+import { handle, sha, newCode } from "./api.js";
 
 const dir = path.dirname(new URL(import.meta.url).pathname);
 const PEPPER = "test-pepper";
@@ -236,6 +236,14 @@ test("lowering an unlimited invite to a spent limit stops the next join", async 
   assert.equal((await call(env, "/api/account", { method: "POST", body: { invite: code, pow: await aged(env) } })).status, 403);
 });
 
+
+test("QR sign-in page accepts every code the server makes (four-word codes showed 'This link has no code')", async () => {
+  const { isCode } = await import("../public/js/code.js");
+  for (let i = 0; i < 200; i++) assert.ok(isCode(newCode()));
+  assert.ok(isCode("otter-maple-rocket-42"), "older three-word codes still work");
+  assert.ok(!isCode("otter-maple-42"));
+  assert.ok(!isCode("<b>"));
+});
 
 test("pairing: a TV shows a code, a member approves, the TV gets its own session once", async () => {
   const { env, owner } = await setup();
