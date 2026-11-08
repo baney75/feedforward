@@ -65,7 +65,7 @@ export async function refreshGate() {
 }
 // What this device has synced belongs to the account that synced it. Signing out leaves a clean device,
 // so the next person to sign in never uploads someone else's history into their account.
-const SYNCED_KEYS = ["history", "saved", "progress", "days", "historyReset"];
+const SYNCED_KEYS = ["history", "saved", "progress", "days", "historyReset", "notifSeen", "notifQueues"];
 function clearSynced() {
   try { localStorage.removeItem("lt:dislikes"); } catch {}
   mine.dislikes = new Set();

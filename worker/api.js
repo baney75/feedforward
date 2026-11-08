@@ -1012,6 +1012,34 @@ on("GET", "/api/pulse", async (req, env) => {
   return res;
 });
 
+// The bell. Worked out from what's already stored, so nothing has to write a notification when something happens.
+const NOTIFY_DAYS = 14;
+on("GET", "/api/notifications", async (req, env, u) => {
+  if (!u) return err(401, "Sign in first.");
+  const t = now(), since = t - NOTIFY_DAYS * 86400;
+  const [comments, reminders, sessions, joined, apps, flagged] = await Promise.all([
+    env.DB.prepare(`SELECT c.id, c.item, c.body, c.ts, a.name FROM comments c JOIN users a ON a.id = c.user_id
+      WHERE c.hidden = 0 AND a.banned = 0 AND c.user_id != ? AND c.ts > ? AND c.item IN (SELECT item FROM comments WHERE user_id = ?)
+      AND c.ts > (SELECT MIN(ts) FROM comments m WHERE m.user_id = ? AND m.item = c.item) ORDER BY c.ts DESC LIMIT 20`).bind(u.id, since, u.id, u.id).all(),
+    env.DB.prepare(`SELECT s.id, s.title, s.starts FROM sessions_live s JOIN rsvps r ON r.session_id = s.id
+      WHERE r.user_id = ? AND s.cancelled = 0 AND s.starts > ? AND s.starts <= ? ORDER BY s.starts LIMIT 10`).bind(u.id, t, t + 86400).all(),
+    env.DB.prepare(`SELECT s.id, s.title, s.starts, s.created FROM sessions_live s WHERE s.cancelled = 0 AND s.starts > ? AND s.created > ? AND s.host_id != ?
+      AND NOT EXISTS (SELECT 1 FROM rsvps r WHERE r.session_id = s.id AND r.user_id = ?) ORDER BY s.created DESC LIMIT 10`).bind(t, since, u.id, u.id).all(),
+    env.DB.prepare("SELECT id, name, created FROM users WHERE referred_by = ? AND banned = 0 AND created > ? ORDER BY created DESC LIMIT 10").bind(u.id, since).all(),
+    staff(u, "mod") ? env.DB.prepare("SELECT COUNT(*) n, MAX(created) ts FROM applications WHERE status = 'pending'").first() : null,
+    staff(u, "mod") ? env.DB.prepare("SELECT COUNT(*) n, MAX(ts) ts FROM comments WHERE reports > 0 AND hidden = 0").first() : null,
+  ]);
+  const items = [
+    ...comments.results.map((c) => ({ id: "c:" + c.id, kind: "comment", ts: c.ts, name: c.name, item: c.item, body: c.body.slice(0, 120) })),
+    ...reminders.results.map((s) => ({ id: "r:" + s.id, kind: "reminder", ts: s.starts - 86400, title: s.title, starts: s.starts })),
+    ...sessions.results.map((s) => ({ id: "s:" + s.id, kind: "session", ts: s.created, title: s.title, starts: s.starts })),
+    ...joined.results.map((j) => ({ id: "j:" + j.id, kind: "joined", ts: j.created, name: j.name, uid: j.id })),
+    ...(apps && apps.n ? [{ id: "apps", kind: "applications", ts: apps.ts, n: apps.n }] : []),
+    ...(flagged && flagged.n ? [{ id: "flagged", kind: "flagged", ts: flagged.ts, n: flagged.n }] : []),
+  ].sort((a, b) => (a.n ? 0 : 1) - (b.n ? 0 : 1) || b.ts - a.ts).slice(0, 30);
+  return json({ items });
+});
+
 export async function handle(req, env) {
   const url = new URL(req.url);
   for (const [m, re, fn] of routes) {

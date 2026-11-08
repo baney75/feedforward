@@ -258,3 +258,22 @@ test("pairing: a TV shows a code, a member approves, the TV gets its own session
   assert.equal((await poll()).d.state, "gone", "handed out once");
   assert.equal((await call(env, `/api/pair/${start.d.code}`, { method: "POST", token: owner, body: { check: start.d.check } })).status, 404, "a used code can't be approved again");
 });
+
+test("notifications: discussion comments, invites and staff queues reach the right member only", async () => {
+  const { env, owner } = await setup();
+  const t = Math.floor(Date.now() / 1000), db = env.DB.raw;
+  const member = "m".repeat(40);
+  for (const [id, ref] of [["member0001", null], ["other00001", "owner00001"]]) db.prepare("INSERT INTO users (id, code_hash, ref_code, referred_by, created, name) VALUES (?, ?, ?, ?, ?, ?)").run(id, "h" + id, "r" + id, ref, t - 50, "N " + id);
+  db.prepare("INSERT INTO sessions (token_hash, user_id, created, seen) VALUES (?, 'member0001', ?, ?)").run(await sha(member), t, t);
+  const c = db.prepare("INSERT INTO comments (id, item, user_id, body, ts, reports) VALUES (?, ?, ?, ?, ?, ?)");
+  c.run("before", "v:abc", "other00001", "said before I joined", t - 40, 0);
+  c.run("mine", "v:abc", "member0001", "my comment", t - 30, 0);
+  c.run("after", "v:abc", "other00001", "<b>reply</b>", t - 20, 1);
+  c.run("unrelated", "v:zzz", "other00001", "not my thread", t - 10, 0);
+  db.prepare("INSERT INTO applications (id, code_hash, name, reason, created) VALUES ('a1', 'ha1', 'Lee', 'why', ?)").run(t);
+  assert.equal((await call(env, "/api/notifications")).status, 401);
+  const m = (await call(env, "/api/notifications", { token: member })).d.items;
+  assert.deepEqual(m.map((x) => x.id), ["c:after"], "only later comments in a thread they joined; never staff queues");
+  const o = (await call(env, "/api/notifications", { token: owner })).d.items.map((x) => x.kind).sort();
+  assert.deepEqual(o, ["applications", "flagged", "joined"]);
+});

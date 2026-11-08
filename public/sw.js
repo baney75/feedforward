@@ -3,8 +3,8 @@
 // only for offline use, and wiped the moment the server says this browser isn't a member.
 // Only our own "lt-" caches are ever deleted, so a lab's model cache (transformers-cache) survives updates.
 // lt-data-v5: every catalog copy cached before Feedforward went invite-only is deleted on activate.
-const APP = "lt-app-v7", DATA = "lt-data-v5", IMG = "lt-img-v1";
-const SHELL = ["/", "/css/tokens.css", "/css/app.css", "/js/app.js", "/js/data.js", "/js/ui.js", "/js/views.js", "/js/tv.js", "/js/icons.js", "/js/store.js", "/js/account.js", "/js/social.js", "/css/pages.css",
+const APP = "lt-app-v8", DATA = "lt-data-v5", IMG = "lt-img-v1";
+const SHELL = ["/", "/css/tokens.css", "/css/app.css", "/js/app.js", "/js/data.js", "/js/ui.js", "/js/views.js", "/js/tv.js", "/js/icons.js", "/js/store.js", "/js/account.js", "/js/social.js", "/js/notify.js", "/js/notify-state.js", "/css/pages.css",
   "/manifest.webmanifest", "/icons/icon.svg?v=3", "/fonts/ibm-plex-sans-latin-400-normal.woff2", "/fonts/ibm-plex-sans-latin-600-normal.woff2"];
 
 self.addEventListener("install", (e) => {

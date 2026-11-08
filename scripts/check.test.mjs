@@ -225,6 +225,27 @@ test("catalog refresh stays silent: no toast about how many items are new (repor
   assert.ok(!/new since the last update|lt:fresh/.test(app + data));
 });
 
+test("bell: a staff queue that grows is new even when its newest timestamp is old (a report has no date)", async () => {
+  const { isFresh, markSeen } = await import("../public/js/notify-state.js");
+  const before = [{ kind: "flagged", n: 1, ts: 100 }, { kind: "comment", ts: 200 }];
+  const m = markSeen(before, 0);
+  assert.equal(m.seen, 200);
+  assert.equal(isFresh({ kind: "flagged", n: 1, ts: 100 }, m.seen, m.queues), false, "unchanged queue stays read");
+  assert.equal(isFresh({ kind: "flagged", n: 2, ts: 100 }, m.seen, m.queues), true, "a new report lights the bell");
+  assert.equal(isFresh({ kind: "comment", ts: 201 }, m.seen, m.queues), true);
+  assert.equal(markSeen([], 200).queues.flagged, undefined, "an emptied queue starts over");
+});
+
+test("bell: a queue cleared between opens lights again on the next arrival", async () => {
+  const { isFresh, markSeen, settleQueues } = await import("../public/js/notify-state.js");
+  let q = markSeen([{ kind: "applications", n: 5, ts: 1 }], 0).queues;
+  q = settleQueues([], q);
+  assert.equal(isFresh({ kind: "applications", n: 1, ts: 2 }, 0, q), true, "emptied, then one arrives");
+  q = settleQueues([{ kind: "applications", n: 2, ts: 1 }], { applications: 5 });
+  assert.equal(q.applications, 2);
+  assert.equal(isFresh({ kind: "applications", n: 3, ts: 1 }, 0, q), true, "shrank, then grew");
+});
+
 test("member home has no animated counters (reported twice: they looked glitchy)", () => {
   const src = read("public/js/views.js");
   assert.doesNotMatch(src, /data-count|liveCounters/, "the count-up stats row must stay gone");

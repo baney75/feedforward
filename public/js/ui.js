@@ -115,11 +115,36 @@ export function personCard(p) {
 }
 
 export function chips(active, { all = "All", extra = [] } = {}) {
-  return `<div class="chips" role="group" aria-label="Topics">
+  return `<div class="chip-rail"><button class="chip-arrow prev" type="button" tabindex="-1" aria-hidden="true">${icon("left")}</button><div class="chips" role="group" aria-label="Topics">
     <button class="chip" data-topic="-1" aria-pressed="${active === -1}">${all}</button>
     ${extra.map((e) => `<button class="chip" data-topic="${e.v}" aria-pressed="${active === e.v}">${e.label}</button>`).join("")}
     ${TOPICS.map((t, i) => `<button class="chip" data-topic="${i}" aria-pressed="${active === i}">${t.label}</button>`).join("")}
-  </div>`;
+  </div><button class="chip-arrow next" type="button" tabindex="-1" aria-hidden="true">${icon("right")}</button></div>`;
+}
+
+// Chip rails show a fade and an arrow only on a side that has more to scroll to.
+function syncRail(rail) {
+  const bar = rail.querySelector(".chips"), max = bar.scrollWidth - bar.clientWidth;
+  rail.classList.toggle("more-left", bar.scrollLeft > 2);
+  rail.classList.toggle("more-right", bar.scrollLeft < max - 2);
+}
+function initRail(rail) {
+  rail.dataset.on = "1";
+  const bar = rail.querySelector(".chips");
+  const sync = () => syncRail(rail);
+  bar.addEventListener("scroll", sync, { passive: true });
+  new ResizeObserver(sync).observe(bar);
+  rail.addEventListener("click", (e) => {
+    const a = e.target.closest(".chip-arrow"); if (!a) return;
+    const smooth = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    bar.scrollBy({ left: (a.classList.contains("prev") ? -1 : 1) * bar.clientWidth * 0.75, behavior: smooth ? "smooth" : "auto" });
+  });
+  sync();
+}
+export function watchChipRails(root) {
+  const scan = () => root.querySelectorAll(".chip-rail:not([data-on])").forEach(initRail);
+  new MutationObserver(scan).observe(root, { childList: true, subtree: true });
+  scan();
 }
 
 let toastTimer;
