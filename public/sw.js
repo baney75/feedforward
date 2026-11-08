@@ -1,9 +1,9 @@
 // Offline support. App code: network first, cache fallback. Fonts and icons: cache first.
 // Catalog data and thumbnails: serve the cached copy at once and refresh it in the background.
 // Only our own "lt-" caches are ever deleted, so a lab's model cache (transformers-cache) survives updates.
-const APP = "lt-app-v5", DATA = "lt-data-v4", IMG = "lt-img-v1";
+const APP = "lt-app-v6", DATA = "lt-data-v4", IMG = "lt-img-v1";
 const SHELL = ["/", "/css/tokens.css", "/css/app.css", "/js/app.js", "/js/data.js", "/js/ui.js", "/js/views.js", "/js/tv.js", "/js/icons.js", "/js/store.js", "/js/account.js", "/js/social.js", "/css/pages.css",
-  "/manifest.webmanifest", "/icons/icon.svg", "/fonts/ibm-plex-sans-latin-400-normal.woff2", "/fonts/ibm-plex-sans-latin-600-normal.woff2"];
+  "/manifest.webmanifest", "/icons/icon.svg?v=2", "/fonts/ibm-plex-sans-latin-400-normal.woff2", "/fonts/ibm-plex-sans-latin-600-normal.woff2"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(Promise.all([
