@@ -158,15 +158,16 @@ function codeOf(input) {
 
 function invitePane(pane, { code = "" } = {}) {
   if (!code) {
-    pane.innerHTML = `<form class="door-form door-row" id="invForm">
-      <label class="door-field door-span"><span>Have an invite? Paste the link or code</span>
-        <input class="input" name="inv" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="feedforward.dbaney.com/join/..." required></label>
-      <button class="btn primary door-go" type="submit">Continue</button>
+    // A stranger's main path is applying; an invite link or a code is the quick side door.
+    pane.innerHTML = `<button class="btn primary door-go door-apply-main" type="button" data-tab="apply">Apply for an invite</button>
+    <p class="door-hint door-center">Takes a minute. A person reviews every application, usually within a day. You get your code right away and sign in with it once you're approved: no email needed.</p>
+    <div class="door-or" role="separator"><span>Already invited?</span></div>
+    <form class="door-form door-row" id="invForm">
+      <label class="door-field door-span"><span class="sr-only">Invite link or code</span>
+        <input class="input" name="inv" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your invite link" required></label>
+      <button class="btn door-go door-go-2" type="submit">Join</button>
     </form>
-    <div class="door-msg" aria-live="polite"></div>
-    <div class="door-or" role="separator"><span>No invite yet?</span></div>
-    <button class="btn door-apply" type="button" data-tab="apply">Apply for an invite</button>
-    <p class="door-hint door-center">You get your code the moment you apply. It starts working when a person approves you.</p>`;
+    <div class="door-msg" aria-live="polite"></div>`;
     $("#invForm", pane).onsubmit = (e) => {
       e.preventDefault();
       const c = codeOf(e.currentTarget.inv.value);

@@ -11,7 +11,7 @@ import { haptic } from "./haptics.js";
 const view = document.getElementById("view");
 // Six main places. Everything else lives in a quiet Explore list (and on the Learn hub on phones).
 const NAV = [
-  ["/", "home", "Home"], ["/shorts", "shorts", "Shorts"], ["/wire", "wire", "The Wire"], ["/learn", "learn", "Learn"], ["/chat", "chat", "Chat"], ["/library", "library", "Library"],
+  ["/", "home", "Home"], ["/shorts", "shorts", "Shorts"], ["/wire", "wire", "Posts"], ["/learn", "learn", "Learn"], ["/chat", "chat", "Chat"], ["/library", "library", "Library"],
 ];
 const EXPLORE = [["/books", "Books"], ["/research", "Research"], ["/dictionary", "Dictionary"], ["/repos", "Repos"], ["/sessions", "Live sessions"], ["/skills", "Skills"], ["/agents", "Connect an agent"]];
 const TABS = ["/", "/shorts", "/wire", "/learn", "/library"];
@@ -24,7 +24,7 @@ function shell() {
   rail.innerHTML = NAV.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("") +
     `<hr><div class="rail-h">Explore</div><div class="explore">${EXPLORE.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</div>` +
     `<div class="foot"><a href="/tv">TV mode</a> · <a href="/people">People</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="mailto:support@dbaney.com">support@dbaney.com</a> · <a href="https://github.com/baney75/feedforward">GitHub</a><br><button class="textbtn" type="button" id="railInstall">Install app</button> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
-  document.querySelector(".tabbar").innerHTML = NAV.filter(([h]) => TABS.includes(h)).map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l === "The Wire" ? "Wire" : l}</span></a>`).join("");
+  document.querySelector(".tabbar").innerHTML = NAV.filter(([h]) => TABS.includes(h)).map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("");
   document.getElementById("searchBtn").innerHTML = icon("search");
   document.getElementById("installBtn").innerHTML = icon("install");
   themeIcon();

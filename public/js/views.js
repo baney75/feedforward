@@ -51,7 +51,7 @@ export function home(el, qs) {
   // Members are already in: no pitch, no stats. Topics on top, then where you left off, then today's picks.
   void hello;
   el.innerHTML = `<div class="home"><div class="home-main">
-      <div class="chips-wrap">${chipBar}</div>
+      <div class="chips-wrap">${chipBar}<button class="chip more-topics" type="button" aria-expanded="false">More topics</button></div>
       ${topic === -1 ? keepGoing() || startHere() : ""}
       ${newest ? "" : hero}
       ${topic === -1 ? `<div class="sec-h"><h2>Start learning</h2><a href="/learn">All tracks and labs</a></div><div class="shelf">${tracks}</div>` : ""}
@@ -59,6 +59,9 @@ export function home(el, qs) {
       <div class="grid" id="feed"></div><div id="more" style="height:1px"></div>
     </div>${wire}</div>`;
   bindChips(el);
+  // Wide screens show one row of topics; "More topics" opens the rest.
+  const more = $(".more-topics", el), wrap = $(".chips-wrap", el);
+  if (more) more.onclick = () => { const open = wrap.classList.toggle("open"); more.setAttribute("aria-expanded", open); more.textContent = open ? "Fewer topics" : "More topics"; };
   const stopCounters = liveCounters(el);
   const feed = $("#feed", el);
   let count = 0, postOff = 0, gen = D.gen, sampled = next;

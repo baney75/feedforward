@@ -747,3 +747,20 @@ body.door-tv .door-signin, body.door-tv .door-peek { display: none; }
 .door-apply { background: color-mix(in srgb, var(--accent) 14%, var(--bg-2)); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); color: var(--fg); }
 .door-apply:hover { background: color-mix(in srgb, var(--accent) 22%, var(--bg-2)); }
 .tabbar a span { font-size: 13px; }
+
+/* Round 5: Apply leads for strangers; the invite field is the side door. */
+.door-apply-main { width: 100%; }
+.door-go-2 { background: var(--bg-3); color: var(--fg); border-color: var(--line); min-width: 96px; }
+.door-row { margin-top: 2px; }
+.door-row .door-span { grid-column: auto; }
+@media (max-width: 719px) { .door-row { grid-template-columns: 1fr auto; } }
+
+/* Home topics: one row on wide screens, the rest behind "More topics". Phones scroll the row instead. */
+.home .chips-wrap { display: flex; align-items: flex-start; gap: var(--s2); }
+.home .chips-wrap .chips { flex: 1; min-width: 0; }
+.more-topics { flex: none; display: none; }
+@media (min-width: 720px) {
+  .home .chips-wrap .chips { flex-wrap: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); mask-image: linear-gradient(90deg, #000 88%, transparent); }
+  .home .chips-wrap.open .chips { flex-wrap: wrap; -webkit-mask-image: none; mask-image: none; }
+  .more-topics { display: inline-flex; }
+}
