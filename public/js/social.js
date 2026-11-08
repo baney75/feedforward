@@ -3,9 +3,10 @@ import { api, signedIn, user, can, like, rate, mine, stats, loadStats } from "./
 import { esc, ago, num, toast, badges, userAvatar } from "./ui.js";
 import { icon } from "./icons.js";
 
+// Like and dislike, one pill. The like count shows; the dislike count never does.
 export function likeButton(item, { label = true } = {}) {
-  const on = mine.likes.has(item), n = stats.likes[item] || 0;
-  return `<button class="btn like" data-like="${esc(item)}" aria-pressed="${on}" aria-label="Like">${icon(on ? "heartfill" : "heart")}${label ? `<span>${n ? num(n) : "Like"}</span>` : n ? `<span>${num(n)}</span>` : ""}</button>`;
+  const on = mine.likes.has(item), off = mine.dislikes.has(item), n = stats.likes[item] || 0;
+  return `<span class="vote" data-vote="${esc(item)}"><button class="btn like" data-like="${esc(item)}" aria-pressed="${on}" aria-label="Like${n ? `, ${num(n)} likes` : ""}">${icon(on ? "thumbupfill" : "thumbup")}${label ? `<span>${n ? num(n) : "Like"}</span>` : n ? `<span>${num(n)}</span>` : ""}</button><button class="btn dislike" data-dislike="${esc(item)}" aria-pressed="${off}" aria-label="Dislike. Only you see this.">${icon(off ? "thumbdownfill" : "thumbdown")}</button></span>`;
 }
 
 export function stars(item) {
@@ -13,17 +14,19 @@ export function stars(item) {
   return `<div class="stars" role="radiogroup" aria-label="Rate it">${[1, 2, 3, 4, 5].map((k) => `<button role="radio" aria-checked="${my === k}" aria-label="${k} star${k > 1 ? "s" : ""}" data-rate="${esc(item)}" data-stars="${k}" class="${k <= my ? "on" : ""}">${icon("star")}</button>`).join("")}<span class="muted mono">${r ? `${r[0].toFixed(1)} · ${r[1]}` : ""}</span></div>`;
 }
 
-const needCode = () => { toast("Get your free code first. It takes one tap."); setTimeout(() => (location.href = "/me"), 900); };
+const needCode = () => toast("Sign in first.");
 
 // One handler for likes and stars anywhere inside root.
 export function bindSocial(root) {
   const onClick = async (e) => {
-    const lb = e.target.closest("[data-like]");
+    const lb = e.target.closest("[data-like], [data-dislike]");
     if (lb) {
       if (!signedIn()) return needCode();
-      const item = lb.dataset.like, on = lb.getAttribute("aria-pressed") !== "true";
+      const kind = lb.dataset.dislike ? "dislike" : "like", item = lb.dataset.like || lb.dataset.dislike;
+      const on = lb.getAttribute("aria-pressed") !== "true", pill = lb.closest(".vote");
       lb.setAttribute("aria-pressed", on);
-      try { await like(item, on); lb.outerHTML = likeButton(item); } catch (err) { lb.setAttribute("aria-pressed", !on); toast(err.message); }
+      try { await like(item, on, kind); pill.outerHTML = likeButton(item); if (kind === "dislike" && on) toast("Got it. You'll see less like this."); }
+      catch (err) { lb.setAttribute("aria-pressed", !on); toast(err.message); }
       return;
     }
     const sb = e.target.closest("[data-rate]");
@@ -37,11 +40,14 @@ export function bindSocial(root) {
   return () => root.removeEventListener("click", onClick);
 }
 
+// Replies need the green check (or a staff role): bots that slip in can't post.
+const canReply = () => signedIn() && !!user() && (user().verified || can("contributor"));
+
 // Comments: list plus composer. Mods and above can hide; authors can delete their own.
 export async function comments(el, item) {
   el.innerHTML = `<section class="comments" aria-label="Comments"><div class="sec-h"><h2>Comments</h2><span class="muted mono" id="cn"></span></div>
-    ${signedIn() ? `<form class="compose"><label class="sr-only" for="cbody">Add a comment</label><textarea id="cbody" rows="2" maxlength="1500" placeholder="Add a thoughtful comment" required></textarea><button class="btn primary" type="submit">Post</button></form>`
-      : `<p class="muted signin-line">To comment, <a class="link" href="/me">get a free code</a>: three words that are your account on every device. No email, no password.</p>`}
+    ${canReply() ? `<form class="compose"><label class="sr-only" for="cbody">Add a comment</label><textarea id="cbody" rows="2" maxlength="1500" placeholder="Add a thoughtful comment" required></textarea><button class="btn primary" type="submit">Post</button></form>`
+      : `<p class="muted signin-line">Replies are for verified members, so every voice here is a real person. Talk it through in your communities any time.</p>`}
     <div class="clist"><div class="ascii" role="status" aria-label="Loading comments" data-label="loading comments"></div></div></section>`;
   const list = el.querySelector(".clist");
   const me = user();

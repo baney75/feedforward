@@ -72,7 +72,9 @@ assert.equal((await api(`/api/admin/users/${D.user.id}`, { token: C.token, metho
 assert.equal((await api(`/api/admin/users/${A.user.id}`, { token: B.token, method: "POST", body: { banned: true } })).status, 403); ok("nobody can act on someone at or above their role");
 assert.equal((await api(`/api/admin/users/${A.user.id}`, { token: A.token, method: "POST", body: { role: "user" } })).status, 400); ok("the owner can't demote themself");
 
-// Comments and filters
+// Comments and filters. Replies need the green check.
+assert.equal((await api("/api/comments", { token: D.token, method: "POST", body: { item: VID, body: "First!" } })).status, 403); ok("unverified members can't reply");
+assert.equal((await api(`/api/admin/users/${D.user.id}`, { token: A.token, method: "POST", body: { verified: true } })).status, 200);
 const cm = await api("/api/comments", { token: D.token, method: "POST", body: { item: VID, body: "This finally made attention click for me." } });
 assert.equal(cm.status, 200); ok("comment posted");
 assert.equal((await api("/api/comments", { token: D.token, method: "POST", body: { item: VID, body: "Vote for the senate candidate" } })).status, 400); ok("politics refused");

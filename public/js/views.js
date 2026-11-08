@@ -4,6 +4,7 @@ import { icon } from "./icons.js";
 import { store } from "./store.js";
 import { mountPlayer } from "./tv.js";
 import { likeButton, stars, bindSocial, comments } from "./social.js";
+import { mine } from "./account.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const wideWire = () => matchMedia("(min-width: 1600px)").matches;
@@ -37,6 +38,8 @@ export function home(el, qs) {
   const picks = todaysPicks(4, tIdx);
   const hero = picks.length ? `<section class="hero" aria-label="Today's picks">${videoCard(picks[0], { big: true })}<div class="hero-side">${picks.slice(1).map((v) => videoCard(v, { row: true })).join("")}</div></section>` : "";
   const exclude = new Set(picks.map((v) => v.id));
+  // Videos you disliked leave your feed.
+  for (const k of mine.dislikes) if (k.startsWith("v:")) exclude.add(k.slice(2));
   const newest = topic === -2;
   const next = sampler({ topic: tIdx, exclude, newest });
   const tracks = (D.learn.tracks || []).slice(0, 4).map(trackCard).join("");
@@ -100,6 +103,7 @@ function keepGoing() {
     <div class="shelf">${next}${hist.map((v) => videoCard(v)).join("")}</div>`;
 }
 
+const shownCounts = {};
 // Live counters: count up from zero on first paint, then refresh every minute from /api/pulse.
 function liveCounters(el) {
   const els = [...el.querySelectorAll("[data-count]")];
@@ -108,13 +112,16 @@ function liveCounters(el) {
   const show = (b, n) => (b.textContent = n >= 10000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, "") + "K" : n.toLocaleString());
   const tween = (b, to) => {
     const from = +(b.dataset.now || 0);
+    shownCounts[b.dataset.count] = to;
     if (still || from === to) { b.dataset.now = to; return show(b, to); }
     const t0 = performance.now(), dur = 1100;
     const step = (t) => { const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 4); show(b, Math.round(from + (to - from) * e)); if (k < 1) requestAnimationFrame(step); else b.dataset.now = to; };
     requestAnimationFrame(step);
   };
   const base = Object.fromEntries(els.map((b) => [b.dataset.count, +b.textContent || 0]));
-  els.forEach((b) => tween(b, base[b.dataset.count]));
+  // Count up once per visit. After that a re-render shows the last numbers at once, so nothing jumps.
+  els.forEach((b) => { if (shownCounts[b.dataset.count] != null) { b.dataset.now = shownCounts[b.dataset.count]; show(b, shownCounts[b.dataset.count]); } });
+  els.forEach((b) => tween(b, shownCounts[b.dataset.count] ?? base[b.dataset.count]));
   const pull = async () => {
     try {
       const p = await (await fetch("/api/pulse")).json();
@@ -415,8 +422,10 @@ export function aboutPage(el) {
     <h2>Credits</h2>
     <p>Inspired by Andrej Karpathy's <a href="https://hackertube.org/">HackerTube</a> and <a href="https://karpathy.ai/tristan-tube/">TristanTube</a>, and by 0xSero asking for the best AI education feed. Every video plays through YouTube's own player, and every post links back to X. Made by <a href="https://dbaney.com/">Donovan Baney</a>.</p>
     <p>Want someone added? The list favors people who teach clearly and show their work.</p>
+    <h2>Contact</h2>
+    <p>Questions, a problem, or something to report? Email <a href="mailto:support@dbaney.com">support@dbaney.com</a>. Security issues go through <a href="https://github.com/baney75/feedforward/security/advisories/new">a private report</a>.</p>
     <h2>Data</h2>
-    <p>The catalog is plain JSON: <a href="/data/videos.json">videos</a>, <a href="/data/posts.json">posts</a>, <a href="/data/people.json">people</a>.</p></div>`;
+    <p>The catalog is plain JSON for members: <a href="/data/videos.json">videos</a>, <a href="/data/posts.json">posts</a>, <a href="/data/people.json">people</a>.</p></div>`;
   $("#aboutInstall", el).onclick = () => dispatchEvent(new Event("lt:install"));
 }
 

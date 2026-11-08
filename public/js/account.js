@@ -77,23 +77,26 @@ export async function refreshMe() {
   if (!signedIn()) return null;
   const d = await api("/api/me");
   write({ ...acct, user: d.user });
-  mine.likes = new Set(d.likes); mine.ratings = d.ratings;
+  mine.likes = new Set(d.likes); mine.dislikes = new Set(d.dislikes || []); mine.ratings = d.ratings;
   return d;
 }
 export function updateUser(u) { write({ ...acct, user: { ...acct.user, ...u } }); }
 export function setCode(code) { write({ ...acct, code }); }
 
 // ---------- Your likes and ratings, plus everyone's counts ----------
-export const mine = { likes: new Set(), ratings: {} };
+export const mine = { likes: new Set(), dislikes: new Set(), ratings: {} };
 export const stats = { likes: {}, ratings: {}, comments: {}, ready: null };
 export function loadStats() {
   if (!stats.ready) stats.ready = fetch("/api/stats").then((r) => r.json()).then((d) => Object.assign(stats, d)).catch(() => stats);
   return stats.ready;
 }
-export async function like(item, on) {
-  const d = await api("/api/like", { method: "POST", body: { item, on } });
-  on ? mine.likes.add(item) : mine.likes.delete(item);
+// Like and dislike are one choice. Dislikes are private: they tune your feed, and nobody sees a count.
+export async function like(item, on, kind = "like") {
+  const d = await api("/api/like", { method: "POST", body: { item, on, kind } });
+  const [set, other] = kind === "dislike" ? [mine.dislikes, mine.likes] : [mine.likes, mine.dislikes];
+  if (on) { set.add(item); other.delete(item); } else set.delete(item);
   stats.likes[item] = d.likes;
+  dispatchEvent(new CustomEvent("ff:vote", { detail: { item, kind, on } }));
   return d;
 }
 export async function rate(item, stars) {

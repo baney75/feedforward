@@ -184,3 +184,16 @@ test("icon and share-image URLs are versioned, so a new logo replaces cached cop
   for (const m of mf.matchAll(/"(\/icons\/[^"]+)"/g)) assert.ok(m[1].endsWith(`?v=${v}`), `manifest icon ${m[1]} must end with ?v=${v}`);
   assert.ok(sw.includes(`/icons/icon.svg?v=${v}`), "sw.js must precache the versioned icon");
 });
+
+test("X videos play through the no-referrer frame, which only Feedforward may embed", () => {
+  // video.twimg.com answers 403 when the referrer is another site, so a bare <video> never plays.
+  const ui = read("public/js/ui.js"), xv = read("public/xv.html"), h = read("public/_headers");
+  assert.ok(!/<video[^>]*src="\$\{esc\(u\)\}"/.test(ui), "post videos must not use a bare <video src>");
+  assert.match(ui, /src="\/xv\.html#/);
+  assert.match(xv, /<meta name="referrer" content="no-referrer">/);
+  assert.match(xv, /video\.twimg\.com/);
+  const block = h.slice(h.indexOf("/xv.html"));
+  assert.match(block, /frame-ancestors 'self'/);
+  assert.match(block, /Referrer-Policy: no-referrer/);
+  assert.match(h, /camera=\(self\)/, "the front door's QR scanner needs the camera");
+});

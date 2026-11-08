@@ -476,3 +476,8 @@ main:has(> .pg-chat) { padding-bottom: var(--s4); }
 .pg-consent .end-hint { margin-top: var(--s5); }
 .pg-consent .dest-warn { display: flex; gap: var(--s2); align-items: flex-start; margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--line); font-size: var(--t-s); color: var(--fg-2); }
 .pg-consent .dest-warn svg.i { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+.pg-admin .inv { display: flex; gap: var(--s3); align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.pg-admin .inv.off .inv-t .mono { text-decoration: line-through; color: var(--fg-2); }
+.pg-admin .inv-acts { display: flex; gap: var(--s2); align-items: center; }
+.pg-admin .inv-uses { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+.pg-admin .inv-uses .input { width: 76px; min-height: 36px; padding: 4px 8px; }

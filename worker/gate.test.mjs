@@ -174,3 +174,39 @@ test("applications need a real reason and proof of work, and users can't decide 
   const j = await call(env, "/api/account", { method: "POST", body: { ref: "ownref1", pow: await aged(env) } });
   assert.equal((await call(env, "/api/admin/applications", { token: j.d.token })).status, 403);
 });
+
+test("like and dislike are one choice, and no dislike count ever leaks", async () => {
+  const { env } = await setup();
+  const m = await call(env, "/api/account", { method: "POST", body: { ref: "ownref1", pow: await aged(env) } });
+  const t = m.d.token, item = "v:kCc8FmEb1nY";
+  assert.equal((await call(env, "/api/like", { method: "POST", token: t, body: { item, on: true } })).d.likes, 1);
+  const d = await call(env, "/api/like", { method: "POST", token: t, body: { item, on: true, kind: "dislike" } });
+  assert.equal(d.d.likes, 0, "disliking takes the like back");
+  assert.ok(!("dislikes" in d.d), "the dislike count isn't sent");
+  const me = (await call(env, "/api/me", { token: t })).d;
+  assert.deepEqual([me.likes, me.dislikes], [[], [item]]);
+});
+
+test("replies need the green check; staff and verified members can post", async () => {
+  const { env, owner } = await setup();
+  const m = await call(env, "/api/account", { method: "POST", body: { ref: "ownref1", pow: await aged(env) } });
+  const body = { item: "v:kCc8FmEb1nY", body: "This explains attention well." };
+  assert.equal((await call(env, "/api/comments", { method: "POST", token: m.d.token, body })).status, 403);
+  await call(env, `/api/admin/users/${m.d.user.id}`, { method: "POST", token: owner, body: { verified: true } });
+  assert.equal((await call(env, "/api/comments", { method: "POST", token: m.d.token, body })).status, 200);
+  assert.equal((await call(env, "/api/comments", { method: "POST", token: owner, body })).status, 200);
+});
+
+test("an invite can be turned off and on, and its total uses changed", async () => {
+  const { env, owner } = await setup();
+  const code = (await call(env, "/api/admin/invites", { method: "POST", token: owner, body: { max_uses: 5 } })).d.code;
+  assert.equal((await call(env, `/api/admin/invites/${code}`, { method: "POST", token: owner, body: { disabled: true } })).status, 200);
+  assert.equal((await call(env, "/api/invite/" + code)).status, 410);
+  assert.equal((await call(env, "/api/account", { method: "POST", body: { invite: code, pow: await aged(env) } })).status, 403);
+  await call(env, `/api/admin/invites/${code}`, { method: "POST", token: owner, body: { disabled: false, max_uses: 1 } });
+  assert.equal((await call(env, "/api/account", { method: "POST", body: { invite: code, pow: await aged(env) } })).status, 200, "on again");
+  assert.equal((await call(env, "/api/account", { method: "POST", body: { invite: code, pow: await aged(env) } })).status, 403, "the new total of 1 holds");
+  // A plain member can't touch it.
+  const m = await call(env, "/api/account", { method: "POST", body: { ref: "ownref1", pow: await aged(env) } });
+  assert.equal((await call(env, `/api/admin/invites/${code}`, { method: "POST", token: m.d.token, body: { disabled: false } })).status, 403);
+});
