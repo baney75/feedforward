@@ -29,6 +29,15 @@ assert.ok(look.icons.every(([w, h]) => w === look.icons[0][0] && h === look.icon
 ok("every Shorts action is the same round button");
 assert.ok(look.voteDisplay === "contents" || /rgba\(0, 0, 0, 0\)|transparent/.test(look.voteBg), "nothing drawn behind like and dislike: " + look.voteBg);
 ok("nothing is drawn behind like and dislike");
+// The top bar gets out of the way on scroll down and comes back on scroll up.
+await p.goto(BASE + "/", { waitUntil: "load" });
+await p.waitForSelector(".vcard", { timeout: 20000 });
+await p.evaluate(async () => { for (let y = 0; y <= 900; y += 150) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); } });
+assert.ok(await p.evaluate(() => document.querySelector(".topbar").classList.contains("away")), "hidden after scrolling down");
+await p.evaluate(async () => { for (let y = 900; y >= 700; y -= 50) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); } });
+assert.ok(!(await p.evaluate(() => document.querySelector(".topbar").classList.contains("away"))), "back after scrolling up");
+ok("the top bar hides on scroll down and returns on scroll up");
+
 // Turn off Shorts: the tab goes away and a Shorts link explains they're off.
 await p.goto(BASE + "/library", { waitUntil: "load" });
 await p.waitForSelector("#shortsOff", { timeout: 20000 });

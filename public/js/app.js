@@ -242,7 +242,22 @@ addEventListener("lt:install", install);
 addEventListener("appinstalled", () => { installBtn.hidden = true; toast("Installed"); });
 
 // ---------- Misc ----------
-addEventListener("scroll", () => document.querySelector(".topbar").classList.toggle("scrolled", scrollY > 4), { passive: true });
+// The top bar gets out of the way: scrolling down slides it off, any scroll up brings it back (like the YouTube
+// and X apps). It always shows near the top of the page, and small jitters don't move it.
+{
+  const bar = document.querySelector(".topbar");
+  let lastY = scrollY, acc = 0;
+  addEventListener("scroll", () => {
+    const y = scrollY, dy = y - lastY; lastY = y;
+    bar.classList.toggle("scrolled", y > 4);
+    if (y < 80) { acc = 0; bar.classList.remove("away"); document.body.classList.remove("bar-away"); return; }
+    acc = Math.sign(dy) === Math.sign(acc) ? acc + dy : dy;
+    if (acc > 24) { bar.classList.add("away"); document.body.classList.add("bar-away"); }
+    else if (acc < -12) { bar.classList.remove("away"); document.body.classList.remove("bar-away"); }
+  }, { passive: true });
+  // Opening a page always brings it back.
+  addEventListener("popstate", () => { bar.classList.remove("away"); document.body.classList.remove("bar-away"); });
+}
 addEventListener("lt:fresh", (e) => toast(`${e.detail} new since the last update`));
 if ("serviceWorker" in navigator && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
   addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));

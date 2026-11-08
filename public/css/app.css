@@ -655,3 +655,8 @@ body.door main { padding: 0; }
 .lib-pref input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--accent); }
 .shorts-off { text-align: center; } .shorts-off h1 { font-size: 28px; color: var(--fg); } .shorts-off .row { display: flex; gap: var(--s2); justify-content: center; flex-wrap: wrap; margin-top: var(--s5); }
 .shorts-off-btn { display: block; margin: var(--s3) auto 0; font-size: 13px; color: var(--fg-2); }
+
+/* The top bar slides away while you scroll down and returns on any scroll up. */
+.topbar { transition: transform .22s cubic-bezier(.2, .8, .2, 1); will-change: transform; }
+.topbar.away { transform: translateY(-100%); }
+@media (prefers-reduced-motion: reduce) { .topbar { transition: none; } }
