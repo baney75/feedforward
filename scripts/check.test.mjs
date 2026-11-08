@@ -246,6 +246,12 @@ test("bell: a queue cleared between opens lights again on the next arrival", asy
   assert.equal(isFresh({ kind: "applications", n: 3, ts: 1 }, 0, q), true, "shrank, then grew");
 });
 
+test("one player: the watch page uses the stage, and saving position never starts an account sync", () => {
+  assert.doesNotMatch(read("public/js/views.js"), /mountPlayer/, "a second player would stop the mini player surviving navigation");
+  const pos = read("public/js/store.js").match(/setPos\(id, t, d\) \{[\s\S]*?\n  \},/)[0];
+  assert.doesNotMatch(pos, /write\(/, "write() fires ff:changed, and a 5 second tick would starve the debounced sync");
+});
+
 test("member home has no animated counters (reported twice: they looked glitchy)", () => {
   const src = read("public/js/views.js");
   assert.doesNotMatch(src, /data-count|liveCounters/, "the count-up stats row must stay gone");

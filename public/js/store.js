@@ -16,6 +16,7 @@ function markDay() {
   if (d[0] !== today()) { d.unshift(today()); write("days", d.slice(0, 400)); }
 }
 
+function posAll() { try { return JSON.parse(localStorage.getItem("lt:pos")) || {}; } catch { return {}; } }
 export const store = {
   // "Turn off Shorts": for people who know short video hooks them. Hides Shorts everywhere on this device.
   shortsOff() { return read("noShorts", false) === true; },
@@ -47,6 +48,16 @@ export const store = {
     h.unshift(id);
     write("history", h.slice(0, 500));
     markDay();
+  },
+  // Where you stopped in each video: { id: [seconds, duration] }, newest last. This device only, and quiet:
+  // it updates every few seconds while playing, so it must not trigger an account sync.
+  pos(id) { return posAll()[id] || null; },
+  setPos(id, t, d) {
+    if (!(d > 0)) return;
+    const all = posAll(); delete all[id]; all[id] = [Math.round(t), Math.round(d)];
+    const keys = Object.keys(all);
+    for (const k of keys.slice(0, Math.max(0, keys.length - 300))) delete all[k];
+    try { localStorage.setItem("lt:pos", JSON.stringify(all)); } catch {}
   },
   history() { return read("history", []); },
   clearHistory() { write("historyReset", Date.now()); write("history", []); },

@@ -1,7 +1,8 @@
 import { load, D, sampler, applyStats } from "./data.js";
 import { icon } from "./icons.js";
 import { store } from "./store.js";
-import { toast, watchChipRails } from "./ui.js";
+import { toast, watchChipRails, watchThumbs } from "./ui.js";
+import { closeStage, stageEl } from "./stage.js";
 import * as V from "./views.js";
 import { openTV, closeTV, tvIsOpen } from "./tv.js";
 import { signedIn, user, refreshMe, sync, scheduleSync, loadStats, refreshGate } from "./account.js";
@@ -25,7 +26,7 @@ function shell() {
   const noShorts = store.shortsOff(), nav = NAV.filter(([h]) => !(noShorts && h === "/shorts"));
   rail.innerHTML = nav.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("") +
     `<hr><div class="rail-h">Explore</div><div class="explore">${EXPLORE.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</div>` +
-    `<div class="foot"><a href="/tv">TV mode</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="mailto:support@dbaney.com">support@dbaney.com</a> · <a href="https://github.com/baney75/feedforward">GitHub</a><br><button class="textbtn" type="button" id="railInstall">Install app</button> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
+    `<div class="foot"><a href="/tv">TV mode</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="mailto:support@dbaney.com">support@dbaney.com</a> · <a href="https://github.com/baney75/feedforward">GitHub</a><br><button class="textbtn" type="button" id="railInstall">Install app</button> · <button class="textbtn" type="button" id="railTheme">Theme</button> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
   const tabbar = document.querySelector(".tabbar"), tabs = nav.filter(([h]) => TABS.includes(h));
   tabbar.style.setProperty("--tabs", tabs.length);
   tabbar.innerHTML = tabs.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("");
@@ -79,6 +80,8 @@ async function route() {
   const first = path.split("/")[1] || "";
   const door = !signedIn() && first !== "link";
   document.body.classList.toggle("door", door);
+  // Shorts, TV mode and the front door have their own sound, or none.
+  if (door || first === "shorts" || first === "tv") closeStage();
   if (door) {
     view.dataset.seq = my;
     const out = loadPage("gate", qs, path.split("/").filter(Boolean));
@@ -134,11 +137,33 @@ async function route() {
   if (st && typeof st.y === "number") requestAnimationFrame(() => scrollTo(0, st.y)); else scrollTo(0, 0);
 }
 
-function nav(href, { replace = false, state = {} } = {}) {
+function nav(href, { replace = false, state = {}, morph = null } = {}) {
   try { history.replaceState({ ...(history.state || {}), y: scrollY }, ""); } catch {}
-  replace ? history.replaceState(state, "", href) : history.pushState(state, "", href);
-  route();
+  const go = () => { replace ? history.replaceState(state, "", href) : history.pushState(state, "", href); return route(); };
+  if (!document.startViewTransition || replace || matchMedia("(prefers-reduced-motion: reduce)").matches) { go(); return; }
+  // The thumbnail you clicked grows into the player. The page never waits more than a moment for this.
+  morph?.classList.add("vt-morph");
+  const t = document.startViewTransition(async () => {
+    morph?.classList.remove("vt-morph");
+    await Promise.race([go(), new Promise((r) => setTimeout(r, 150))]);
+    if (morph && !stageEl.hidden) stageEl.classList.add("vt-morph");
+  });
+  t.ready.catch(() => {});
+  t.finished.catch(() => {}).finally(() => stageEl.classList.remove("vt-morph"));
 }
+// Get ready as soon as a pointer heads for a link: the page's code and the player's picture.
+const warmed = new Set();
+function warm(a) {
+  let u; try { u = new URL(a.href, location.href); } catch { return; }
+  if (u.origin !== location.origin || warmed.has(u.pathname)) return;
+  warmed.add(u.pathname);
+  const [first, second] = u.pathname.split("/").filter(Boolean);
+  if (first === "watch" && second) { new Image().src = `https://i.ytimg.com/vi/${second}/maxresdefault.jpg`; }
+  else if (PAGES[first]) import(`/js/pages/${PAGES[first]}.js`).catch(() => {});
+}
+let warmT = 0;
+document.addEventListener("pointerover", (e) => { const a = e.target.closest?.("a[href]"); if (!a) return; clearTimeout(warmT); warmT = setTimeout(() => warm(a), 65); }, { passive: true });
+document.addEventListener("touchstart", (e) => { const a = e.target.closest?.("a[href]"); if (a) warm(a); }, { passive: true });
 async function loadPage(name, qs, parts) {
   const my = view.dataset.seq;
   view.innerHTML = `<div class="skel" role="status" aria-label="Loading"><i></i><i></i><i></i></div>`;
@@ -171,7 +196,7 @@ document.addEventListener("click", (e) => {
   if (u.origin !== location.origin || u.pathname.startsWith("/data/") || u.pathname.startsWith("/labs/")) return;
   e.preventDefault();
   if (u.pathname === "/tv") { goTV(); return; }
-  nav(u.pathname + u.search);
+  nav(u.pathname + u.search, { morph: u.pathname.startsWith("/watch/") ? a.querySelector(".thumb") : null });
 });
 addEventListener("popstate", () => route());
 
@@ -218,7 +243,7 @@ function setTheme(t) {
 }
 addEventListener("ff:theme", () => document.getElementById("themeBtn").click());
 // Any page can offer the theme picker with a button whose id is themePick.
-document.addEventListener("click", (e) => { if (e.target.closest("#themePick")) dispatchEvent(new Event("ff:theme")); });
+document.addEventListener("click", (e) => { if (e.target.closest("#themePick, #railTheme")) dispatchEvent(new Event("ff:theme")); });
 document.getElementById("themeBtn").addEventListener("click", () => {
   const d = document.getElementById("sheet");
   const cur = document.documentElement.dataset.theme || "";
@@ -325,6 +350,7 @@ addEventListener("ff:account", () => {
 });
 addEventListener("ff:changed", scheduleSync);
 import("./notify.js");
+watchThumbs();
 watchChipRails(document.getElementById("view"));
 // Turning Shorts off or on rebuilds the navigation at once.
 addEventListener("ff:prefs", () => { shell(); markNav(location.pathname.replace(/\/+$/, "") || "/"); });
