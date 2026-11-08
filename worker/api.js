@@ -425,30 +425,43 @@ export const feedVideos = (xml) => [...String(xml).matchAll(/<entry>([\s\S]*?)<\
   title: ((e.match(/<title>([^<]*)<\/title>/) || [])[1] || "").replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").slice(0, 200),
   ts: Math.floor(Date.parse((e.match(/<published>([^<]+)<\/published>/) || [])[1] || 0) / 1000) || 0,
 })).filter((v) => v.id);
+// Try a flaky source a few times before giving up (fxtwitter 404s real accounts about a third of the time).
+async function tries(fn, n = 3) {
+  for (let k = 0; k < n; k++) { try { return await fn(); } catch {} if (k < n - 1) await new Promise((res) => setTimeout(res, 250 * (k + 1))); }
+  throw new Error("source failed");
+}
 on("GET", "/api/u/([\\w]+)/feed", async (req, env, _u, [id]) => {
   const u = await env.DB.prepare("SELECT id, verified, links FROM users WHERE id = ? AND banned = 0").bind(id).first();
   if (!u) return err(404, "No such learner.");
   const links = linksOf(u), empty = { posts: [], videos: [] };
   if (!u.verified || (!links.x && !links.youtube)) return json(empty, 200, { "cache-control": "public, max-age=300" });
-  const key = `uf:${u.id}:${links.x || ""}:${links.youtube || ""}`;
-  let out = env.FRESH && (await env.FRESH.get(key, "json"));
+  const key = `uf:${u.id}:${links.x || ""}:${links.youtube || ""}`, goodKey = "ok:" + key;
+  let out = env.FRESH && (await env.FRESH.get(key, "json")), failed = false;
   if (!out) {
+    // When a source fails every try, show the last copy that worked (kept a week) instead of an empty section.
+    const last = (env.FRESH && (await env.FRESH.get(goodKey, "json"))) || empty;
     out = { ...empty };
-    let failed = false;
     const jobs = [];
-    if (links.x) jobs.push(fetch(`https://api.fxtwitter.com/2/profile/${links.x}/statuses`, { headers: FX_UA }).then((r) => r.json()).then((d) => { if (d.code !== 200) throw 0; out.posts = feedPosts(d, links.x); }).catch(() => { failed = true; }));
-    if (links.youtube) jobs.push((async () => {
+    if (links.x) jobs.push(tries(async () => {
+      const d = await (await fetch(`https://api.fxtwitter.com/2/profile/${links.x}/statuses`, { headers: FX_UA })).json();
+      if (!d || d.code !== 200) throw 0;
+      out.posts = feedPosts(d, links.x);
+    }).catch(() => { failed = true; out.posts = last.posts; }));
+    if (links.youtube) jobs.push(tries(async () => {
       const ch = links.youtube.startsWith("channel/") ? links.youtube.slice(8) : await ytChannelId(links.youtube);
       if (!ch) throw 0;
       const r = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${ch}`);
       if (!r.ok) throw 0;
       out.videos = feedVideos(await r.text());
-    })().catch(() => { failed = true; }));
+    }).catch(() => { failed = true; out.videos = last.videos; }));
     await Promise.all(jobs);
-    // fxtwitter and YouTube fail now and then; a miss is retried in 2 minutes instead of sticking for 30.
-    if (env.FRESH) await env.FRESH.put(key, JSON.stringify(out), { expirationTtl: failed ? 120 : 1800 });
+    if (env.FRESH) {
+      // A miss is retried in 2 minutes instead of sticking for 30.
+      await env.FRESH.put(key, JSON.stringify(out), { expirationTtl: failed ? 120 : 1800 });
+      if (!failed) await env.FRESH.put(goodKey, JSON.stringify(out), { expirationTtl: 7 * 86400 });
+    }
   }
-  return json(out, 200, { "cache-control": "public, max-age=300" });
+  return json(out, 200, { "cache-control": `public, max-age=${failed ? 60 : 300}` });
 });
 
 on("POST", "/api/suggest", async (req, env, u) => {
