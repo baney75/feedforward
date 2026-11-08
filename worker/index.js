@@ -39,7 +39,7 @@ async function joinPage(req, env, code) {
   const title = who ? `${who} invited you to Feedforward` : "You're invited to Feedforward";
   const grants = info && !info.gone ? [info.role !== "user" && ROLE_NAME[info.role], info.teach && `a ${info.teach}`].filter(Boolean) : [];
   const desc = (grants.length ? `Join as ${grants.join(" and ")}. ` : "") + "Invite-only: learn AI from the people building it, with videos, labs and live sessions.";
-  const img = new URL("/og-invite.jpg?v=1", req.url).toString(), here = new URL(`/join/${code}`, req.url).toString();
+  const img = new URL("/og-invite.jpg?v=2", req.url).toString(), here = new URL(`/join/${code}`, req.url).toString();
   const set = (sel, v) => [sel, { element: (e) => e.setAttribute("content", v) }];
   let rw = new HTMLRewriter();
   for (const [sel, h] of [

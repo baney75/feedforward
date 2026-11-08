@@ -25,8 +25,13 @@ const short = ([id, title, views, person, topic, q, score]) => ({ id, title, vie
 
 async function json(url) {
   let r = await fetch(url);
-  // A 401 here is a stale answer (a preload from before the gate cookie was set): ask once more, fresh.
-  if (r.status === 401) r = await fetch(url, { cache: "no-store" });
+  // A 401 is a stale preload, or a browser that refused the gate cookie (Safari over http, Lockdown Mode).
+  // Ask once more, fresh, with the member's session, which the gate also accepts.
+  if (r.status === 401) {
+    let tok = "";
+    try { tok = (JSON.parse(localStorage.getItem("lt:acct") || "null") || {}).token || ""; } catch {}
+    r = await fetch(url, { cache: "no-store", headers: tok ? { authorization: "Bearer " + tok } : {} });
+  }
   if (!r.ok) throw new Error(url + " " + r.status);
   return r.json();
 }
