@@ -128,6 +128,8 @@ export function watch(el, qs, id) {
   const track = trackSlug && D.learn.tracks.find((t) => t.slug === trackSlug);
   const saved = store.isSaved("v:" + id);
   const upNext = related(v, 14);
+  // One clear next step: the first related video you haven't finished.
+  const next = upNext.find((x) => !finished(x.id)) || upNext[0];
   el.innerHTML = `<div class="watch">
     <div style="min-width:0">
       <div class="player"></div>
@@ -138,14 +140,15 @@ export function watch(el, qs, id) {
         ${likeButton("v:" + id)}
         <button class="btn" id="save" aria-pressed="${saved}" aria-label="Save">${icon(saved ? "bookmarked" : "bookmark")}<span class="lbl">${saved ? "Saved" : "Save"}</span></button>
         <button class="btn" id="share" aria-label="Share">${icon("share")}<span class="lbl">Share</span></button>
+        <button class="btn" id="focus" type="button" aria-pressed="false" aria-label="Focus mode" title="Focus mode (Z)">${icon("focus")}<span class="lbl">Focus</span></button>
         <a class="btn" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener" aria-label="Watch on YouTube">${icon("yt")}<span class="lbl">YouTube</span></a>
       </div>
       <div class="vsub wmeta" style="margin-top:12px">${v.views ? num(v.views) + " views" : ""}${v.ts ? `<span class="dot"></span>${ago(v.ts)}` : ""}${v.sec ? `<span class="dot"></span>${dur(v.sec)}` : ""}${v.topic != null && v.topic >= 0 ? `<span class="dot"></span><a href="/?topic=${TOPICS[v.topic].code}">${topicLabel(v.topic)}</a>` : ""}</div>
       ${p ? `<div class="why"><span class="muted">Why ${esc(p.name)} is on Feedforward</span><br>${esc(p.why)}</div>` : ""}
-      <section class="upnext-inline" aria-label="Up next"><div class="sec-h" style="margin-top:0"><h2>Up next</h2></div><div class="shelf">${upNext.slice(0, 10).map((x) => videoCard(x)).join("")}</div></section>
+      <section class="notes-pane" aria-label="Notes"><div class="notes-h"><label for="notes">Your notes</label><button class="btn" type="button" id="focusX">Exit focus</button></div><textarea id="notes" placeholder="Write down what you want to keep. Notes stay on this device.">${esc((store.get("notes", {})[id] || ""))}</textarea></section>
+      ${!track && next ? `<section class="nextstep" aria-label="Next"><div class="side-h"><h2>${v.topic != null && v.topic >= 0 ? `Next in ${esc(topicLabel(v.topic))}` : "Next"}</h2><label class="toggle"><input type="checkbox" id="autoplay" ${store.get("autoplay", true) !== false ? "checked" : ""}> Autoplay</label></div>${videoCard(next, { row: true })}${upNext.length > 1 ? `<button class="more" type="button" id="moreNext">Show more videos</button><div class="grid" id="moreList" hidden></div>` : ""}</section>` : ""}
       <div id="cmts"></div>
     </div>
-    <aside class="side"><div class="side-h"><h2>Up next</h2><label class="toggle"><input type="checkbox" id="autoplay" ${store.get("autoplay", true) !== false ? "checked" : ""}> Autoplay</label></div>${upNext.map((x) => videoCard(x, { row: true })).join("")}</aside>
   </div>`;
   let countdown = 0;
   // Our poster covers YouTube's start screen until the video plays. A tap plays it; if the browser refuses,
@@ -154,8 +157,8 @@ export function watch(el, qs, id) {
   const stage = openStage({ id, title: v.title, slotEl: $(".player", el), cover, on: {
     onPlay: () => store.watched(id),
     onEnd: () => {
-      if (store.get("autoplay", true) === false || !upNext[0] || track) return;
-      const nx = upNext[0];
+      if (store.get("autoplay", true) === false || !next || track) return;
+      const nx = next;
       let n = 6;
       stage.video.insertAdjacentHTML("beforeend", `<div class="autonext" role="status"><img src="${thumb(nx.id, "hqdefault")}" alt=""><div><span class="topic-tag">Up next in <b class="an">${n}</b></span><h3>${esc(nx.title)}</h3><div class="row"><button class="btn cancel">Cancel</button><a class="btn primary" href="/watch/${nx.id}">${icon("play")}Play now</a></div></div></div>`);
       const box = stage.video.querySelector(".autonext");
@@ -176,10 +179,18 @@ export function watch(el, qs, id) {
     try { if (navigator.share) await navigator.share({ title: v.title, url }); else { await navigator.clipboard.writeText(url); toast("Link copied"); } } catch {}
   };
   if (track) bindTrackBanner(el, track, id);
-  $("#autoplay", el).onchange = (e) => store.set("autoplay", e.target.checked);
+  const auto = $("#autoplay", el); if (auto) auto.onchange = (e) => store.set("autoplay", e.target.checked);
+  const more = $("#moreNext", el);
+  if (more) more.onclick = () => { const g = $("#moreList", el); g.innerHTML = upNext.filter((x) => x !== next).map((x) => videoCard(x)).join(""); g.hidden = false; more.remove(); };
+  // Focus mode: everything but the video and your notes steps away.
+  const focusBtn = $("#focus", el), noteBox = $("#notes", el);
+  const setFocus = (on) => { document.body.classList.toggle("focus", on); focusBtn.setAttribute("aria-pressed", on); dispatchEvent(new Event("resize")); scrollTo(0, 0); };
+  focusBtn.onclick = () => setFocus(!document.body.classList.contains("focus"));
+  $("#focusX", el).onclick = () => setFocus(false);
+  noteBox.oninput = () => { const all = store.get("notes", {}); delete all[id]; if (noteBox.value.trim()) all[id] = noteBox.value; const k = Object.keys(all); for (const x of k.slice(0, Math.max(0, k.length - 200))) delete all[x]; store.set("notes", all); };
   const unbind = bindSocial(el);
   comments($("#cmts", el), "v:" + id);
-  return () => { clearInterval(countdown); stage.video.querySelector(".autonext")?.remove(); leaveStage(); unbind(); };
+  return () => { clearInterval(countdown); document.body.classList.remove("focus"); stage.video.querySelector(".autonext")?.remove(); leaveStage(); unbind(); };
 }
 
 function extraVideo(id) {
@@ -434,7 +445,7 @@ export function aboutPage(el) {
 </ul>
     <p class="muted" style="font-size:15px">Right now: ${num(m.videos)} videos, ${num(m.posts)} posts. Catalog built ${new Date(m.built * 1000).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" })}.${D.fresh ? ` ${D.fresh} new since then.` : ""}</p>
     <h2 class="kbd-only">Keyboard</h2>
-    <ul class="keys kbd-only"><li><kbd>/</kbd> search</li><li><kbd>T</kbd> TV mode: one great video after another</li><li><kbd>Shift</kbd> + <kbd>N</kbd> play something new</li><li>In TV mode: <kbd>N</kbd> next, <kbd>P</kbd> previous, <kbd>Space</kbd> pause, <kbd>←</kbd> <kbd>→</kbd> 10 seconds, <kbd>1</kbd> to <kbd>9</kbd> jump, <kbd>Esc</kbd> exit</li></ul>
+    <ul class="keys kbd-only"><li><kbd>⌘</kbd> + <kbd>K</kbd> go anywhere</li><li><kbd>?</kbd> all shortcuts</li><li><kbd>Z</kbd> focus mode on a video</li><li><kbd>/</kbd> search</li><li><kbd>T</kbd> TV mode: one great video after another</li><li><kbd>Shift</kbd> + <kbd>N</kbd> play something new</li><li>In TV mode: <kbd>N</kbd> next, <kbd>P</kbd> previous, <kbd>Space</kbd> pause, <kbd>←</kbd> <kbd>→</kbd> 10 seconds, <kbd>1</kbd> to <kbd>9</kbd> jump, <kbd>Esc</kbd> exit</li></ul>
     <h2>Install it</h2>
     <p>Feedforward is a web app. On a phone, use your browser's Share or menu button and choose Add to Home Screen. On a computer, use the install button in the address bar. It opens like an app and remembers what you saved.</p>
     <p><button class="btn primary" id="aboutInstall">${icon("install")}Install Feedforward</button></p>

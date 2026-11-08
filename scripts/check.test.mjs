@@ -256,6 +256,28 @@ test("Library: a swipe inside a sideways shelf scrolls it and never removes an i
   assert.match(read("public/js/views.js"), /it\.closest\("\.shelf"\)\) it = null/);
 });
 
+test("watch page: one next step, no recommendation wall until asked", () => {
+  const src = read("public/js/views.js");
+  assert.doesNotMatch(src, /class="side"|upnext-inline/);
+  assert.match(src, /id="moreNext"/);
+  assert.match(src, /upNext\.find\(\(x\) => !finished\(x\.id\)\)/);
+});
+
+test("clickable terms skip ordinary English words", () => {
+  const src = read("public/js/terms.js");
+  const safe = src.match(/const SAFE = new Set\((\[[^\]]*\])/)[1];
+  for (const w of ["agent", "attention", "temperature", "token", "thread", "vector", "matrix"]) assert.ok(!JSON.parse(safe).includes(w), w);
+});
+
+test("in-app links keep their hash, so dictionary links land on the term", () => {
+  assert.match(read("public/js/app.js"), /nav\(u\.pathname \+ u\.search \+ u\.hash/);
+});
+
+test("every new shell module is cached for offline", () => {
+  const sw = read("public/sw.js");
+  for (const f of ["palette", "terms", "gestures", "stage"]) assert.ok(sw.includes(`"/js/${f}.js"`), f);
+});
+
 test("member home has no animated counters (reported twice: they looked glitchy)", () => {
   const src = read("public/js/views.js");
   assert.doesNotMatch(src, /data-count|liveCounters/, "the count-up stats row must stay gone");

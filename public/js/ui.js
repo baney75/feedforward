@@ -52,6 +52,29 @@ export function watchThumbs() {
   document.addEventListener("error", (e) => { if (e.target.tagName === "IMG") back(e.target); }, true);
 }
 
+// Resting on a thumbnail flips through three frames YouTube publishes from inside the video.
+export function watchPreviews() {
+  if (!matchMedia("(hover: hover) and (pointer: fine)").matches || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let cur = null, wait = 0, flip = 0;
+  const stop = () => { clearTimeout(wait); clearInterval(flip); cur?.querySelector(".hoverframe")?.remove(); cur = null; };
+  document.addEventListener("pointerover", (e) => {
+    const th = e.target.closest?.(".vcard .thumb, .vrow .thumb");
+    if (th === cur) return;
+    stop();
+    const id = th?.closest("a")?.getAttribute("href")?.match(/^\/watch\/([\w-]{11})/)?.[1];
+    if (!id) return;
+    cur = th;
+    wait = setTimeout(() => {
+      const urls = [1, 2, 3].map((n) => thumb(id, "hq" + n));
+      urls.forEach((u) => { new Image().src = u; });
+      const f = new Image(); f.className = "hoverframe"; f.alt = ""; f.src = urls[0];
+      th.appendChild(f);
+      let i = 0; flip = setInterval(() => { i = (i + 1) % 3; f.src = urls[i]; }, 800);
+    }, 350);
+  }, { passive: true });
+  document.addEventListener("click", stop, true);
+}
+
 export function videoCard(v, { big = false, row = false } = {}) {
   const p = D.people[v.person];
   const srcset = `${thumb(v.id, "mqdefault")} 320w, ${thumb(v.id, "sddefault")} 640w${big ? `, ${thumb(v.id, "maxresdefault")} 1280w` : ""}`;
