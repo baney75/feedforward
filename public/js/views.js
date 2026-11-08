@@ -4,7 +4,8 @@ import { icon } from "./icons.js";
 import { store } from "./store.js";
 import { mountPlayer } from "./tv.js";
 import { likeButton, stars, bindSocial, comments } from "./social.js";
-import { mine } from "./account.js";
+import { mine, like as likeItem, signedIn } from "./account.js";
+import { haptic } from "./haptics.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const wideWire = () => matchMedia("(min-width: 1600px)").matches;
@@ -47,11 +48,12 @@ export function home(el, qs) {
   const chipBar = chips(topic, { extra: [{ v: -2, label: "Newest" }] });
 
   const wire = `<aside class="wire-rail" aria-label="The Wire"><div class="sec-h"><h2>The Wire</h2><a href="/wire">See all</a></div><div id="wireList">${topPosts({ topic: tIdx, limit: 30 }).map(postCard).join("")}</div></aside>`;
+  // Members are already in: no pitch, no stats. Topics on top, then where you left off, then today's picks.
+  void hello;
   el.innerHTML = `<div class="home"><div class="home-main">
-      ${topic === -1 ? hello : ""}
-      ${chipBar}
-      ${newest ? "" : hero}
+      <div class="chips-wrap">${chipBar}</div>
       ${topic === -1 ? keepGoing() : ""}
+      ${newest ? "" : hero}
       ${topic === -1 ? `<div class="sec-h"><h2>Start learning</h2><a href="/learn">All tracks and labs</a></div><div class="shelf">${tracks}</div>` : ""}
       <div class="sec-h"><h2>${newest ? "Newest uploads" : topic >= 0 ? TOPICS[topic].label : "For you"}</h2><div style="display:flex;gap:8px"><a class="btn" href="/tv">${icon("tv")}TV mode</a><button class="btn" id="reshuffle">${icon("shuffle")}Shuffle</button></div></div>
       <div class="grid" id="feed"></div><div id="more" style="height:1px"></div>
@@ -459,13 +461,24 @@ export function shortsPage(el, qs, startId) {
     <div class="snav"><button class="icon-btn" data-snav="-1" aria-label="Previous short">${icon("up")}</button><button class="icon-btn" data-snav="1" aria-label="Next short">${icon("down")}</button></div></div>`;
   bindChips(el);
   const box = $(".shorts", el);
-  let shown = 40, active = null;
+  let shown = 40, active = null, paused = false;
+  // Our own controls: YouTube's overlay stays off (controls=0) and a tap layer sits over the player.
+  // Tap pauses or plays, double-tap likes, a thin line shows progress. Sound starts off (phones block
+  // autoplay with sound) and stays on once you turn it on.
+  const YT = "https://www.youtube-nocookie.com";
+  const cmd = (slide, func, args = []) => { const f = slide && slide.querySelector("iframe"); if (f && f.contentWindow) f.contentWindow.postMessage(JSON.stringify({ event: "command", func, args }), YT); };
+  const soundOn = () => sessionStorage.getItem("ff:sound") === "1";
   const activate = (slide) => {
     if (active === slide) return;
-    if (active) { const f = active.querySelector("iframe"); if (f) f.remove(); }
-    active = slide;
+    if (active) { const f = active.querySelector("iframe"); if (f) f.remove(); active.classList.remove("playing", "paused"); }
+    active = slide; paused = false;
     const id = slide.dataset.id;
-    slide.querySelector(".sframe").insertAdjacentHTML("beforeend", `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&loop=1&playlist=${id}&playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="${esc(slide.dataset.title)}"></iframe>`);
+    const params = new URLSearchParams({ autoplay: "1", mute: soundOn() ? "0" : "1", controls: "0", disablekb: "1", fs: "0", iv_load_policy: "3", playsinline: "1", rel: "0", loop: "1", playlist: id, enablejsapi: "1", origin: location.origin });
+    slide.querySelector(".sframe").insertAdjacentHTML("afterbegin", `<iframe src="${YT}/embed/${id}?${params}" allow="autoplay; encrypted-media; picture-in-picture" title="${esc(slide.dataset.title)}"></iframe>`);
+    const f = slide.querySelector("iframe");
+    f.addEventListener("load", () => f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), YT));
+    slide.classList.add("playing");
+    slide.classList.toggle("muted", !soundOn());
     store.watched(id);
     history.replaceState(history.state, "", `/shorts/${id}${location.search}`);
     const k = [...box.children].indexOf(slide);
@@ -481,19 +494,59 @@ export function shortsPage(el, qs, startId) {
   };
   addEventListener("keydown", keys);
   el.querySelector(".snav").onclick = (e) => { const b = e.target.closest("[data-snav]"); if (b) step(+b.dataset.snav); };
+  // Progress, from the player's own timing messages.
+  const onMsg = (e) => {
+    if (e.origin !== YT || !active) return;
+    let d; try { d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch { return; }
+    const info = d && d.info;
+    if (info && info.currentTime != null && info.duration) active.style.setProperty("--prog", (100 * info.currentTime / info.duration).toFixed(2) + "%");
+  };
+  addEventListener("message", onMsg);
+  let tapT = 0, lastTap = 0;
   box.addEventListener("click", (e) => {
+    const catcher = e.target.closest(".scatch");
+    if (catcher) {
+      const slide = catcher.closest(".short"), now = Date.now();
+      if (now - lastTap < 280) {
+        // Double tap: like, with a burst where the finger was.
+        clearTimeout(tapT); lastTap = 0;
+        const r = catcher.getBoundingClientRect();
+        catcher.insertAdjacentHTML("beforeend", `<span class="burst" style="left:${e.clientX - r.left}px;top:${e.clientY - r.top}px">${icon("heartfill")}</span>`);
+        setTimeout(() => catcher.querySelector(".burst")?.remove(), 800);
+        haptic.success();
+        const item = "s:" + slide.dataset.id;
+        if (signedIn() && !mine.likes.has(item)) likeItem(item, true).then(() => { const pill = slide.querySelector(".vote"); if (pill) pill.outerHTML = likeButton(item, { label: false }).replace('class="btn like"', 'class="like"'); }).catch(() => {});
+        return;
+      }
+      lastTap = now;
+      tapT = setTimeout(() => {
+        paused = !paused; cmd(slide, paused ? "pauseVideo" : "playVideo");
+        slide.classList.toggle("paused", paused); haptic.tick();
+      }, 260);
+      return;
+    }
+    const snd = e.target.closest("[data-sound]");
+    if (snd) {
+      const slide = snd.closest(".short"), on = slide.classList.contains("muted");
+      cmd(slide, on ? "unMute" : "mute"); if (on) cmd(slide, "setVolume", [100]);
+      slide.classList.toggle("muted", !on); sessionStorage.setItem("ff:sound", on ? "1" : "0"); haptic.tick();
+      return;
+    }
     const sh = e.target.closest("[data-share]");
     if (sh) { const url = `${location.origin}/shorts/${sh.dataset.share}`; (navigator.share ? navigator.share({ url }) : navigator.clipboard.writeText(url).then(() => toast("Link copied"))).catch(() => {}); }
   });
   document.body.classList.add("on-shorts");
   const unbind = bindSocial(el);
-  return () => { unbind(); io.disconnect(); removeEventListener("keydown", keys); document.body.classList.remove("on-shorts"); };
+  return () => { unbind(); io.disconnect(); removeEventListener("keydown", keys); removeEventListener("message", onMsg); document.body.classList.remove("on-shorts"); };
 }
 function shortSlide(s) {
   const p = D.people[s.person];
   const saved = store.isSaved("s:" + s.id);
   return `<section class="short" data-id="${s.id}" data-title="${esc(s.title)}">
     <div class="sframe"><img src="https://i.ytimg.com/vi/${s.id}/oardefault.jpg" alt="" loading="lazy" width="720" height="1280" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/${s.id}/hqdefault.jpg'">
+      <div class="scatch" aria-label="Tap to pause, double tap to like"><span class="spause" aria-hidden="true">${icon("play")}</span></div>
+      <button class="ssound" data-sound type="button" aria-label="Turn sound on or off"><span class="on">Tap for sound</span><span class="off" aria-hidden="true">${icon("volume")}</span></button>
+      <div class="sbar" aria-hidden="true"><i></i></div>
       <div class="sover"><a class="who" href="/p/${p.slug}">${avatar(p, "s")}<b>${esc(p.name)}</b></a><p>${esc(s.title)}</p><span class="topic-tag">${topicLabel(s.topic)} · ${num(s.views)} views</span></div></div>
     <div class="sacts">
       ${likeButton("s:" + s.id, { label: false }).replace('class="btn like"', 'class="like"')}

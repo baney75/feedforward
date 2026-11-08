@@ -6,6 +6,7 @@ import * as V from "./views.js";
 import { openTV, closeTV, tvIsOpen } from "./tv.js";
 import { signedIn, user, refreshMe, sync, scheduleSync, loadStats, refreshGate } from "./account.js";
 import { userAvatar } from "./ui.js";
+import { haptic } from "./haptics.js";
 
 const view = document.getElementById("view");
 // Six main places. Everything else lives in a quiet Explore list (and on the Learn hub on phones).
@@ -22,7 +23,7 @@ function shell() {
   const rail = document.querySelector(".rail");
   rail.innerHTML = NAV.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("") +
     `<hr><div class="rail-h">Explore</div><div class="explore">${EXPLORE.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</div>` +
-    `<div class="foot"><a href="/tv">TV mode</a> · <a href="/people">People</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="mailto:support@dbaney.com">support@dbaney.com</a> · <a href="https://github.com/baney75/feedforward">GitHub</a> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
+    `<div class="foot"><a href="/tv">TV mode</a> · <a href="/people">People</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="mailto:support@dbaney.com">support@dbaney.com</a> · <a href="https://github.com/baney75/feedforward">GitHub</a><br><button class="textbtn" type="button" id="railInstall">Install app</button> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
   document.querySelector(".tabbar").innerHTML = NAV.filter(([h]) => TABS.includes(h)).map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l === "The Wire" ? "Wire" : l}</span></a>`).join("");
   document.getElementById("searchBtn").innerHTML = icon("search");
   document.getElementById("installBtn").innerHTML = icon("install");
@@ -117,6 +118,7 @@ async function route() {
   else out = V.notFound(view);
   if (out instanceof Promise) out.then((c) => { barDone(); if (my === seq) cleanup = c; else if (typeof c === "function") c(); });
   else { cleanup = out; barDone(); }
+  setTimeout(askInstall, 4000);
   const st = history.state;
   if (st && typeof st.y === "number") requestAnimationFrame(() => scrollTo(0, st.y)); else scrollTo(0, 0);
 }
@@ -148,6 +150,7 @@ document.addEventListener("click", (e) => {
   const sv = e.target.closest("[data-save]");
   if (sv) {
     const on = store.toggleSave(sv.dataset.save);
+    haptic.tick();
     sv.setAttribute("aria-pressed", on); sv.innerHTML = icon(on ? "bookmarked" : "bookmark");
     toast(on ? "Saved to your library" : "Removed from your library"); return;
   }
@@ -226,8 +229,9 @@ let deferred = null;
 const installBtn = document.getElementById("installBtn");
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferred = e; installBtn.hidden = false; });
-if (isIOS && !standalone) installBtn.hidden = false;
+// No install button in the top bar: a phone gets one well-timed card instead (askInstall), and the footer
+// keeps a quiet "Install app" link.
+addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferred = e; });
 async function install() {
   if (deferred) { deferred.prompt(); const { outcome } = await deferred.userChoice; deferred = null; if (outcome === "accepted") installBtn.hidden = true; return; }
   const d = document.getElementById("sheet");
@@ -239,8 +243,30 @@ async function install() {
   d.showModal();
 }
 installBtn.addEventListener("click", install);
+document.addEventListener("click", (e) => { if (e.target.closest("#railInstall")) install(); });
 addEventListener("lt:install", install);
-addEventListener("appinstalled", () => { installBtn.hidden = true; toast("Installed"); });
+addEventListener("appinstalled", () => { installBtn.hidden = true; try { localStorage.setItem("lt:installAsk", JSON.stringify({ n: 9, t: Date.now() })); } catch {} toast("Installed"); });
+
+// The install card: phones only, once someone is clearly coming back (a second day, two videos watched),
+// at most twice and a week apart, never after an install or two dismissals.
+function askInstall() {
+  if (standalone || innerWidth >= 720 || !signedIn() || !(deferred || isIOS)) return;
+  let ask = { n: 0, t: 0 };
+  try { ask = JSON.parse(localStorage.getItem("lt:installAsk") || "null") || ask; } catch {}
+  const days = store.get("days", []), seen = store.history().length;
+  if (ask.n >= 2 || Date.now() - ask.t < 7 * 864e5 || days.length < 2 || seen < 2 || document.querySelector(".install-card")) return;
+  try { localStorage.setItem("lt:installAsk", JSON.stringify({ n: ask.n + 1, t: Date.now() })); } catch {}
+  const card = document.createElement("div");
+  card.className = "install-card"; card.setAttribute("role", "dialog"); card.setAttribute("aria-label", "Add Feedforward to your home screen");
+  card.innerHTML = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--accent)"/><g fill="var(--accent-ink)"><rect x="15.5" y="15.7" width="8.2" height="32.6" rx="4.1"/><rect x="27.7" y="21.8" width="8.2" height="20.4" rx="4.1"/><circle cx="44" cy="32" r="4.5"/></g></svg>
+    <div><b>Put Feedforward on your home screen</b><span>${isIOS && !deferred ? "Tap Share, then Add to Home Screen. It opens full screen, like an app." : "One tap. It opens full screen and starts instantly."}</span></div>
+    <div class="install-acts"><button class="btn" type="button" data-x>Not now</button>${deferred ? `<button class="btn primary" type="button" data-go>Add</button>` : ""}</div>`;
+  document.body.appendChild(card);
+  requestAnimationFrame(() => card.classList.add("on"));
+  const close = () => { card.classList.remove("on"); setTimeout(() => card.remove(), 300); };
+  card.querySelector("[data-x]").onclick = close;
+  const go = card.querySelector("[data-go]"); if (go) go.onclick = () => { close(); install(); };
+}
 
 // ---------- Misc ----------
 addEventListener("scroll", () => document.querySelector(".topbar").classList.toggle("scrolled", scrollY > 4), { passive: true });

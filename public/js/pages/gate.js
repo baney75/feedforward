@@ -10,6 +10,7 @@
 import { createAccount, signIn, apply, inviteInfo, prepare } from "../account.js";
 import { esc, toast, userAvatar, badges } from "../ui.js";
 import { $, setTitle, cssReady, copy } from "./_shared.js";
+import { haptic } from "../haptics.js";
 
 const TEACHERS = ["Andrej Karpathy", "3Blue1Brown", "Sebastian Lague", "Welch Labs", "Theo", "Tsoding", "Simon Willison", "StatQuest"];
 // A few lessons for the wall when the live list is short. YouTube thumbnails are public.
@@ -23,26 +24,33 @@ export async function render(el, qs, parts) {
   setTitle("");
   const joinCode = parts[0] === "join" && parts[1] ? parts[1] : "";
   const pending = store.get("application");
-  let tab = joinCode ? "invite" : pending ? "signin" : "apply";
+  let tab = joinCode ? "invite" : pending ? "signin" : "invite";
 
   el.innerHTML = `<div class="door-pg">
     <div class="door-wall" aria-hidden="true"><div class="dw-cols"></div></div>
-    <div class="door-main">
+    <header class="door-top">
       <a class="door-brand" href="/" aria-label="Feedforward">
         <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--accent)"/><g fill="var(--accent-ink)"><rect x="15.5" y="15.7" width="8.2" height="32.6" rx="4.1"/><rect x="27.7" y="21.8" width="8.2" height="20.4" rx="4.1"/><circle cx="44" cy="32" r="4.5"/></g></svg>
         <span>Feedforward</span>
       </a>
+      <button class="btn door-signin" type="button" data-tab="signin">Sign in</button>
+    </header>
+    <main class="door-hero">
       <p class="door-eyebrow"><span class="door-live" aria-hidden="true"></span>Invite only<span class="door-sep" aria-hidden="true"></span><span id="doorCount">Members learning now</span></p>
       <h1 class="door-h">Learn AI from the people <em>building it.</em></h1>
-      <p class="door-sub">${TEACHERS.slice(0, 4).map(esc).join(", ")} and <span id="doorPeople">80+</span> more, in one feed with labs, live sessions and a room full of builders. Free. No ads. No politics.</p>
+      <p class="door-sub">Hand-picked lessons from ${TEACHERS.slice(0, 3).map(esc).join(", ")} and <span id="doorPeople">80+</span> more teachers, with labs, live sessions and a community of builders. Free. No ads.</p>
       <section class="door-card" aria-label="Get in">
-        <div class="door-tabs" role="tablist">
-          ${[["invite", "I have an invite"], ["signin", "Sign in"], ["apply", "Apply"]].map(([k, l]) => `<button role="tab" type="button" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join("")}
-        </div>
-        <div class="door-pane" id="doorPane" role="tabpanel"></div>
+        <div class="door-pane" id="doorPane"></div>
       </section>
-      <p class="door-foot">Your code is your account: no email, no password, no tracking. <a href="https://github.com/baney75/feedforward" target="_blank" rel="noopener">Open source</a>. Questions? <a href="mailto:support@dbaney.com">support@dbaney.com</a></p>
-    </div>
+    </main>
+    <section class="door-how" aria-label="How it works">
+      <ol>
+        <li><b>Get an invite, or apply</b><span>A member's link gets you straight in. Applications are read by people, not bots.</span></li>
+        <li><b>Keep your code</b><span>Four words and two digits. It's your account on every device: no email, no password.</span></li>
+        <li><b>Learn</b><span>Videos, Shorts, posts, labs and live sessions from the best teachers in AI.</span></li>
+      </ol>
+    </section>
+    <p class="door-foot">Open source on <a href="https://github.com/baney75/feedforward" target="_blank" rel="noopener">GitHub</a>. Questions? <a href="mailto:support@dbaney.com">support@dbaney.com</a></p>
   </div>`;
 
   // Live wall and counts. The wall is real lessons, slowly moving, behind glass.
@@ -65,13 +73,19 @@ export async function render(el, qs, parts) {
   const pane = $("#doorPane", el);
   const show = (k, opts) => {
     tab = k;
-    el.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === k));
+    el.querySelector(".door-signin").hidden = k === "signin";
     PANES[k](pane, opts);
+    if (opts && opts.focus) pane.querySelector("input, textarea")?.focus();
   };
-  el.querySelector(".door-tabs").onclick = (e) => { const b = e.target.closest("[data-tab]"); if (b) show(b.dataset.tab); };
+  // Any [data-tab] control switches what the card shows.
+  el.addEventListener("click", (e) => { const b = e.target.closest("[data-tab]"); if (b) { e.preventDefault(); show(b.dataset.tab, { focus: true }); } });
+  goTab = show;
   show(tab, { code: joinCode });
   return () => {};
 }
+
+// Switch the card from anywhere in this module (set by render).
+let goTab = () => {};
 
 // ---------- Panes ----------
 const PANES = { invite: invitePane, signin: signinPane, apply: applyPane };
@@ -96,18 +110,18 @@ function codeOf(input) {
 
 function invitePane(pane, { code = "" } = {}) {
   if (!code) {
-    pane.innerHTML = `<form class="door-form" id="invForm">
-      <label class="door-field"><span>Paste your invite link or code</span>
-        <input class="input" name="inv" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="feedforward.dbaney.com/join/..." required></label>
+    pane.innerHTML = `<form class="door-form door-row" id="invForm">
+      <label class="door-field"><span class="sr-only">Invite link or code</span>
+        <input class="input" name="inv" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your invite link or code" required></label>
       <button class="btn primary door-go" type="submit">Continue</button>
-      <p class="door-hint">Members can invite friends from their profile. No invite yet? <button class="textbtn" type="button" data-goto="apply">Apply</button></p>
-      <div class="door-msg" aria-live="polite"></div>
-    </form>`;
-    pane.querySelector("[data-goto]").onclick = () => document.querySelector('[data-tab="apply"]').click();
+    </form>
+    <div class="door-msg" aria-live="polite"></div>
+    <div class="door-or" role="separator"><span>No invite yet?</span></div>
+    <button class="btn door-apply" type="button" data-tab="apply">Apply for an invite</button>`;
     $("#invForm", pane).onsubmit = (e) => {
       e.preventDefault();
       const c = codeOf(e.currentTarget.inv.value);
-      if (!c) return fail($(".door-msg", pane), new Error("That doesn't look like an invite link."));
+      if (!c) return fail(pane.querySelector(".door-msg"), new Error("That doesn't look like an invite link."));
       history.replaceState(null, "", "/join/" + c);
       invitePane(pane, { code: c });
     };
@@ -145,12 +159,13 @@ function invitePane(pane, { code = "" } = {}) {
     pane.innerHTML = `<div class="door-msg"></div><p class="door-hint"><button class="textbtn" type="button" data-other>Use a different invite</button> or <button class="textbtn" type="button" data-apply>apply</button>.</p>`;
     fail($(".door-msg", pane), e);
     pane.querySelector("[data-other]").onclick = () => { history.replaceState(null, "", "/"); invitePane(pane); };
-    pane.querySelector("[data-apply]").onclick = () => document.querySelector('[data-tab="apply"]').click();
+    pane.querySelector("[data-apply]").onclick = () => goTab("apply");
   });
 }
 
 // "You're in": the code is the account, so it's shown big, with one clear way to keep it.
 function welcome(pane, code) {
+  haptic.success();
   pane.innerHTML = `<div class="door-welcome">
     <p class="door-kicker">You're in</p>
     <h2>This is your key.</h2>
@@ -168,7 +183,7 @@ function welcome(pane, code) {
 function signinPane(pane) {
   const pending = store.get("application");
   const canScan = "BarcodeDetector" in window && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
-  pane.innerHTML = `${pending ? `<p class="door-pending"><b>Your application is in review.</b> Sign in with its code to check. It works the moment you're approved.</p>` : ""}
+  pane.innerHTML = `<h2 class="door-title">Sign in</h2>${pending ? `<p class="door-pending"><b>Your application is in review.</b> Sign in with its code to check. It works the moment you're approved.</p>` : ""}
     <form class="door-form" id="siForm">
       <label class="door-field"><span>Your code</span>
         <input class="input mono" name="code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="otter-maple-rocket-acorn-42" value="${pending ? esc(pending.code) : ""}" required></label>
@@ -176,7 +191,8 @@ function signinPane(pane) {
       ${canScan ? `<button class="btn door-scan" type="button" id="scan">Scan a QR code</button>` : ""}
       <p class="door-hint">Signed in on another device? Open your profile there, show your QR code, and point this phone's camera at it.</p>
       <div class="door-msg" aria-live="polite"></div>
-    </form>`;
+    </form>
+    <p class="door-back"><button class="textbtn" type="button" data-tab="invite">I have an invite</button><span class="door-sep" aria-hidden="true"></span><button class="textbtn" type="button" data-tab="apply">Apply</button></p>`;
   const msg = $(".door-msg", pane), form = $("#siForm", pane);
   let ready = prepare();
   const go = (code) => withCheck(form.querySelector(".door-go"), "Checking you're human", async (p) => {
@@ -190,7 +206,7 @@ function signinPane(pane) {
     if (!text) return;
     const link = text.match(/\/link#([a-z0-9-]+)/i), join = text.match(/\/join\/([\w-]+)/);
     if (link) { form.code.value = link[1]; go(link[1]); }
-    else if (join) { history.replaceState(null, "", "/join/" + join[1]); document.querySelector('[data-tab="invite"]').click(); }
+    else if (join) { history.replaceState(null, "", "/join/" + join[1]); goTab("invite", { code: join[1] }); }
     else toast("That QR code isn't a Feedforward code.");
   }).catch((e) => fail(msg, e));
 }
@@ -227,23 +243,26 @@ function applyPane(pane) {
       <div class="door-acts"><button class="btn" type="button" id="copyCode">Copy code</button><button class="btn primary" type="button" id="check">Check now</button></div>
       <p class="door-hint"><button class="textbtn" type="button" id="again">Start a new application</button></p></div>`;
     $("#copyCode", pane).onclick = () => copy(pending.code, "Code copied");
-    $("#check", pane).onclick = () => document.querySelector('[data-tab="signin"]').click();
+    $("#check", pane).onclick = () => goTab("signin");
     $("#again", pane).onclick = () => { if (confirm("Start over? Your current application code will stop being shown here.")) { store.set("application", null); applyPane(pane); } };
     return;
   }
   pane.innerHTML = `<form class="door-form" id="apForm">
+    <h2 class="door-title">Apply for an invite</h2>
     <label class="door-field"><span>Your name</span><input class="input" name="name" maxlength="40" autocomplete="name" required></label>
     <label class="door-field"><span>What do you want to learn or build?</span>
       <textarea class="input" name="reason" rows="3" minlength="20" maxlength="600" required placeholder="I want to run models on my own GPU and understand how they work."></textarea></label>
+    <details class="door-more"><summary>Add your X or GitHub <i>optional, helps us say yes</i></summary>
     <div class="door-two">
-      <label class="door-field"><span>X handle <i>optional</i></span><input class="input" name="x" maxlength="16" autocomplete="off" autocapitalize="off" placeholder="@you"></label>
-      <label class="door-field"><span>GitHub <i>optional</i></span><input class="input" name="github" maxlength="40" autocomplete="off" autocapitalize="off" placeholder="you"></label>
-    </div>
+      <label class="door-field"><span>X handle</span><input class="input" name="x" maxlength="16" autocomplete="off" autocapitalize="off" placeholder="@you"></label>
+      <label class="door-field"><span>GitHub</span><input class="input" name="github" maxlength="40" autocomplete="off" autocapitalize="off" placeholder="you"></label>
+    </div></details>
     <input class="door-trap" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
     <button class="btn primary door-go" type="submit">Apply for an invite</button>
-    <p class="door-hint">You'll get a code right away. It becomes your account the moment we approve you.</p>
+    <p class="door-hint">You get a code right away. It becomes your account the moment we approve you.</p>
     <div class="door-msg" aria-live="polite"></div>
-  </form>`;
+  </form>
+  <p class="door-back"><button class="textbtn" type="button" data-tab="invite">I have an invite</button><span class="door-sep" aria-hidden="true"></span><button class="textbtn" type="button" data-tab="signin">Sign in</button></p>`;
   const form = $("#apForm", pane);
   let ready = prepare();
   form.onsubmit = (e) => {

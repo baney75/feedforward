@@ -321,7 +321,6 @@ dialog#sheet .row { display: flex; justify-content: flex-end; gap: var(--s2); }
 .sframe img { width: 100%; height: 100%; object-fit: cover; }
 .sframe iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .sover { position: absolute; inset: auto 0 0 0; padding: 64px var(--s4) var(--s4); background: linear-gradient(transparent, rgba(0,0,0,.78)); color: #fff; pointer-events: none; }
-.sframe:has(iframe) .sover { display: none; }
 .sover .who { display: flex; align-items: center; gap: var(--s2); pointer-events: auto; }
 .sover p { margin-top: var(--s2); font-weight: 600; line-height: 1.35; }
 .sover .topic-tag { color: rgba(255,255,255,.8); display: block; margin-top: var(--s2); }
@@ -519,88 +518,94 @@ dialog#sheet .row { display: flex; justify-content: flex-end; gap: var(--s2); }
 /* ---------- Front door (signed out: Feedforward is invite-only) ---------- */
 body.door .topbar, body.door .rail, body.door .tabbar { display: none; }
 body.door main { padding: 0; }
-.door-pg { position: relative; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; background: var(--bg); isolation: isolate; }
-/* The wall: real lessons drifting behind glass. Curiosity, not decoration. */
+.door-pg { position: relative; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; overflow: hidden; background: var(--bg); isolation: isolate; color: var(--fg); }
+/* The wall: real lessons drifting behind glass, full bleed. Curiosity, not decoration. */
 .door-wall { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
-.dw-cols { position: absolute; top: -10%; right: -4%; width: min(78vw, 980px); display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; transform: rotate(-7deg); opacity: .62; }
-.dw-col { display: grid; gap: 12px; animation: dw var(--d) linear infinite; animation-direction: var(--dir); will-change: transform; }
-.dw-col img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; display: block; background: var(--bg-3); }
+.dw-cols { position: absolute; top: -12%; left: 50%; width: max(1500px, 130vw); transform: translateX(-50%) rotate(-6deg); display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; opacity: .5; }
+.dw-col { display: grid; gap: 14px; animation: dw var(--d) linear infinite; animation-direction: var(--dir); will-change: transform; }
+.dw-col img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; display: block; background: var(--bg-3); }
 @keyframes dw { from { transform: translateY(0); } to { transform: translateY(-50%); } }
 @media (prefers-reduced-motion: reduce) { .dw-col { animation: none; } }
-.door-wall::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, var(--bg) 34%, color-mix(in srgb, var(--bg) 78%, transparent) 56%, color-mix(in srgb, var(--bg) 30%, transparent) 100%); }
-.door-main { position: relative; display: flex; flex-direction: column; gap: var(--s4); width: min(100%, 540px); padding: clamp(24px, 6vh, 64px) clamp(16px, 6vw, 72px) var(--s6); }
-.door-brand { display: inline-flex; align-items: center; gap: 12px; color: var(--fg); text-decoration: none; font: 600 22px/1 var(--font); letter-spacing: -.02em; }
+.door-wall::after { content: ""; position: absolute; inset: 0;
+  background: radial-gradient(ellipse 70% 62% at 50% 46%, color-mix(in srgb, var(--bg) 94%, transparent) 0, color-mix(in srgb, var(--bg) 82%, transparent) 55%, color-mix(in srgb, var(--bg) 55%, transparent) 100%),
+    linear-gradient(180deg, color-mix(in srgb, var(--bg) 70%, transparent) 0, transparent 22%, transparent 70%, var(--bg) 100%); }
+.door-top { width: 100%; max-width: 1240px; display: flex; align-items: center; justify-content: space-between; padding: 20px clamp(16px, 4vw, 40px); }
+.door-brand { display: inline-flex; align-items: center; gap: 12px; color: var(--fg); text-decoration: none; font: 700 22px/1 var(--font); letter-spacing: -.02em; }
 .door-brand svg { width: 36px; height: 36px; }
-.door-eyebrow { display: flex; align-items: center; gap: 10px; margin: var(--s4) 0 0; font: 500 13px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--accent-text); }
-.door-live { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); animation: door-pulse 2s infinite; }
+.door-signin { min-height: 40px; padding: 0 18px; font-weight: 600; background: color-mix(in srgb, var(--bg-2) 80%, transparent); backdrop-filter: blur(8px); }
+.door-hero { width: 100%; max-width: 640px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 18px; padding: clamp(40px, 11vh, 120px) 16px 28px; }
+.door-eyebrow { display: inline-flex; align-items: center; gap: 10px; margin: 0; padding: 7px 14px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--bg-2) 85%, transparent);
+  border: 1px solid var(--line); font: 600 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent-text); backdrop-filter: blur(8px); }
+.door-live { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: door-pulse 2s infinite; box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 60%, transparent); }
 @keyframes door-pulse { 70% { box-shadow: 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
-.door-sep { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: .5; }
-#doorCount { color: var(--fg-2); }
-.door-h { margin: 0; font: 700 clamp(40px, 6.4vw, 64px)/1.02 var(--font); letter-spacing: -.035em; color: var(--fg); text-wrap: balance; }
+.door-sep { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: .5; display: inline-block; }
+#doorCount { color: var(--fg); }
+.door-h { margin: 0; font: 700 clamp(38px, 6.2vw, 68px)/1.02 var(--font); letter-spacing: -.035em; text-wrap: balance; }
 .door-h em { font-style: normal; color: var(--accent-text); }
-.door-sub { margin: 0; font-size: 17px; line-height: 1.5; color: var(--fg-2); max-width: 46ch; }
-.door-card { margin-top: var(--s2); background: color-mix(in srgb, var(--bg-2) 92%, transparent); border: 1px solid var(--line); border-radius: 16px; padding: var(--s2) var(--s5) var(--s5);
-  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .55); backdrop-filter: blur(10px); }
-.door-tabs { display: flex; gap: var(--s5); border-bottom: 1px solid var(--line); margin: 0 0 var(--s4); overflow-x: auto; scrollbar-width: none; }
-.door-tabs button { height: 46px; font: 600 15px/1 var(--font); color: var(--fg-2); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
-.door-tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
-.door-form { display: grid; gap: var(--s3); }
+.door-sub { margin: 0; max-width: 52ch; font-size: clamp(16px, 1.6vw, 19px); line-height: 1.5; color: color-mix(in srgb, var(--fg) 82%, var(--bg)); text-wrap: pretty; }
+.door-card { width: 100%; margin-top: 10px; text-align: left; background: color-mix(in srgb, var(--bg-2) 94%, transparent); border: 1px solid var(--line); border-radius: 18px;
+  padding: 20px; box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .7); backdrop-filter: blur(14px); }
+.door-title { margin: 0 0 4px; font: 700 20px/1.2 var(--font); letter-spacing: -.01em; }
+.door-form { display: grid; gap: 12px; }
+.door-row { grid-template-columns: 1fr auto; align-items: stretch; }
+.door-row .door-go { min-width: 132px; }
 .door-field { display: grid; gap: 6px; font-size: 14px; font-weight: 500; color: var(--fg-2); }
-.door-field i { font-style: normal; font-weight: 400; opacity: .8; }
-.door-field .input { width: 100%; font-size: 16px; }
-.door-field textarea { resize: vertical; min-height: 84px; }
-.door-two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+.door-field i, .door-more summary i { font-style: normal; font-weight: 400; opacity: .8; }
+.door-field .input { width: 100%; min-height: 52px; font-size: 17px; border-radius: 12px; }
+.door-field textarea { resize: vertical; min-height: 88px; }
+.door-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.door-more summary { cursor: pointer; font-size: 14px; color: var(--fg-2); padding: 4px 0; }
 .door-trap { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
-.door-go { min-height: 52px; font-size: 17px; position: relative; overflow: hidden; }
-/* The human check: the button fills as the work finishes. */
+.door-go { min-height: 52px; font-size: 17px; border-radius: 12px; position: relative; overflow: hidden; }
 .door-go.checking { background: color-mix(in srgb, var(--accent) 35%, var(--bg-2)); color: var(--fg); }
 .door-go.checking::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); background: var(--accent); transition: width .2s; z-index: 0; }
-.door-go.checking span { position: relative; z-index: 1; color: var(--accent-ink); mix-blend-mode: normal; }
-.door-scan { min-height: 44px; }
+.door-go.checking span { position: relative; z-index: 1; color: var(--accent-ink); }
+.door-or { display: flex; align-items: center; gap: 12px; margin: 18px 0 12px; color: var(--fg-2); font-size: 14px; }
+.door-or::before, .door-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.door-apply { width: 100%; min-height: 50px; font-size: 16px; font-weight: 600; border-radius: 12px; }
+.door-scan { min-height: 46px; border-radius: 12px; }
 .door-hint { margin: 0; font-size: 14px; line-height: 1.5; color: var(--fg-2); }
-.door-hint .textbtn { color: var(--accent-text); font-weight: 600; }
-.door-err { margin: 0; color: var(--bad); font-size: 14px; }
-.door-pending { margin: 0 0 var(--s3); padding: var(--s3); border-radius: var(--r); background: color-mix(in srgb, var(--accent) 12%, transparent); font-size: 14px; color: var(--fg); }
-.door-loading { padding: var(--s5) 0; color: var(--fg-2); }
-.door-invite { margin-bottom: var(--s4); }
-.door-from { display: flex; gap: var(--s3); align-items: center; }
-.door-from .av.l { width: 56px; height: 56px; font-size: 22px; }
-.door-kicker { margin: 0; font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent-text); }
-.door-who { margin: 4px 0 0; font: 700 20px/1.25 var(--font); color: var(--fg); }
+.door-back { display: flex; justify-content: center; align-items: center; gap: 12px; margin: 14px 0 0; font-size: 14px; }
+.door-back .textbtn, .door-hint .textbtn { color: var(--accent-text); font-weight: 600; }
+.door-msg:empty { display: none; }
+.door-err { margin: 8px 0 0; color: var(--bad); font-size: 14px; }
+.door-pending { margin: 0 0 12px; padding: 12px; border-radius: var(--r); background: color-mix(in srgb, var(--accent) 12%, transparent); font-size: 14px; color: var(--fg); }
+.door-loading { padding: 20px 0; color: var(--fg-2); }
+.door-invite { margin-bottom: 16px; }
+.door-from { display: flex; gap: 14px; align-items: center; }
+.door-from .av.l { width: 60px; height: 60px; font-size: 24px; }
+.door-kicker { margin: 0; font: 600 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent-text); }
+.door-who { margin: 6px 0 0; font: 700 21px/1.25 var(--font); }
 .door-who span { font-weight: 500; color: var(--fg-2); }
-.door-grants { display: flex; flex-wrap: wrap; gap: 6px; margin: var(--s3) 0 0; }
-.door-grants span { padding: 4px 10px; border-radius: var(--r-pill); background: var(--bg-3); font-size: 13px; font-weight: 600; color: var(--fg); }
-.door-welcome { display: grid; gap: var(--s3); padding: var(--s2) 0; }
+.door-grants { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+.door-grants span { padding: 5px 11px; border-radius: var(--r-pill); background: var(--bg-3); font-size: 13px; font-weight: 600; }
+.door-welcome { display: grid; gap: 12px; padding: 4px 0; text-align: center; }
 .door-welcome h2 { margin: 0; font: 700 28px/1.1 var(--font); letter-spacing: -.02em; }
-.door-code { margin: 0; padding: var(--s4); border-radius: var(--r); background: var(--bg); border: 1px dashed color-mix(in srgb, var(--accent) 60%, var(--line)); font-size: clamp(18px, 4.6vw, 22px); color: var(--fg); text-align: center; overflow-wrap: anywhere; }
-.door-acts { display: flex; gap: var(--s2); flex-wrap: wrap; }
-.door-acts .btn { flex: 1; min-height: 48px; }
-.door-foot { margin: var(--s2) 0 0; font-size: 13px; color: var(--fg-2); }
+.door-code { margin: 0; padding: 16px; border-radius: 12px; background: var(--bg); border: 1px dashed color-mix(in srgb, var(--accent) 60%, var(--line)); font-size: clamp(18px, 4.6vw, 22px); overflow-wrap: anywhere; }
+.door-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.door-acts .btn { flex: 1; min-height: 50px; border-radius: 12px; }
+.door-how { width: 100%; max-width: 1040px; padding: 8px 16px 32px; }
+.door-how ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; counter-reset: step; }
+.door-how li { counter-increment: step; display: grid; gap: 6px; padding: 18px; border-radius: 16px; background: color-mix(in srgb, var(--bg-2) 88%, transparent); border: 1px solid var(--line); backdrop-filter: blur(10px); }
+.door-how li::before { content: counter(step); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); font: 700 14px/1 var(--font); }
+.door-how b { font-size: 16px; }
+.door-how span { font-size: 14px; line-height: 1.5; color: var(--fg-2); }
+.door-foot { margin: 0 0 24px; padding: 0 16px; font-size: 13px; color: var(--fg-2); text-align: center; }
 .door-foot a { color: inherit; }
 .door-cam { position: relative; border-radius: var(--r); overflow: hidden; background: #000; aspect-ratio: 1; max-width: 360px; }
 .door-cam video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .door-cam i { position: absolute; inset: 18%; border: 3px solid var(--accent); border-radius: 18px; box-shadow: 0 0 0 999px rgba(0, 0, 0, .35); }
-/* Phones: the wall becomes a band of lessons above the door, fading into it. */
 @media (max-width: 719px) {
-  .dw-cols { top: -6%; right: -30%; width: 150vw; opacity: .5; }
-  .door-wall::after { background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 30%, transparent) 0, color-mix(in srgb, var(--bg) 82%, transparent) 26%, var(--bg) 42%); }
-  .door-main { padding-top: 28px; }
-  .door-eyebrow { margin-top: 16vh; }
-  .door-card { padding: var(--s1) var(--s4) var(--s4); }
-  .door-tabs { gap: var(--s4); }
+  .door-top { padding: 14px 16px; }
+  .door-brand { font-size: 20px; } .door-brand svg { width: 32px; height: 32px; }
+  .door-hero { padding-top: 22px; gap: 14px; text-align: left; align-items: stretch; }
+  .door-eyebrow { align-self: flex-start; }
+  .door-card { padding: 16px; }
+  .door-row { grid-template-columns: 1fr; }
   .door-two { grid-template-columns: 1fr; }
+  .door-how ol { grid-template-columns: 1fr; }
+  .dw-cols { opacity: .38; }
 }
-.post-media.xv { position: relative; max-height: 70vh; border-radius: var(--r); overflow: hidden; background: #000; }
-.post-media.xv iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-/* Like and dislike: one pill, like YouTube's. */
-.vote { display: inline-flex; border-radius: var(--r-pill); background: var(--bg-3); }
-.vote .btn { background: transparent; border: 0; border-radius: 0; }
-.vote .like { border-radius: var(--r-pill) 0 0 var(--r-pill); padding-right: var(--s3); }
-.vote .dislike { border-radius: 0 var(--r-pill) var(--r-pill) 0; padding: 0 var(--s3); position: relative; }
-.vote .dislike::before { content: ""; position: absolute; left: 0; top: 25%; bottom: 25%; width: 1px; background: var(--line); }
-.vote .btn:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); }
-.vote .btn[aria-pressed="true"] { color: var(--accent-text); }
-
 /* ---------- Loading: skeletons shaped like what's coming ---------- */
 .skel { display: grid; gap: 10px; padding: var(--s5) 0; }
 .skel i, .skel-card b, .skel-card em, .skel-card i { display: block; border-radius: 6px; background: var(--bg-3);
@@ -639,3 +644,40 @@ body.door main { padding: 0; }
 @keyframes ln-pop { 0% { transform: scale(0); } 70% { transform: scale(1.35); } 100% { transform: scale(1); } }
 @keyframes ln-dive { from { transform: scale(1); } to { transform: scale(26); } }
 @keyframes ln-out { to { opacity: 0; visibility: hidden; } }
+
+/* ---------- Shorts: our controls over a chrome-free player ---------- */
+.sframe iframe { z-index: 1; pointer-events: none; }
+.scatch { position: absolute; inset: 0; z-index: 2; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sover { z-index: 3; }
+.spause { position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -38px 0 0 -38px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(0, 0, 0, .45); color: #fff; opacity: 0; transform: scale(.8); transition: opacity .18s, transform .18s; pointer-events: none; }
+.spause svg { width: 34px; height: 34px; margin-left: 4px; }
+.short.paused .spause { opacity: 1; transform: scale(1); }
+.ssound { position: absolute; z-index: 4; top: 14px; left: 14px; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
+  border-radius: var(--r-pill); background: rgba(0, 0, 0, .55); color: #fff; font: 600 14px/1 var(--font); backdrop-filter: blur(6px); }
+.ssound .off { display: none; } .ssound .off svg { width: 20px; height: 20px; }
+.short:not(.muted) .ssound { padding: 0 10px; } .short:not(.muted) .ssound .on { display: none; } .short:not(.muted) .ssound .off { display: inline-flex; }
+.short:not(.playing) .ssound { display: none; }
+.sbar { position: absolute; z-index: 4; inset: auto 0 0 0; height: 3px; background: rgba(255, 255, 255, .22); }
+.sbar i { display: block; height: 100%; width: var(--prog, 0%); background: var(--accent); transition: width .25s linear; }
+.burst { position: absolute; width: 96px; height: 96px; margin: -48px 0 0 -48px; color: #ff3b5c; pointer-events: none; animation: burst .8s cubic-bezier(.2, 1.4, .4, 1) forwards; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .4)); }
+.burst svg { width: 100%; height: 100%; }
+@keyframes burst { 0% { transform: scale(.2) rotate(-12deg); opacity: 0; } 25% { transform: scale(1.15) rotate(6deg); opacity: 1; } 60% { transform: scale(1) rotate(0); opacity: 1; } 100% { transform: scale(1.4) translateY(-40px); opacity: 0; } }
+/* The like pill stands up in the Shorts action column. */
+.sacts .vote { flex-direction: column; gap: var(--s4); background: none; border-radius: 0; }
+.sacts .vote .btn { flex-direction: column; gap: 4px; padding: 0; min-height: 0; font-size: 12px; color: var(--fg-2); border-radius: 0; }
+.sacts .vote .dislike::before { display: none; }
+.sacts .vote .btn svg { width: 26px; height: 26px; }
+/* Home: topics stay in reach, like YouTube's chip bar. */
+.home .chips-wrap { position: sticky; top: var(--top); z-index: 5; margin: 0 calc(-1 * var(--s5)) var(--s4); padding: var(--s2) var(--s5); background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(10px); }
+@media (max-width: 719px) { .home .chips-wrap { margin: 0 calc(-1 * var(--s4)) var(--s3); padding: var(--s2) var(--s4); } }
+/* The install card: slides up above the tab bar on phones, once someone is coming back. */
+.install-card { position: fixed; z-index: 40; left: 12px; right: 12px; bottom: calc(var(--tab) + env(safe-area-inset-bottom) + 12px); display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center;
+  padding: 14px; border-radius: 16px; background: var(--bg-2); border: 1px solid var(--line); box-shadow: 0 18px 50px -12px rgba(0, 0, 0, .6);
+  transform: translateY(calc(100% + 40px)); transition: transform .35s cubic-bezier(.2, 1.1, .3, 1); }
+.install-card.on { transform: none; }
+.install-card svg { width: 44px; height: 44px; }
+.install-card b { display: block; font-size: 15px; }
+.install-card span { display: block; font-size: 13px; color: var(--fg-2); margin-top: 2px; line-height: 1.4; }
+.install-card .install-acts { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
+@media (prefers-reduced-motion: reduce) { .install-card { transition: none; } }

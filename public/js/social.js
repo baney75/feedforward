@@ -2,6 +2,7 @@
 import { api, signedIn, user, can, like, rate, mine, stats, loadStats } from "./account.js";
 import { esc, ago, num, toast, badges, userAvatar } from "./ui.js";
 import { icon } from "./icons.js";
+import { haptic } from "./haptics.js";
 
 // Like and dislike, one pill. The like count shows; the dislike count never does.
 export function likeButton(item, { label = true } = {}) {
@@ -25,6 +26,7 @@ export function bindSocial(root) {
       const kind = lb.dataset.dislike ? "dislike" : "like", item = lb.dataset.like || lb.dataset.dislike;
       const on = lb.getAttribute("aria-pressed") !== "true", pill = lb.closest(".vote");
       lb.setAttribute("aria-pressed", on);
+      haptic.tick();
       try { await like(item, on, kind); pill.outerHTML = likeButton(item); if (kind === "dislike" && on) toast("Got it. You'll see less like this."); }
       catch (err) { lb.setAttribute("aria-pressed", !on); toast(err.message); }
       return;
