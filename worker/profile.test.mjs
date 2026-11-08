@@ -41,12 +41,14 @@ test("YouTube feed parses ids, unescapes titles and reads dates", () => {
   assert.deepEqual(feedVideos(RSS), [{ id: "AAAAAAAAAAA", title: "Tom & Jerry <3", ts: 1793491200 }]);
 });
 
+let ttls;
 function env(verified) {
+  ttls = [];
   const user = { id: "u1", verified, links: JSON.stringify({ x: "baney75", youtube: "@baney75" }) };
   const kv = new Map();
   return {
     DB: { prepare: () => ({ bind: () => ({ first: async () => user, run: async () => ({ meta: { changes: 1 } }), all: async () => ({ results: [] }) }) }) },
-    FRESH: { get: async (k) => (kv.has(k) ? JSON.parse(kv.get(k)) : null), put: async (k, v) => kv.set(k, v) },
+    FRESH: { get: async (k) => (kv.has(k) ? JSON.parse(kv.get(k)) : null), put: async (k, v, o) => { ttls.push(o && o.expirationTtl); kv.set(k, v); } },
   };
 }
 const feed = (e) => handle(new Request("https://ff.test/api/u/u1/feed"), e).then((r) => r.json());
@@ -66,3 +68,19 @@ test("unverified members show no outside posts", async () => {
   assert.deepEqual(f, { posts: [], videos: [] });
   assert.equal(calls.length, 0);
 });
+
+test("a failed source is retried in 2 minutes, not cached for 30", async () => {
+  const e = env(1);
+  const real = globalThis.fetch;
+  globalThis.fetch = async (url) => (String(url).includes("fxtwitter") ? new Response(JSON.stringify({ code: 404 }), { status: 404 }) : real(url));
+  const f = await feed(e);
+  assert.deepEqual(f.posts, []);
+  assert.equal(f.videos.length, 1);
+  assert.deepEqual(ttls, [120]);
+});
+
+test("a good load is cached for 30 minutes", async () => {
+  await feed(env(1));
+  assert.deepEqual(ttls, [1800]);
+});
+

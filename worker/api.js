@@ -434,15 +434,19 @@ on("GET", "/api/u/([\\w]+)/feed", async (req, env, _u, [id]) => {
   let out = env.FRESH && (await env.FRESH.get(key, "json"));
   if (!out) {
     out = { ...empty };
+    let failed = false;
     const jobs = [];
-    if (links.x) jobs.push(fetch(`https://api.fxtwitter.com/2/profile/${links.x}/statuses`, { headers: FX_UA }).then((r) => r.json()).then((d) => { out.posts = feedPosts(d, links.x); }).catch(() => {}));
+    if (links.x) jobs.push(fetch(`https://api.fxtwitter.com/2/profile/${links.x}/statuses`, { headers: FX_UA }).then((r) => r.json()).then((d) => { if (d.code !== 200) throw 0; out.posts = feedPosts(d, links.x); }).catch(() => { failed = true; }));
     if (links.youtube) jobs.push((async () => {
       const ch = links.youtube.startsWith("channel/") ? links.youtube.slice(8) : await ytChannelId(links.youtube);
-      if (!ch) return;
-      out.videos = feedVideos(await (await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${ch}`)).text());
-    })().catch(() => {}));
+      if (!ch) throw 0;
+      const r = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${ch}`);
+      if (!r.ok) throw 0;
+      out.videos = feedVideos(await r.text());
+    })().catch(() => { failed = true; }));
     await Promise.all(jobs);
-    if (env.FRESH) await env.FRESH.put(key, JSON.stringify(out), { expirationTtl: 1800 });
+    // fxtwitter and YouTube fail now and then; a miss is retried in 2 minutes instead of sticking for 30.
+    if (env.FRESH) await env.FRESH.put(key, JSON.stringify(out), { expirationTtl: failed ? 120 : 1800 });
   }
   return json(out, 200, { "cache-control": "public, max-age=300" });
 });

@@ -53,7 +53,7 @@ async function showFeed(box, u, links) {
   try { f = await api("/api/u/" + encodeURIComponent(u.id) + "/feed"); } catch { return; }
   if (!box.isConnected) return;
   const vids = f.videos.length ? `<section class="set" aria-labelledby="pfV"><h2 class="set-h" id="pfV">Latest on YouTube</h2>
-    <ul class="pf-vids">${f.videos.map((v) => `<li><a href="/watch/${esc(v.id)}?title=${encodeURIComponent(v.title)}"><img src="https://i.ytimg.com/vi/${esc(v.id)}/mqdefault.jpg" alt="" width="320" height="180" loading="lazy"><b>${esc(v.title)}</b><span class="muted">${ago(v.ts)}</span></a></li>`).join("")}</ul></section>` : "";
+    <ul class="pf-vids">${f.videos.map((v) => `<li><a href="https://www.youtube.com/watch?v=${esc(v.id)}" target="_blank" rel="noopener"><img src="https://i.ytimg.com/vi/${esc(v.id)}/mqdefault.jpg" alt="" width="320" height="180" loading="lazy"><b>${esc(v.title)}</b><span class="muted">${ago(v.ts)}</span></a></li>`).join("")}</ul></section>` : "";
   const posts = f.posts.length ? `<section class="set" aria-labelledby="pfX"><h2 class="set-h" id="pfX">Latest on X</h2>
     <ul class="rows pf-posts">${f.posts.map((p) => `<li><a class="pf-post" href="https://x.com/${esc(links.x)}/status/${esc(p.id)}" target="_blank" rel="noopener"><p class="pc-b">${esc(p.text)}</p>${p.photo ? `<img src="${esc(p.photo)}" alt="" loading="lazy">` : ""}<p class="muted pc-h">@${esc(links.x)}<span class="dot"></span>${ago(p.ts)}</p></a></li>`).join("")}</ul></section>` : "";
   box.innerHTML = vids + posts;
