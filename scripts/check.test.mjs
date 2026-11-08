@@ -130,7 +130,7 @@ test("the site refuses to be framed", () => {
 
 test("the service worker never stores signed-in API responses", () => {
   const sw = read("public/sw.js");
-  assert.match(sw, /\["\/api\/fresh", "\/api\/pulse", "\/api\/stats", "\/api\/live", "\/api\/people\/extra"\]\.includes\(url\.pathname\) && !req\.headers\.get\("authorization"\)/);
+  assert.match(sw, /\["\/api\/fresh", "\/api\/stats", "\/api\/live", "\/api\/people\/extra"\]\.includes\(url\.pathname\) && !req\.headers\.get\("authorization"\)/);
 });
 
 test("signing out clears this device's synced data, and another account's data never merges", () => {

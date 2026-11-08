@@ -1,15 +1,14 @@
-// Offline support. App code: network first, cache fallback. Fonts and icons: cache first.
-// Catalog data and thumbnails: serve the cached copy at once and refresh it in the background.
+// Offline support. App code: network first, cache fallback. Fonts and icons: cache first. Thumbnails: the cached
+// copy at once, refreshed in the background. Catalog data is members-only: always asked of the network, kept
+// only for offline use, and wiped the moment the server says this browser isn't a member.
 // Only our own "lt-" caches are ever deleted, so a lab's model cache (transformers-cache) survives updates.
-const APP = "lt-app-v7", DATA = "lt-data-v4", IMG = "lt-img-v1";
+// lt-data-v5: every catalog copy cached before Feedforward went invite-only is deleted on activate.
+const APP = "lt-app-v7", DATA = "lt-data-v5", IMG = "lt-img-v1";
 const SHELL = ["/", "/css/tokens.css", "/css/app.css", "/js/app.js", "/js/data.js", "/js/ui.js", "/js/views.js", "/js/tv.js", "/js/icons.js", "/js/store.js", "/js/account.js", "/js/social.js", "/css/pages.css",
   "/manifest.webmanifest", "/icons/icon.svg?v=3", "/fonts/ibm-plex-sans-latin-400-normal.woff2", "/fonts/ibm-plex-sans-latin-600-normal.woff2"];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(Promise.all([
-    caches.open(APP).then((c) => c.addAll(SHELL)),
-    caches.open(DATA).then((c) => Promise.all(["/data/home.json", "/data/learn.json", "/data/books.json"].map((u) => c.add(u).catch(() => {})))),
-  ]).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(APP).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k.startsWith("lt-") && ![APP, DATA, IMG].includes(k)).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
@@ -24,6 +23,16 @@ async function networkFirst(req, name, fallbackUrl) {
   } catch {
     return (await c.match(fallbackUrl || req)) || (await c.match("/")) || Response.error();
   }
+}
+// Members-only files: the network decides. A 401 wipes the cached catalog and passes through; the cache answers
+// only when there's no network at all.
+async function memberOnly(req) {
+  const c = await caches.open(DATA);
+  let r;
+  try { r = await fetch(req); } catch { return (await c.match(req)) || Response.error(); }
+  if (r.status === 401 || r.status === 403) { await caches.delete(DATA); return r; }
+  if (r.ok) c.put(req, r.clone());
+  return r;
 }
 async function cacheFirst(req, name) {
   const c = await caches.open(name);
@@ -52,12 +61,13 @@ self.addEventListener("fetch", (e) => {
     // Navigations: fetch the URL as a plain same-origin GET. Forwarding the browser's navigation Request
     // itself got a 403 from the edge (2026-11-07), while the same URL as an ordinary request returns 200.
     if (req.mode === "navigate") return e.respondWith(networkFirst(new Request(url.pathname + url.search, { credentials: "same-origin" }), APP, "/"));
-    // Only public feeds are cached for offline use. Anything signed in (profile, tokens, admin) is never stored.
+    // Catalog feeds are kept for offline use, members only. Anything with a Bearer token (profile, tokens, admin)
+    // is never stored.
     if (url.pathname.startsWith("/api/")) {
-      if (["/api/fresh", "/api/pulse", "/api/stats", "/api/live", "/api/people/extra"].includes(url.pathname) && !req.headers.get("authorization")) return e.respondWith(networkFirst(req, DATA));
+      if (["/api/fresh", "/api/stats", "/api/live", "/api/people/extra"].includes(url.pathname) && !req.headers.get("authorization")) return e.respondWith(memberOnly(req));
       return;
     }
-    if (url.pathname.startsWith("/data/")) return e.respondWith(swr(req, DATA));
+    if (url.pathname.startsWith("/data/")) return e.respondWith(memberOnly(req));
     if (url.pathname.startsWith("/fonts/") || url.pathname.startsWith("/icons/")) return e.respondWith(cacheFirst(req, APP));
     return e.respondWith(networkFirst(req, APP));
   }
