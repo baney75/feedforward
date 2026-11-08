@@ -37,7 +37,7 @@ export async function render(el, qs, parts) {
         : `<p class="muted empty-row">No comments yet.</p>`}
     </section>
   </div>`;
-  if (u.verified && (d.links.x || d.links.youtube)) showFeed(el.querySelector("#profFeed"), u, d.links);
+  if (u.verified && (d.links.x || d.links.youtube || d.links.github)) showFeed(el.querySelector("#profFeed"), u, d.links);
   const b = el.querySelector("[data-teach]");
   if (b) b.onclick = () => {
     const t = b.dataset.teach;
@@ -56,5 +56,7 @@ async function showFeed(box, u, links) {
     <ul class="pf-vids">${f.videos.map((v) => `<li><a href="https://www.youtube.com/watch?v=${esc(v.id)}" target="_blank" rel="noopener"><img src="https://i.ytimg.com/vi/${esc(v.id)}/mqdefault.jpg" alt="" width="320" height="180" loading="lazy"><b>${esc(v.title)}</b><span class="muted">${ago(v.ts)}</span></a></li>`).join("")}</ul></section>` : "";
   const posts = f.posts.length ? `<section class="set" aria-labelledby="pfX"><h2 class="set-h" id="pfX">Latest on X</h2>
     <ul class="rows pf-posts">${f.posts.map((p) => `<li><a class="pf-post" href="https://x.com/${esc(links.x)}/status/${esc(p.id)}" target="_blank" rel="noopener"><p class="pc-b">${esc(p.text)}</p>${p.photo ? `<img src="${esc(p.photo)}" alt="" loading="lazy">` : ""}<p class="muted pc-h">@${esc(links.x)}<span class="dot"></span>${ago(p.ts)}</p></a></li>`).join("")}</ul></section>` : "";
-  box.innerHTML = vids + posts;
+  const repos = (f.repos || []).length ? `<section class="set" aria-labelledby="pfG"><h2 class="set-h" id="pfG">On GitHub</h2>
+    <ul class="pf-repos">${f.repos.map((r) => `<li><a href="${esc(r.url)}" target="_blank" rel="noopener"><b class="mono">${esc(r.name)}</b>${r.desc ? `<span>${esc(r.desc)}</span>` : ""}<small class="muted">${r.lang ? esc(r.lang) + '<span class="dot"></span>' : ""}${r.stars ? `${r.stars} star${r.stars === 1 ? "" : "s"}<span class="dot"></span>` : ""}updated ${ago(r.ts)}</small></a></li>`).join("")}</ul></section>` : "";
+  box.innerHTML = vids + repos + posts;
 }
