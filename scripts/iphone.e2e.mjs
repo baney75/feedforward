@@ -16,7 +16,7 @@ const b = await webkit.launch();
 const ctx = await b.newContext({ ...devices["iPhone 15"], colorScheme: "dark" });
 await ctx.addInitScript(([tok, uid]) => { try { sessionStorage.setItem("ff:launched", "1"); } catch {} localStorage.setItem("lt:acct", JSON.stringify({ token: tok, user: { id: uid, name: "iPhone Tester", role: "user", verified: true } })); }, [TOK, UID]);
 // WebKit reports a request cut off by leaving the page as "Load failed"; that's the test navigating, not a bug.
-const p = await ctx.newPage(); const errs = []; p.on("pageerror", (e) => { if (!/Load failed|access control checks/.test(e.message)) errs.push(e.message); });
+const p = await ctx.newPage(); const errs = []; p.on("pageerror", (e) => { if (!/Load failed|access control checks|A network error occurred/.test(e.message)) errs.push(e.message); });
 await p.goto(BASE + "/shorts", { waitUntil: "load" });
 await p.waitForSelector(".short .sacts", { timeout: 20000 }); ok("Shorts load in WebKit (the catalog loads even without the gate cookie)");
 const look = await p.evaluate(() => {
@@ -29,6 +29,20 @@ assert.ok(look.icons.every(([w, h]) => w === look.icons[0][0] && h === look.icon
 ok("every Shorts action is the same round button");
 assert.ok(look.voteDisplay === "contents" || /rgba\(0, 0, 0, 0\)|transparent/.test(look.voteBg), "nothing drawn behind like and dislike: " + look.voteBg);
 ok("nothing is drawn behind like and dislike");
+// Tapping an action does the action (the tap layer must not swallow it).
+const save = await p.$(".short .sacts [data-save]");
+const before = await save.getAttribute("aria-pressed");
+await save.tap();
+await p.waitForTimeout(500);
+assert.notEqual(await save.getAttribute("aria-pressed"), before, "Save toggles");
+assert.ok(!(await p.evaluate(() => document.querySelector(".short").classList.contains("paused"))), "the tap didn't pause the video");
+ok("tapping Save saves, and doesn't pause the video");
+// With sound turned on earlier, a new Short still starts muted (Safari blocks unmuted autoplay).
+await p.evaluate(() => sessionStorage.setItem("ff:sound", "1"));
+await p.reload({ waitUntil: "load" });
+await p.waitForSelector(".short iframe", { timeout: 20000 });
+assert.match(await p.getAttribute(".short iframe", "src"), /[?&]mute=1/);
+ok("every Short starts muted, even after sound was turned on");
 // The top bar gets out of the way on scroll down and comes back on scroll up.
 await p.goto(BASE + "/", { waitUntil: "load" });
 await p.waitForSelector(".vcard", { timeout: 20000 });

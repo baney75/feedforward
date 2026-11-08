@@ -465,8 +465,8 @@ export function shortsPage(el, qs, startId) {
   }
   if (!list.length) { el.innerHTML = `<div class="page-h"><div><h1>Shorts</h1></div></div>${chips(topic)}<p class="empty">No shorts in this topic yet.</p>`; bindChips(el); return; }
   el.innerHTML = `<div class="shorts-page">${chips(topic)}<div class="shorts" tabindex="0" aria-label="Shorts. Use the up and down arrow keys to move between them.">${list.slice(0, 40).map(shortSlide).join("")}</div>
-    <div class="snav"><button class="icon-btn" data-snav="-1" aria-label="Previous short">${icon("up")}</button><button class="icon-btn" data-snav="1" aria-label="Next short">${icon("down")}</button></div>
-    <button class="textbtn shorts-off-btn" type="button" id="shortsOffBtn">Turn off Shorts</button></div>`;
+    <div class="snav"><button class="icon-btn" data-snav="-1" aria-label="Previous short">${icon("up")}</button><button class="icon-btn" data-snav="1" aria-label="Next short">${icon("down")}</button></div></div>`;
+  el.querySelector(".chips").insertAdjacentHTML("beforeend", `<button class="chip shorts-off-chip" type="button" id="shortsOffBtn">Turn off Shorts</button>`);
   $("#shortsOffBtn", el).onclick = () => { if (!confirm("Turn off Shorts on this device? You can turn them back on in Library.")) return; store.setShortsOff(true); location.assign("/"); };
   bindChips(el);
   const box = $(".shorts", el);
@@ -482,17 +482,23 @@ export function shortsPage(el, qs, startId) {
     if (active) { const f = active.querySelector("iframe"); if (f) f.remove(); active.classList.remove("playing", "paused", "started"); }
     active = slide; paused = false;
     const id = slide.dataset.id;
-    const params = new URLSearchParams({ autoplay: "1", mute: soundOn() ? "0" : "1", controls: "0", disablekb: "1", fs: "0", iv_load_policy: "3", playsinline: "1", rel: "0", loop: "1", playlist: id, enablejsapi: "1", origin: location.origin });
+    // Always start muted: phones only autoplay muted video. Sound comes on once it's really playing.
+    const params = new URLSearchParams({ autoplay: "1", mute: "1", controls: "0", disablekb: "1", fs: "0", iv_load_policy: "3", playsinline: "1", rel: "0", loop: "1", playlist: id, enablejsapi: "1", origin: location.origin });
     slide.querySelector(".sframe").insertAdjacentHTML("afterbegin", `<iframe src="${YT}/embed/${id}?${params}" allow="autoplay; encrypted-media; picture-in-picture" title="${esc(slide.dataset.title)}"></iframe>`);
     const f = slide.querySelector("iframe");
     // YouTube draws its mobile controls on small players and ignores controls=0 there. So the player is laid
     // out at 720x1280 and scaled down to the frame: YouTube sees a big player and keeps its controls hidden.
     const frame = slide.querySelector(".sframe");
-    const fit = () => frame.style.setProperty("--ys", (frame.clientWidth / 720).toFixed(4));
+    const fit = () => {
+      const s = Math.min(frame.clientWidth / 720, frame.clientHeight / 1280);
+      frame.style.setProperty("--ys", s.toFixed(4));
+      frame.style.setProperty("--yx", ((frame.clientWidth - 720 * s) / 2).toFixed(1) + "px");
+      frame.style.setProperty("--yy", ((frame.clientHeight - 1280 * s) / 2).toFixed(1) + "px");
+    };
     fit(); new ResizeObserver(fit).observe(frame);
     f.addEventListener("load", () => f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), YT));
-    slide.classList.add("playing");
-    slide.classList.toggle("muted", !soundOn());
+    slide.classList.add("playing", "muted");
+    delete slide.dataset.unmuted;
     store.watched(id);
     history.replaceState(history.state, "", `/shorts/${id}${location.search}`);
     const k = [...box.children].indexOf(slide);
@@ -504,7 +510,9 @@ export function shortsPage(el, qs, startId) {
   const keys = (e) => {
     if (/INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
     if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); step(1); }
-    if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); step(-1); }
+    if (e.key === "ArrowUp") { e.preventDefault(); step(-1); }
+    // Space or K pauses and plays, like YouTube.
+    if ((e.key === " " || e.key === "k") && active) { e.preventDefault(); active.querySelector(".scatch").click(); }
   };
   addEventListener("keydown", keys);
   el.querySelector(".snav").onclick = (e) => { const b = e.target.closest("[data-snav]"); if (b) step(+b.dataset.snav); };
@@ -515,7 +523,15 @@ export function shortsPage(el, qs, startId) {
     const info = d && d.info;
     if (info && info.currentTime != null && info.duration) active.style.setProperty("--prog", (100 * info.currentTime / info.duration).toFixed(2) + "%");
     // The thumbnail covers the player until it's really playing, so YouTube's start screen never shows.
-    if (info && info.playerState === 1) active.classList.add("started");
+    if (info && info.playerState === 1) {
+      active.classList.add("started");
+      // Playing muted: if this viewer turned sound on, ask for it now.
+      if (soundOn() && !active.dataset.unmuted) { active.dataset.unmuted = "1"; cmd(active, "unMute"); cmd(active, "setVolume", [100]); active.classList.remove("muted"); }
+    }
+    // Safari pauses a video that unmutes without a tap: go back to muted playback and offer sound again.
+    if (info && info.playerState === 2 && !paused && active.dataset.unmuted === "1") {
+      active.dataset.unmuted = "blocked"; cmd(active, "mute"); cmd(active, "playVideo"); active.classList.add("muted");
+    }
   };
   addEventListener("message", onMsg);
   let tapT = 0, lastTap = 0;
