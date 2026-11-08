@@ -5,6 +5,7 @@ import { api, account, signedIn, user, can, createAccount, signIn, signOut, refr
 import { esc, toast, badges, userAvatar } from "../ui.js";
 import { icon } from "../icons.js";
 import { store } from "../store.js";
+import { isCode } from "../code.js";
 import { SITE, $, setTitle, cssReady, loader, copy, go, fmtDate, on, busy, qrSvg, LINK_FIELDS, linkChips } from "./_shared.js";
 
 // The optional links offered at sign-up. Everything else can be added later on this page.
@@ -334,7 +335,7 @@ function linkPage(el) {
   try { code = decodeURIComponent(location.hash.slice(1)); } catch {}
   code = code.trim().slice(0, 60);
   if (location.hash) history.replaceState(null, "", "/link");
-  const valid = /^[a-z]+[-\s_]+[a-z]+[-\s_]+[a-z]+[-\s_]+\d{2}$/i.test(code);
+  const valid = isCode(code);
   const cur = user();
   if (!valid) {
     el.innerHTML = `<div class="pg narrow-pg pg-me"><header class="page-h"><div><h1>This link has no code</h1><p>Open your account on the other device and scan its QR code again, or type your code instead.</p></div></header>
