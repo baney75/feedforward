@@ -116,7 +116,7 @@ async function mergeFresh() {
     }
     D.posts.sort((a, b) => b.ts - a.ts);
     D.fresh = n;
-    if (n) { index(); dispatchEvent(new CustomEvent("lt:fresh", { detail: n })); }
+    if (n) index();
   } catch {}
 }
 

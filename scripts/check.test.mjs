@@ -220,6 +220,11 @@ test("every gated data file retries with the member's session when the gate cook
   }
 });
 
+test("catalog refresh stays silent: no toast about how many items are new (reported by owner)", () => {
+  const app = read("public/js/app.js"), data = read("public/js/data.js");
+  assert.ok(!/new since the last update|lt:fresh/.test(app + data));
+});
+
 test("member home has no animated counters (reported twice: they looked glitchy)", () => {
   const src = read("public/js/views.js");
   assert.doesNotMatch(src, /data-count|liveCounters/, "the count-up stats row must stay gone");
