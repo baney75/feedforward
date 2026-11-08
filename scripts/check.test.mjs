@@ -153,7 +153,7 @@ test("install metadata is complete", () => {
   const m = json("public/manifest.webmanifest");
   assert.equal(m.display, "standalone");
   for (const s of ["192x192", "512x512"]) assert.ok(m.icons.some((i) => i.sizes === s && i.purpose === "maskable"), "missing maskable " + s);
-  for (const i of m.icons) assert.ok(fs.existsSync(path.join(root, "public", i.src)), "missing " + i.src);
+  for (const i of m.icons) assert.ok(fs.existsSync(path.join(root, "public", i.src.split("?")[0])), "missing " + i.src);
   assert.ok(fs.existsSync(path.join(root, "public/icons/apple-touch-icon.png")));
   assert.ok(fs.existsSync(path.join(root, "public/favicon.ico")));
 });
@@ -173,4 +173,14 @@ test("one logo everywhere: the header, icons and OG scene share the layers mark"
     assert.ok(!s.includes("M17.5 17l15 15-15 15"), `${f} still has the old prompt-and-dot logo`);
     assert.ok(s.includes('width="8.2" height="32.6" rx="4.1"'), `${f} is missing the layers mark`);
   }
+});
+
+test("icon and share-image URLs are versioned, so a new logo replaces cached copies", () => {
+  // Link previews and the service worker cache these by URL; the same URL keeps showing the old logo.
+  const html = read("public/index.html"), mf = read("public/manifest.webmanifest"), sw = read("public/sw.js");
+  const v = (html.match(/\/icons\/icon\.svg\?v=(\d+)/) || [])[1];
+  assert.ok(v, "index.html must link /icons/icon.svg?v=<n>");
+  for (const ref of ["/favicon.ico", "/icons/apple-touch-icon.png", "/og.jpg", "/og.mp4"]) assert.ok(html.includes(`${ref}?v=${v}`), `index.html must use ${ref}?v=${v}`);
+  for (const m of mf.matchAll(/"(\/icons\/[^"]+)"/g)) assert.ok(m[1].endsWith(`?v=${v}`), `manifest icon ${m[1]} must end with ?v=${v}`);
+  assert.ok(sw.includes(`/icons/icon.svg?v=${v}`), "sw.js must precache the versioned icon");
 });
