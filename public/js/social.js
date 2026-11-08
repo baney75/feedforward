@@ -49,7 +49,7 @@ const canReply = () => signedIn() && !!user() && (user().verified || can("contri
 
 // Comments: list plus composer. Mods and above can hide; authors can delete their own.
 export async function comments(el, item) {
-  el.innerHTML = `<section class="comments" aria-label="Comments"><div class="sec-h"><h2>Comments</h2><span class="muted mono" id="cn"></span></div>
+  el.innerHTML = `<section class="comments" aria-label="Comments"><div class="sec-h"><h2>Comments</h2><span class="muted" id="cn"></span></div>
     ${canReply() ? `<form class="compose"><label class="sr-only" for="cbody">Add a comment</label><textarea id="cbody" rows="2" maxlength="1500" placeholder="Add a thoughtful comment" required></textarea><button class="btn primary" type="submit">Post</button></form>`
       : `<p class="muted signin-line">Replies are for verified members, so every voice here is a real person. Talk it through in your communities any time.</p>`}
     <div class="clist"><div class="skel" role="status" aria-label="Loading comments"><i></i><i></i><i></i></div></div></section>`;
@@ -63,7 +63,7 @@ export async function comments(el, item) {
   const load = async () => {
     try {
       const d = await api("/api/comments?item=" + encodeURIComponent(item));
-      el.querySelector("#cn").textContent = d.comments.length ? String(d.comments.length) : "";
+      el.querySelector("#cn").textContent = d.comments.length ? `${d.comments.length} comment${d.comments.length === 1 ? "" : "s"}` : "";
       list.innerHTML = d.comments.map(row).join("") || `<p class="muted empty-c">No comments yet. Start the conversation.</p>`;
     } catch (e) { list.innerHTML = `<p class="muted">Comments didn't load.</p>`; }
   };
