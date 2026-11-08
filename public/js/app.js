@@ -1,7 +1,7 @@
 import { load, D, sampler, applyStats } from "./data.js";
 import { icon } from "./icons.js";
 import { store } from "./store.js";
-import { toast } from "./ui.js";
+import { toast, watchChipRails } from "./ui.js";
 import * as V from "./views.js";
 import { openTV, closeTV, tvIsOpen } from "./tv.js";
 import { signedIn, user, refreshMe, sync, scheduleSync, loadStats, refreshGate } from "./account.js";
@@ -324,6 +324,8 @@ addEventListener("ff:account", () => {
   route();
 });
 addEventListener("ff:changed", scheduleSync);
+import("./notify.js");
+watchChipRails(document.getElementById("view"));
 // Turning Shorts off or on rebuilds the navigation at once.
 addEventListener("ff:prefs", () => { shell(); markNav(location.pathname.replace(/\/+$/, "") || "/"); });
 sessionStorage.removeItem("ff:hold");

@@ -994,3 +994,36 @@ body.door-tv .door-paircode { font-size: clamp(32px, 8vh, 72px); }
   #lab:has(#tok-text) .chips { order: 2; } #lab:has(#tok-text) .status { order: 2; } #lab:has(#tok-text) .info { order: 3; } #lab:has(#tok-text) .stats { order: 4; display: flex; } #lab:has(#tok-text) .legend { order: 5; }
 }
 .rail .explore a { padding-left: var(--s3); gap: 0; }
+
+/* Chip rail: fades and arrows appear only on a side with more to scroll to. */
+.chip-rail { position: relative; min-width: 0; }
+.chip-rail .chips { --sl: 0px; --sr: 0px; --fl: 0px; --fr: 0px; --m: linear-gradient(90deg, transparent var(--sl), #000 var(--fl), #000 calc(100% - var(--fr)), transparent calc(100% - var(--sr))); -webkit-mask-image: var(--m); mask-image: var(--m); padding-right: 0; }
+.chip-rail.more-left .chips { --fl: 48px; }
+.chip-rail.more-right .chips { --fr: 48px; }
+.chips .chip { transition: background-color .15s, color .15s; }
+.chips .chip:not([aria-pressed="true"]) { color: var(--fg-2); }
+.chips .chip[aria-pressed="true"], .chips .chip[aria-pressed="true"]:hover { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.chip-arrow { display: none; position: absolute; top: 2px; width: 34px; height: 34px; border-radius: var(--r-pill); background: var(--bg-3); color: var(--fg); place-items: center; z-index: 1; }
+.chip-arrow svg { width: 16px; height: 16px; }
+.chip-arrow:hover { background: color-mix(in srgb, var(--bg-3) 70%, var(--fg) 14%); }
+.chip-arrow.prev { left: 0; } .chip-arrow.next { right: 0; }
+@media (hover: hover) and (pointer: fine) { .chip-rail.more-left .chip-arrow.prev, .chip-rail.more-right .chip-arrow.next { display: grid; } .chip-rail.more-left .chips { --sl: 38px; --fl: 72px; } .chip-rail.more-right .chips { --sr: 38px; --fr: 72px; } }
+
+/* Notifications */
+.icon-btn.bell { position: relative; }
+.icon-btn.bell[hidden] { display: none; }
+.icon-btn.bell.has-new::after { content: ""; position: absolute; top: 8px; right: 9px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg); }
+dialog#sheet.notif { margin: calc(var(--top) + 4px) 16px auto auto; padding: 0; width: min(400px, calc(100vw - 16px)); max-height: min(560px, calc(100dvh - var(--top) - 24px)); overflow-y: auto; }
+dialog#sheet.notif h2:focus { outline: none; }
+dialog#sheet.notif h2 { position: sticky; top: 0; background: var(--bg-2); margin: 0; padding: var(--s4); }
+.notif-list { list-style: none; margin: 0; padding: 0 0 var(--s2); }
+.notif-list a, .notif-list li > div { display: flex; gap: var(--s3); align-items: flex-start; padding: var(--s3) var(--s4); color: var(--fg); text-decoration: none; }
+.notif-list a:hover { background: var(--bg-3); }
+.notif-ic { flex: none; width: 20px; height: 20px; color: var(--fg-2); margin-top: 1px; }
+.notif-t { flex: 1; min-width: 0; font-size: var(--t-s); line-height: 1.4; overflow-wrap: anywhere; }
+.notif-t b { font-weight: 600; }
+.notif-t small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; color: var(--fg-2); font-size: inherit; margin-top: 2px; }
+.notif-t time { display: block; color: var(--fg-2); font-size: 12px; margin-top: 2px; }
+.notif-dot { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--accent); }
+.notif-empty { padding: 0 var(--s4) var(--s5); color: var(--fg-2); font-size: var(--t-s); line-height: 1.5; }
+@media (max-width: 719px) { dialog#sheet.notif { margin: calc(var(--top) + 4px) 8px auto auto; } }
