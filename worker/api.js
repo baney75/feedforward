@@ -1036,7 +1036,7 @@ on("GET", "/api/notifications", async (req, env, u) => {
     ...joined.results.map((j) => ({ id: "j:" + j.id, kind: "joined", ts: j.created, name: j.name, uid: j.id })),
     ...(apps && apps.n ? [{ id: "apps", kind: "applications", ts: apps.ts, n: apps.n }] : []),
     ...(flagged && flagged.n ? [{ id: "flagged", kind: "flagged", ts: flagged.ts, n: flagged.n }] : []),
-  ].sort((a, b) => b.ts - a.ts).slice(0, 30);
+  ].sort((a, b) => (a.n ? 0 : 1) - (b.n ? 0 : 1) || b.ts - a.ts).slice(0, 30);
   return json({ items });
 });
 

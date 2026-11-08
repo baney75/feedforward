@@ -4,7 +4,7 @@ import { store } from "./store.js";
 import { D } from "./data.js";
 import { esc, ago } from "./ui.js";
 import { icon } from "./icons.js";
-import { isFresh, markSeen } from "./notify-state.js";
+import { isFresh, markSeen, settleQueues } from "./notify-state.js";
 
 const btn = document.getElementById("bellBtn");
 const POLL = 300;
@@ -35,7 +35,7 @@ function paint() {
 export async function refreshBell() {
   btn.hidden = !signedIn();
   if (!signedIn()) { items = []; loaded = 0; paint(); return; }
-  try { items = (await api("/api/notifications")).items || []; loaded = Date.now() / 1000; paint(); } catch {}
+  try { items = (await api("/api/notifications")).items || []; loaded = Date.now() / 1000; store.set("notifQueues", settleQueues(items, store.get("notifQueues", {}))); paint(); } catch {}
 }
 
 function open() {
