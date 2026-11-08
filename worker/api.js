@@ -211,8 +211,12 @@ on("POST", "/api/account", async (req, env) => {
     const took = await env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ? AND uses < max_uses").bind(invite.code).run();
     if (!took.meta.changes) return err(403, "That invite has been used up. Ask for a new one.");
   } else if (invite) await env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ?").bind(invite.code).run();
-  await env.DB.prepare("INSERT INTO users (id, code_hash, ref_code, referred_by, verified, created, name, links, avatar_x, avatar_x_ts, role, teach) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(u.id, u.code_hash, u.ref_code, u.referred_by, u.verified, u.created, nm || "", JSON.stringify(links), ax, ax ? now() : 0, role, teach).run();
+  // A member's referral cap is checked in the INSERT itself, so parallel joins on one link can't overshoot it.
+  const cap = referrer && referrer.role !== "owner" ? REF_CAP[referrer.role] || REF_CAP.user : 1e9;
+  const ins = await env.DB.prepare("INSERT INTO users (id, code_hash, ref_code, referred_by, verified, created, name, links, avatar_x, avatar_x_ts, role, teach) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ? IS NULL OR (SELECT COUNT(*) FROM users WHERE referred_by = ? AND created > ?) < ?")
+    .bind(u.id, u.code_hash, u.ref_code, u.referred_by, u.verified, u.created, nm || "", JSON.stringify(links), ax, ax ? now() : 0, role, teach,
+      referrer ? 1 : null, referrer ? referrer.id : "", now() - 86400, cap).run();   // NULL: no referrer, no cap
+  if (!ins.meta.changes) return err(429, "This invite link has brought in all the people it can today. Try again tomorrow.");
   if (role !== "user" || teach) await log(env, invite.creator, `invite-grant:${role}${teach ? ":" + teach : ""}`, u.id);
   const token = await session(env, u.id, b.device);
   const full = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(u.id).first();
