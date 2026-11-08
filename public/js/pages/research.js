@@ -1,4 +1,5 @@
 // /research: landmark papers with why each matters, links to read them, and citations in four styles.
+import { gatedFetch } from "../data.js";
 import { TOPICS } from "../data.js";
 import { loadStats } from "../account.js";
 import { esc } from "../ui.js";
@@ -30,7 +31,7 @@ export async function render(el, qs) {
   </div>`;
   let papers = [];
   try {
-    const r = await fetch("/data/papers.json");
+    const r = await gatedFetch("/data/papers.json");
     if (r.ok) papers = (await r.json()).papers || [];
   } catch {}
   loadStats().catch(() => {});
@@ -58,7 +59,6 @@ export async function render(el, qs) {
       ${p.why ? `<p class="paper-why">${esc(p.why)}</p>` : ""}
       <div class="acts paper-acts">
         <button class="btn sm" type="button" data-cite="${esc(p.id)}" aria-expanded="false" aria-controls="cite-${esc(p.id)}">Cite</button>
-        ${likeButton("r:" + p.id)}
         ${pdf ? `<a class="textbtn" href="${esc(pdf)}" target="_blank" rel="noopener">PDF</a>` : ""}
         ${abs ? `<a class="textbtn" href="${esc(abs)}" target="_blank" rel="noopener">Abstract</a>` : ""}
       </div>

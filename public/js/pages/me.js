@@ -1,5 +1,6 @@
 // /me: the account page. Signed out: get a code or sign in with one. Signed in: name, photo, code and QR,
 // referral link, badges, agent tokens, sign out. /link#<code>: sign in on this device from a scanned QR.
+import { haptic, hapticsOn, setHaptics } from "../haptics.js";
 import { api, account, signedIn, user, can, createAccount, signIn, signOut, refreshMe, updateUser, setCode } from "../account.js";
 import { esc, toast, badges, userAvatar } from "../ui.js";
 import { icon } from "../icons.js";
@@ -113,11 +114,12 @@ async function signedInView(el) {
 
   el.innerHTML = `<div class="pg narrow-pg pg-me">
     <header class="me-h">
-      <button class="av-edit" id="avBtn" type="button" aria-label="Change your photo">${userAvatar(u, "l")}<span class="av-pen">${icon("share")}</span></button>
+      <button class="av-edit" id="avBtn" type="button" aria-label="Change your photo">${userAvatar(u, "l")}<span class="av-pen">${icon("pencil")}</span></button>
       <input type="file" id="avFile" accept="image/png,image/jpeg,image/webp" hidden>
       <div class="me-id">
         <h1>${esc(u.name || "Learner")}${badges(u)}</h1>
         <p class="muted">Joined ${fmtDate(u.created, { month: "long", year: "numeric" })}<span class="dot"></span><a class="link" href="/u/${esc(u.id)}">Public profile</a></p>
+        ${u.verified ? "" : `<p class="hint top">Not verified yet. Verified members can comment. You get the check by joining with a verified invite, or when staff review your account.</p>`}
         ${u.uploaded ? `<p class="photo-note"><button class="textbtn" id="avDel" type="button">${links.x ? "Use your X photo" : "Remove photo"}</button></p>` : ""}
       </div>
     </header>
@@ -141,18 +143,18 @@ async function signedInView(el) {
     </section>
 
     <section class="set" aria-labelledby="codeH">
-      <h2 class="set-h" id="codeH">Your code</h2>
+      <h2 class="set-h" id="codeH">Sign-in code</h2>
       <div class="code-row">
         <span class="mono code-mask" id="codeText" aria-live="polite">${mask()}</span>
         <div class="acts"><button class="btn" id="showCode" type="button" aria-pressed="false" aria-controls="qrBox">Show</button><button class="btn" id="copyCode" type="button">Copy</button></div>
       </div>
       <div class="qr-box" id="qrBox" hidden></div>
-      <p class="hint">Anyone with this code can use your account. Keep it private. <button class="textbtn" id="rotate" type="button">Rotate code</button></p>
+      <p class="hint">Use it to sign in on another device. Anyone with it can use your account. <button class="textbtn" id="rotate" type="button">Get a new code</button></p>
     </section>
 
     <section class="set" aria-labelledby="refH">
       <h2 class="set-h" id="refH">Invite friends</h2>
-      <div class="code-row"><span class="mono ref-link" title="${esc(refLink)}">/join/${esc(u.ref)}</span><div class="acts"><button class="btn" id="copyRef" type="button">Copy link</button></div></div>
+      <div class="code-row"><span class="mono ref-link" title="${esc(refLink)}">${esc(refLink.replace("https://", ""))}</span><div class="acts"><button class="btn" id="copyRef" type="button">Copy link</button></div></div>
       <p class="hint"><b class="mono">${refs}</b> ${refs === 1 ? "person has" : "people have"} joined with your link.</p>
     </section>
 
@@ -174,7 +176,14 @@ async function signedInView(el) {
       </form>
     </section>
 
-    <section class="set end"><button class="btn" id="themePick" type="button">Theme</button> <button class="btn" id="signOut" type="button">Sign out</button></section>
+    <section class="set" aria-labelledby="setH"><h2 class="set-h" id="setH">Settings</h2>
+      <ul class="rows prefs">
+        <li><span><b>Theme</b><span class="muted">Ink, Paper, Terminal and more</span></span><button class="btn sm" id="themePick" type="button">Change</button></li>
+        <li><label class="switch-row"><span><b>Turn off Shorts</b><span class="muted">Hide Shorts everywhere on this device</span></span><input type="checkbox" role="switch" id="prefShorts"${store.shortsOff() ? " checked" : ""}></label></li>
+        <li><label class="switch-row"><span><b>Haptics</b><span class="muted">A light tap when you like, save or swipe (phones)</span></span><input type="checkbox" role="switch" id="prefHaptics"${hapticsOn() ? " checked" : ""}></label></li>
+      </ul>
+    </section>
+    <section class="set end"><button class="textbtn danger" id="signOut" type="button">Sign out of this device</button></section>
   </div>`;
 
   const offs = [];
@@ -282,6 +291,9 @@ async function signedInView(el) {
       await paintTokens();
     });
   };
+  // Settings
+  $("#prefShorts", el).onchange = (e) => { store.setShortsOff(e.target.checked); toast(e.target.checked ? "Shorts are off on this device" : "Shorts are back"); };
+  $("#prefHaptics", el).onchange = (e) => { setHaptics(e.target.checked); if (e.target.checked) haptic.tick(); };
   // Sign out
   $("#signOut", el).onclick = (e) => {
     if (!confirm("Sign out on this device? You'll need your code to sign back in.")) return;

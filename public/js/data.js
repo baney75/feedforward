@@ -23,7 +23,7 @@ function video(r, fresh = false) {
 }
 const short = ([id, title, views, person, topic, q, score]) => ({ id, title, views, person, topic, q, score });
 
-async function json(url) {
+export async function gatedFetch(url) {
   let r = await fetch(url);
   // A 401 is a stale preload, or a browser that refused the gate cookie (Safari over http, Lockdown Mode).
   // Ask once more, fresh, with the member's session, which the gate also accepts.
@@ -32,6 +32,10 @@ async function json(url) {
     try { tok = (JSON.parse(localStorage.getItem("lt:acct") || "null") || {}).token || ""; } catch {}
     r = await fetch(url, { cache: "no-store", headers: tok ? { authorization: "Bearer " + tok } : {} });
   }
+  return r;
+}
+async function json(url) {
+  const r = await gatedFetch(url);
   if (!r.ok) throw new Error(url + " " + r.status);
   return r.json();
 }

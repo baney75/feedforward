@@ -211,3 +211,16 @@ test("share cards: centered, and every page points at one that exists", () => {
   for (const f of ["public/og-card.jpg", "public/og-invite.jpg"]) assert.ok(fs.existsSync(path.join(root, f)), "missing " + f);
   assert.match(card, /#mid \{ position: absolute; left: 50%; top: 50%; transform: translate\(-50%, -50%\); width: 600px;/, "the card's content stays in the center square");
 });
+
+test("every gated data file retries with the member's session when the gate cookie is refused", () => {
+  for (const page of ["research", "dictionary", "repos"]) {
+    const src = read(`public/js/pages/${page}.js`);
+    assert.match(src, /gatedFetch\("\/data\//, `${page} must load its data through gatedFetch`);
+    assert.doesNotMatch(src, /[^d]fetch\("\/data\//, `${page} must not fetch gated data directly`);
+  }
+});
+
+test("member home has no animated counters (reported twice: they looked glitchy)", () => {
+  const src = read("public/js/views.js");
+  assert.doesNotMatch(src, /data-count|liveCounters/, "the count-up stats row must stay gone");
+});

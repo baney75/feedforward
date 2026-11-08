@@ -44,7 +44,9 @@ const req = (p, { method = "GET", body, token, ip } = {}) => new Request("https:
 });
 const call = async (env, p, o) => { const r = await handle(req(p, o), env); return { status: r.status, d: await r.json(), cookie: r.headers.get("set-cookie") }; };
 async function setup() {
-  const env = { DB: d1(), PEPPER };
+  const kv = new Map();
+  const FRESH = { get: async (k, t) => (kv.has(k) ? (t === "json" ? JSON.parse(kv.get(k)) : kv.get(k)) : null), put: async (k, v) => void kv.set(k, v), delete: async (k) => void kv.delete(k) };
+  const env = { DB: d1(), PEPPER, FRESH };
   const t = Math.floor(Date.now() / 1000);
   // An owner to make invites and decide applications.
   env.DB.raw.prepare("INSERT INTO users (id, code_hash, ref_code, role, created) VALUES ('owner00001', 'h0', 'ownref1', 'owner', ?)").run(t);
@@ -232,4 +234,27 @@ test("lowering an unlimited invite to a spent limit stops the next join", async 
   assert.equal((await call(env, "/api/account", { method: "POST", body: { invite: code, pow: await aged(env) } })).status, 200);
   await call(env, `/api/admin/invites/${code}`, { method: "POST", token: owner, body: { max_uses: 1 } });
   assert.equal((await call(env, "/api/account", { method: "POST", body: { invite: code, pow: await aged(env) } })).status, 403);
+});
+
+
+test("pairing: a TV shows a code, a member approves, the TV gets its own session once", async () => {
+  const { env, owner } = await setup();
+  const start = await call(env, "/api/pair/start", { method: "POST", body: { device: "Your bank" } });
+  assert.equal(start.status, 200); assert.match(start.d.code, /^[A-Z0-9]{6}$/);
+  const poll = () => call(env, `/api/pair/poll?code=${start.d.code}&secret=${encodeURIComponent(start.d.secret)}`);
+  assert.equal((await poll()).d.state, "waiting");
+  assert.equal((await call(env, `/api/pair/poll?code=${start.d.code}&secret=wrong`)).d.state, "gone", "the secret stays with the TV");
+  assert.equal((await call(env, `/api/pair/${start.d.code}`, { method: "POST" })).status, 401, "only a signed-in member approves");
+  assert.equal((await call(env, `/api/pair/${start.d.code}`, { token: owner })).d.device, "TV", "the phone sees what it's approving");
+  assert.equal((await call(env, `/api/pair/${start.d.code}`, { method: "POST", token: owner, body: { check: "1" } })).status, 403, "approving needs the number on the screen");
+  assert.equal((await call(env, `/api/pair/${start.d.code}`, { method: "POST", token: owner, body: { check: start.d.check } })).status, 200);
+  const got = await poll();
+  assert.equal(got.d.state, "approved"); assert.equal(got.d.user.id, "owner00001");
+  assert.match(got.cookie, /__Host-ff_gate=/);
+  assert.notEqual(got.d.token, owner, "the TV gets a session of its own");
+  assert.equal((await call(env, "/api/me", { token: got.d.token })).status, 200);
+  assert.equal((await call(env, "/api/me/code", { method: "POST", token: got.d.token, body: {} })).status, 403, "a paired screen can't change the account's code");
+  assert.equal((await call(env, "/api/admin/users?q=", { token: got.d.token })).status, 403, "a paired screen gets no staff tools");
+  assert.equal((await poll()).d.state, "gone", "handed out once");
+  assert.equal((await call(env, `/api/pair/${start.d.code}`, { method: "POST", token: owner, body: { check: start.d.check } })).status, 404, "a used code can't be approved again");
 });

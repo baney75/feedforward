@@ -22,7 +22,7 @@ function fallbackIframe(host, id, autoplay = 1) {
   host.outerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=${autoplay}&rel=0&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="Video player"></iframe>`;
 }
 
-export function mountPlayer(host, id, { onPlay, onEnd, onError } = {}) {
+export function mountPlayer(host, id, { onPlay, onPlaying, onEnd, onError } = {}) {
   let player, dead = false, played = false;
   api().then((YT) => {
     if (dead) return;
@@ -31,6 +31,7 @@ export function mountPlayer(host, id, { onPlay, onEnd, onError } = {}) {
       playerVars: { autoplay: 1, rel: 0, playsinline: 1, modestbranding: 1 },
       events: {
         onStateChange: (e) => {
+          if (e.data === 1) onPlaying && onPlaying();
           if (e.data === 1 && !played) { played = true; onPlay && onPlay(); }
           if (e.data === 0) onEnd && onEnd();
         },
@@ -38,8 +39,10 @@ export function mountPlayer(host, id, { onPlay, onEnd, onError } = {}) {
         onError: (e) => { if ([100, 101, 150].includes(e.data)) onError && onError(e.data); },
       },
     });
-  }).catch(() => { if (!dead) { fallbackIframe(host, id); onPlay && onPlay(); } });
-  return () => { dead = true; try { player && player.destroy(); } catch {} };
+  }).catch(() => { if (!dead) { fallbackIframe(host, id); onPlay && onPlay(); onPlaying && onPlaying(); } });
+  const stop = () => { dead = true; try { player && player.destroy(); } catch {} };
+  stop.play = () => { try { player && player.playVideo(); } catch {} };
+  return stop;
 }
 
 // ---------- TV mode ----------
@@ -53,7 +56,7 @@ function pick() {
 
 function renderShell() {
   const el = $tv();
-  el.innerHTML = `<div class="tvp"><div id="tvp"></div></div><div class="catch"></div>
+  el.innerHTML = `<div class="tvp"><div id="tvp"></div><div class="tvcover" aria-hidden="true"><img alt=""></div></div><div class="catch"></div>
     <div class="tvtop"><label class="tvsel"><span class="sr-only">Topic</span><select id="tvtopic">${[["-1", "Everything"], ...TOPICS.map((t, i) => [String(i), t.label])].map(([v, l]) => `<option value="${v}"${+v === tv.topic ? " selected" : ""}>${esc(l)}</option>`).join("")}</select></label><button class="x" id="tvx">Exit</button></div>
     <button class="tvnav prev" id="tvprev" aria-label="Previous video">${icon("left")}</button>
     <button class="tvnav next" id="tvnext" aria-label="Next video">${icon("right")}</button>
@@ -82,6 +85,9 @@ function load(v) {
   const p = D.people[v.person];
   el.querySelector(".by").innerHTML = `${esc(p.name)} <span style="opacity:.7">· ${esc(TOPICS[v.topic]?.label || "")}</span>`;
   store.watched(v.id);
+  // Our poster covers YouTube's start screen until the video is really playing.
+  const cover = el.querySelector(".tvcover");
+  if (cover) { const im = cover.querySelector("img"); im.onerror = () => { im.onerror = null; im.src = `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`; }; im.src = `https://i.ytimg.com/vi/${v.id}/maxresdefault.jpg`; el.classList.add("covered"); }
   if (tv.player && tv.player.loadVideoById) tv.player.loadVideoById(v.id);
   showUI();
 }
@@ -106,9 +112,9 @@ export async function openTV(startId) {
     tv.player = new YT.Player("tvp", {
       host: "https://www.youtube-nocookie.com", videoId: first.id,
       playerVars: { autoplay: 1, rel: 0, playsinline: 1, controls: 0, modestbranding: 1, iv_load_policy: 3 },
-      events: { onStateChange: (e) => { if (e.data === 0) go(1); }, onError: () => go(1, true) },
+      events: { onStateChange: (e) => { if (e.data === 1) $tv().classList.remove("covered"); if (e.data === 0) go(1); }, onError: () => go(1, true) },
     });
-  } catch { fallbackIframe(document.getElementById("tvp"), first.id); }
+  } catch { fallbackIframe(document.getElementById("tvp"), first.id); el.classList.remove("covered"); }
   load(first);
   try { if (matchMedia("(min-width: 720px)").matches) await el.requestFullscreen?.(); } catch {}
   tv.tick = setInterval(() => {

@@ -82,11 +82,13 @@ export async function tokenUser(env, tok) {
   // Agent and connector tokens (ffk_) only reach /mcp. They never act on the account API, so they can't mint tokens.
   if (!tok || tok.startsWith("ffk_") || tok.length < 20 || tok.length > 100) return null;
   const th = await sha(tok);
-  const u = await env.DB.prepare("SELECT u.*, s.seen FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?").bind(th).first();
+  const u = await env.DB.prepare("SELECT u.*, s.seen, s.device session_device FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token_hash = ?").bind(th).first();
   if (!u || u.banned) return null;
   if (now() - u.seen > 3600) await env.DB.prepare("UPDATE sessions SET seen = ? WHERE token_hash = ?").bind(now(), th).run();
   return u;
 }
+// A screen signed in by pairing can watch, save and comment. It can't change the account or use staff tools.
+const PAIRED = "Paired ";
 async function session(env, userId, device) {
   const tok = rid(40);
   await env.DB.prepare("INSERT INTO sessions (token_hash, user_id, created, seen, device) VALUES (?, ?, ?, ?, ?)").bind(await sha(tok), userId, now(), now(), String(device || "").slice(0, 60)).run();
@@ -156,7 +158,8 @@ export async function xAvatar(handle) {
 }
 const me = (u) => ({ ...pub(u), ref: u.ref_code, banned: !!u.banned, links: linksOf(u), uploaded: !!u.avatar });
 const log = (env, actor, action, target) => env.DB.prepare("INSERT INTO modlog (actor, action, target, ts) VALUES (?, ?, ?, ?)").bind(actor, action, target, now()).run();
-const staff = (u, min) => u && !u.banned && RANK[u.role] >= RANK[min];
+const staff = (u, min) => u && !u.banned && !paired(u) && RANK[u.role] >= RANK[min];
+const paired = (u) => String(u.session_device || "").startsWith(PAIRED);
 
 async function body(req, max = 20000) {
   const t = await req.text();
@@ -242,7 +245,7 @@ on("POST", "/api/login", async (req, env) => {
     const a = await env.DB.prepare("SELECT status FROM applications WHERE code_hash = ?").bind(h).first();
     if (a && a.status === "pending") return json({ error: "Your application is still being reviewed. This code will let you in the moment it's approved.", status: "pending" }, 409);
     if (a && a.status === "denied") return json({ error: "This application wasn't approved. A member's invite link still gets you in.", status: "denied" }, 403);
-    return err(404, "No account has that code.");
+    return err(404, "That code doesn't match an account. Check the four words and two digits.");
   }
   if (u.banned) return err(403, "This account is suspended.");
   const token = await session(env, u.id, b.device);
@@ -309,6 +312,57 @@ on("POST", "/api/apply", async (req, env) => {
   return json({ code });
 });
 
+// ---------- Pairing: sign a TV or new device in from your phone ----------
+// The device asks for a short code (and keeps a secret it never shows). A signed-in member opens /pair on
+// their phone, sees what they're approving, and taps Approve; the device's next poll gets its own session.
+// Codes live 10 minutes in KV; an approved code is handed out once.
+const PAIR_ALPHA = "ACDEFGHJKMNPQRTUVWXY3479";
+const pairCode = () => [...crypto.getRandomValues(new Uint8Array(6))].map((x) => PAIR_ALPHA[x % PAIR_ALPHA.length]).join("");
+on("POST", "/api/pair/start", async (req, env) => {
+  if (!(await rate(env, "pair:" + ip(req), 20, 3600))) return err(429, "Too many codes from here. Wait a few minutes.");
+  const b = await body(req).catch(() => ({}));
+  const code = pairCode(), secret = rid(32);
+  // The label is ours, never the caller's: the phone must not be told a story by whoever asked for the code.
+  const device = b.device === "Browser" ? "Browser" : "TV";
+  // A second number shown only on the screen: a link or QR can carry the code, but approving needs someone looking.
+  const check = String(crypto.getRandomValues(new Uint8Array(1))[0] % 90 + 10);
+  await env.FRESH.put("pair:" + code, JSON.stringify({ s: await sha(secret), device, check, at: now(), state: "waiting" }), { expirationTtl: 600 });
+  return json({ code, secret, check, expires: 600 });
+});
+on("GET", "/api/pair/poll", async (req, env) => {
+  if (!(await rate(env, "pairpoll:" + ip(req), 400, 600))) return err(429, "Slow down.");
+  const url = new URL(req.url), code = String(url.searchParams.get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const p = code.length === 6 && (await env.FRESH.get("pair:" + code, "json"));
+  if (!p || p.s !== (await sha(String(url.searchParams.get("secret") || "")))) return json({ state: "gone" });
+  if (p.state !== "approved") return json({ state: p.state });
+  await env.FRESH.delete("pair:" + code);
+  const u = await env.DB.prepare("SELECT * FROM users WHERE id = ? AND banned = 0").bind(p.uid).first();
+  if (!u) return json({ state: "gone" });
+  return json({ state: "approved", token: p.token, user: me(u) }, 200, { "set-cookie": await gateCookie(env, u.id, await sha(p.token)) });
+});
+on("GET", "/api/pair/([A-Za-z0-9]{6})", async (req, env, u, [code]) => {
+  if (!u) return err(401, "Sign in first.");
+  const p = await env.FRESH.get("pair:" + code.toUpperCase(), "json");
+  if (!p) return err(404, "No screen is showing that code. Check it and try again.");
+  if (!p || p.state !== "waiting") return err(404, "That code has expired. Show a new one on the other screen.");
+  return json({ device: p.device, at: p.at });
+});
+on("POST", "/api/pair/([A-Za-z0-9]{6})", async (req, env, u, [code]) => {
+  if (!u || u.banned) return err(401, "Sign in first.");
+  if (!(await rate(env, "pairok:" + u.id, 20, 3600))) return err(429, "Slow down.");
+  const key = "pair:" + code.toUpperCase();
+  const p = await env.FRESH.get(key, "json");
+  if (!p || p.state !== "waiting") return err(404, "That code has expired. Show a new one on the other screen.");
+  const b = await body(req).catch(() => ({}));
+  if (String(b.check || "") !== p.check) return err(403, "That number doesn't match the one on the screen.");
+  // KV can't claim atomically, so the single-use counter decides which approval wins.
+  if (!(await rate(env, "pairclaim:" + code.toUpperCase(), 1, 600))) return err(404, "That code has already been used.");
+  const token = await session(env, u.id, PAIRED + p.device);
+  await env.FRESH.put(key, JSON.stringify({ ...p, state: "approved", uid: u.id, token }), { expirationTtl: 120 });
+  await log(env, u.id, "pair", p.device);
+  return json({ ok: true, device: p.device });
+});
+
 on("GET", "/api/me", async (req, env, u) => {
   if (!u) return err(401, "Sign in first.");
   const [data, likes, dislikes, ratings, refs] = await Promise.all([
@@ -344,6 +398,7 @@ on("PATCH", "/api/me", async (req, env, u) => {
 });
 
 on("POST", "/api/me/code", async (req, env, u) => {
+  if (u && paired(u)) return err(403, "Change your code on a device you signed in to with it.");
   if (!u) return err(401, "Sign in first.");
   if (!(await rate(env, "rotate:" + u.id, 5, 86400))) return err(429, "Try again tomorrow.");
   const code = newCode();
@@ -869,6 +924,7 @@ on("GET", "/api/tokens", async (req, env, u) => {
   return json({ tokens: rows.results });
 });
 on("POST", "/api/tokens", async (req, env, u) => {
+  if (u && paired(u)) return err(403, "Make tokens on a device you signed in to with your code.");
   if (!u || u.banned) return err(401, "Sign in first.");
   if (!(await rate(env, "tok:" + u.id, 10, 86400))) return err(429, "That's plenty for today.");
 

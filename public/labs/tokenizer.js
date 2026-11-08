@@ -68,7 +68,7 @@ export function mount(root, ctx) {
   let alive = true;
 
   const taId = "tok-text";
-  const ta = h("textarea", { id: taId, class: "ta input", rows: 4, maxlength: 6000, spellcheck: "false" });
+  const ta = h("textarea", { id: taId, class: "ta input", rows: 2, maxlength: 6000, spellcheck: "false" });
   ta.value = PRESETS[0][1];
   const presetBtns = PRESETS.map(([name, text]) => h("button", { type: "button", class: "btn", onclick: () => { ta.value = text; sel = -1; run(); ta.focus(); } }, name));
 

@@ -82,6 +82,8 @@ export async function refreshMe() {
   mine.likes = new Set(d.likes); mine.dislikes = new Set(d.dislikes || []); saveDis(); mine.ratings = d.ratings;
   return d;
 }
+// A paired device: the session came from the phone that approved it.
+export async function adopt(token, user) { write({ token, user }); await sync(); }
 export function updateUser(u) { write({ ...acct, user: { ...acct.user, ...u } }); }
 export function setCode(code) { write({ ...acct, code }); }
 

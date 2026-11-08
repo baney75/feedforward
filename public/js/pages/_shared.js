@@ -17,7 +17,7 @@ export const cssReady = new Promise((res) => {
   setTimeout(res, 1500);
 });
 
-export const loader = (label) => `<div class="ascii" role="status" aria-label="${esc(label || "Loading")}"${label ? ` data-label="${esc(label)}"` : ""}></div>`;
+export const loader = (label) => `<div class="skel" role="status" aria-label="${esc(label || "Loading")}"><i></i><i></i><i></i></div>`;
 
 export async function copy(text, done = "Copied") {
   try { await navigator.clipboard.writeText(text); toast(done); }

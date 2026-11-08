@@ -6,27 +6,29 @@ import * as V from "./views.js";
 import { openTV, closeTV, tvIsOpen } from "./tv.js";
 import { signedIn, user, refreshMe, sync, scheduleSync, loadStats, refreshGate } from "./account.js";
 import { userAvatar } from "./ui.js";
+import { haptic } from "./haptics.js";
 
 const view = document.getElementById("view");
 // Six main places. Everything else lives in a quiet Explore list (and on the Learn hub on phones).
 const NAV = [
-  ["/", "home", "Home"], ["/shorts", "shorts", "Shorts"], ["/wire", "wire", "The Wire"], ["/learn", "learn", "Learn"], ["/chat", "chat", "Chat"], ["/library", "library", "Library"],
+  ["/", "home", "Home"], ["/shorts", "shorts", "Shorts"], ["/wire", "wire", "Posts"], ["/learn", "learn", "Learn"], ["/chat", "chat", "Chat"], ["/library", "library", "Library"],
 ];
-const EXPLORE = [["/books", "Books"], ["/research", "Research"], ["/dictionary", "Dictionary"], ["/repos", "Repos"], ["/sessions", "Live sessions"], ["/skills", "Skills"], ["/agents", "Connect an agent"]];
+const EXPLORE = [["/people", "People"], ["/books", "Books"], ["/research", "Research"], ["/dictionary", "Dictionary"], ["/repos", "Repos"], ["/sessions", "Live sessions"], ["/skills", "Skills"], ["/agents", "Connect an agent"]];
 const TABS = ["/", "/shorts", "/wire", "/learn", "/library"];
+const LEARN_KIDS = new Set(["/people", "/books", "/research", "/dictionary", "/repos", "/sessions", "/skills", "/agents", "/chat"]);
 // Pages that live in their own lazily loaded module.
 // Feedforward is invite-only: signed out, every path shows the front door (gate.js) except /link, the QR sign-in.
-const PAGES = { gate: "gate", suggest: "suggest", oauth: "consent", teach: "teach", me: "me", link: "me", chat: "chat", sessions: "sessions", skills: "skills", agents: "agents", admin: "admin", u: "profile", research: "research", dictionary: "dictionary", repos: "repos" };
+const PAGES = { gate: "gate", pair: "pair", suggest: "suggest", oauth: "consent", teach: "teach", me: "me", link: "me", chat: "chat", sessions: "sessions", skills: "skills", agents: "agents", admin: "admin", u: "profile", research: "research", dictionary: "dictionary", repos: "repos" };
 
 function shell() {
   const rail = document.querySelector(".rail");
   const noShorts = store.shortsOff(), nav = NAV.filter(([h]) => !(noShorts && h === "/shorts"));
   rail.innerHTML = nav.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("") +
     `<hr><div class="rail-h">Explore</div><div class="explore">${EXPLORE.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</div>` +
-    `<div class="foot"><a href="/tv">TV mode</a> · <a href="/people">People</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="mailto:support@dbaney.com">support@dbaney.com</a> · <a href="https://github.com/baney75/feedforward">GitHub</a> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
+    `<div class="foot"><a href="/tv">TV mode</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="mailto:support@dbaney.com">support@dbaney.com</a> · <a href="https://github.com/baney75/feedforward">GitHub</a><br><button class="textbtn" type="button" id="railInstall">Install app</button> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
   const tabbar = document.querySelector(".tabbar"), tabs = nav.filter(([h]) => TABS.includes(h));
   tabbar.style.setProperty("--tabs", tabs.length);
-  tabbar.innerHTML = tabs.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l === "The Wire" ? "Wire" : l}</span></a>`).join("");
+  tabbar.innerHTML = tabs.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("");
   document.getElementById("searchBtn").innerHTML = icon("search");
   document.getElementById("installBtn").innerHTML = icon("install");
   themeIcon();
@@ -40,6 +42,8 @@ function markNav(path) {
     const h = a.getAttribute("href");
     if (h === cur && !(top === "/watch" || top === "/search")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
+  // Phones have five tabs: everything under Explore belongs to Learn, so one tab is always lit.
+  if (LEARN_KIDS.has(cur) && top !== "/p") document.querySelector('.tabbar a[href="/learn"]')?.setAttribute("aria-current", "page");
 }
 
 // ---------- Router ----------
@@ -58,20 +62,27 @@ function startMember() {
   }
   return started;
 }
+// The amber line: starts on every page change, finishes when the page has painted.
+const bar = document.getElementById("bar");
+function barGo() { if (!bar) return; bar.className = ""; void bar.offsetWidth; bar.className = "go"; }
+function barDone() { if (bar) requestAnimationFrame(() => (bar.className = "done")); }
 async function route() {
   const my = ++seq;
+  barGo();
   const url = new URL(location.href);
   const path = url.pathname.replace(/\/+$/, "") || "/";
   const qs = url.searchParams;
   stopView();
   view.onclick = null;
+  { const t = document.getElementById("toast"); if (t && Date.now() - +(t.dataset.at || 0) > 500) t.classList.remove("on"); }
+  document.body.classList.toggle("on-watch", url.pathname.startsWith("/watch/"));
   const first = path.split("/")[1] || "";
   const door = !signedIn() && first !== "link";
   document.body.classList.toggle("door", door);
   if (door) {
     view.dataset.seq = my;
     const out = loadPage("gate", qs, path.split("/").filter(Boolean));
-    out.then((c) => { if (my === seq) cleanup = c; else if (typeof c === "function") c(); });
+    out.then((c) => { barDone(); if (my === seq) cleanup = c; else if (typeof c === "function") c(); });
     scrollTo(0, 0);
     return;
   }
@@ -92,7 +103,10 @@ async function route() {
   } catch (e) {
     // The gate turned this browser away (signed out elsewhere, or banned): show the front door.
     if (!signedIn()) { started = null; D.ready = null; return route(); }
-    view.innerHTML = `<div class="empty"><p>Feedforward couldn't load its catalog. Check your connection and reload.</p></div>`; return;
+    barDone();
+    view.innerHTML = `<div class="empty-card" role="alert">${icon("info")}<h2>Videos didn’t load</h2><p>Check your connection, then try again.</p><button class="btn primary" type="button" id="retryCatalog">Try again</button></div>`;
+    document.getElementById("retryCatalog").onclick = () => { started = null; D.ready = null; route(); };
+    return;
   }
   if (my !== seq) return;
   view.dataset.seq = my;
@@ -113,8 +127,9 @@ async function route() {
   else if (PAGES[r]) out = loadPage(PAGES[r], qs, parts);
   else if (r === "books") out = V.booksPage(view, qs);
   else out = V.notFound(view);
-  if (out instanceof Promise) out.then((c) => { if (my === seq) cleanup = c; else if (typeof c === "function") c(); });
-  else cleanup = out;
+  if (out instanceof Promise) out.then((c) => { barDone(); if (my === seq) cleanup = c; else if (typeof c === "function") c(); });
+  else { cleanup = out; barDone(); }
+  setTimeout(askInstall, 4000);
   const st = history.state;
   if (st && typeof st.y === "number") requestAnimationFrame(() => scrollTo(0, st.y)); else scrollTo(0, 0);
 }
@@ -126,19 +141,19 @@ function nav(href, { replace = false, state = {} } = {}) {
 }
 async function loadPage(name, qs, parts) {
   const my = view.dataset.seq;
-  view.innerHTML = `<div class="ascii" role="status" aria-label="Loading"></div>`;
+  view.innerHTML = `<div class="skel" role="status" aria-label="Loading"><i></i><i></i><i></i></div>`;
   try {
     const mod = await import(`/js/pages/${name}.js`);
     if (view.dataset.seq !== my) return null;
     view.innerHTML = "";
     return await mod.render(view, qs, parts);
   } catch (e) {
-    if (view.dataset.seq === my) view.innerHTML = `<div class="empty"><p>This page didn't load. Check your connection and try again.</p></div>`;
+    if (view.dataset.seq === my) { barDone(); view.innerHTML = `<div class="empty-card" role="alert">${icon("info")}<h2>This page didn’t load</h2><p>Check your connection, then try again.</p><button class="btn primary" type="button" onclick="location.reload()">Try again</button></div>`; }
     return null;
   }
 }
 function goTV(start) { if (location.pathname !== "/tv") nav("/tv", { state: { tv: 1, start } }); }
-function skeleton() { return `<div class="ascii" role="status" aria-label="Loading"></div>`; }
+function skeleton() { return `<div class="skel" role="status" aria-label="Loading"><i></i><i></i><i></i></div>`; }
 
 document.addEventListener("click", (e) => {
   const more = e.target.closest("[data-more]");
@@ -146,6 +161,7 @@ document.addEventListener("click", (e) => {
   const sv = e.target.closest("[data-save]");
   if (sv) {
     const on = store.toggleSave(sv.dataset.save);
+    haptic.tick();
     sv.setAttribute("aria-pressed", on); sv.innerHTML = icon(on ? "bookmarked" : "bookmark");
     toast(on ? "Saved to your library" : "Removed from your library"); return;
   }
@@ -224,9 +240,9 @@ let deferred = null;
 const installBtn = document.getElementById("installBtn");
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-// The top bar has no install button: About offers it, and installed apps never see it.
+// No install button in the top bar: a phone gets one well-timed card instead (askInstall), and the footer
+// keeps a quiet "Install app" link.
 addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferred = e; });
-void standalone;
 async function install() {
   if (deferred) { deferred.prompt(); const { outcome } = await deferred.userChoice; deferred = null; if (outcome === "accepted") installBtn.hidden = true; return; }
   const d = document.getElementById("sheet");
@@ -238,8 +254,30 @@ async function install() {
   d.showModal();
 }
 installBtn.addEventListener("click", install);
+document.addEventListener("click", (e) => { if (e.target.closest("#railInstall")) install(); });
 addEventListener("lt:install", install);
-addEventListener("appinstalled", () => { installBtn.hidden = true; toast("Installed"); });
+addEventListener("appinstalled", () => { installBtn.hidden = true; try { localStorage.setItem("lt:installAsk", JSON.stringify({ n: 9, t: Date.now() })); } catch {} toast("Installed"); });
+
+// The install card: phones only, once someone is clearly coming back (a second day, two videos watched),
+// at most twice and a week apart, never after an install or two dismissals.
+function askInstall() {
+  if (standalone || innerWidth >= 720 || !signedIn() || !(deferred || isIOS)) return;
+  let ask = { n: 0, t: 0 };
+  try { ask = JSON.parse(localStorage.getItem("lt:installAsk") || "null") || ask; } catch {}
+  const days = store.get("days", []), seen = store.history().length;
+  if (ask.n >= 2 || Date.now() - ask.t < 7 * 864e5 || days.length < 2 || seen < 2 || document.querySelector(".install-card")) return;
+  try { localStorage.setItem("lt:installAsk", JSON.stringify({ n: ask.n + 1, t: Date.now() })); } catch {}
+  const card = document.createElement("div");
+  card.className = "install-card"; card.setAttribute("role", "dialog"); card.setAttribute("aria-label", "Add Feedforward to your home screen");
+  card.innerHTML = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--accent)"/><g fill="var(--accent-ink)"><rect x="15.5" y="15.7" width="8.2" height="32.6" rx="4.1"/><rect x="27.7" y="21.8" width="8.2" height="20.4" rx="4.1"/><circle cx="44" cy="32" r="4.5"/></g></svg>
+    <div><b>Put Feedforward on your home screen</b><span>${isIOS && !deferred ? "Tap Share, then Add to Home Screen. It opens full screen, like an app." : "One tap. It opens full screen and starts instantly."}</span></div>
+    <div class="install-acts"><button class="btn" type="button" data-x>Not now</button>${deferred ? `<button class="btn primary" type="button" data-go>Add</button>` : ""}</div>`;
+  document.body.appendChild(card);
+  requestAnimationFrame(() => card.classList.add("on"));
+  const close = () => { card.classList.remove("on"); setTimeout(() => card.remove(), 300); };
+  card.querySelector("[data-x]").onclick = close;
+  const go = card.querySelector("[data-go]"); if (go) go.onclick = () => { close(); install(); };
+}
 
 // ---------- Misc ----------
 // The top bar gets out of the way: scrolling down slides it off, any scroll up brings it back (like the YouTube
@@ -282,6 +320,8 @@ addEventListener("ff:account", () => {
   if (signedIn() === wasIn) return;
   wasIn = signedIn();
   if (!wasIn) started = null;
+  // A TV that just signed in goes straight to lean-back TV mode.
+  if (wasIn && /SMART-TV|SmartTV|Tizen|Web0S|webOS|NetCast|BRAVIA|AFT[A-Z]|CrKey|GoogleTV|Android TV|HbbTV|VIDAA|PhilipsTV|Roku/i.test(navigator.userAgent)) { document.body.classList.remove("door-tv"); history.replaceState(null, "", "/tv"); }
   route();
 });
 addEventListener("ff:changed", scheduleSync);

@@ -29,8 +29,10 @@ export function ago(ts, short = false) {
 export const thumb = (id, q = "mqdefault") => `https://i.ytimg.com/vi/${id}/${q}.jpg`;
 export const topicLabel = (i) => (TOPICS[i] ? TOPICS[i].label : "");
 
+// A picture that fails to load turns into the person's initial instead of an empty circle.
+const initialSvg = (ch) => "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><rect width="36" height="36" fill="#2a2925"/><text x="18" y="23.5" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" font-weight="600" fill="#b4afa5">${ch}</text></svg>`);
 export function avatar(p, cls = "") {
-  if (p && p.av) return `<img class="av ${cls}" src="${esc(p.av)}" alt="" loading="lazy" width="36" height="36" referrerpolicy="no-referrer">`;
+  if (p && p.av) return `<img class="av ${cls}" src="${esc(p.av)}" alt="" loading="lazy" width="36" height="36" referrerpolicy="no-referrer" onerror="this.onerror=null;this.src='${initialSvg(esc((p.name || "?")[0].toUpperCase()))}'">`;
   const ch = esc((p?.name || "?")[0]);
   return `<span class="av ${cls}" aria-hidden="true" style="display:grid;place-items:center;font-weight:600;color:var(--fg-2)">${ch}</span>`;
 }
@@ -39,14 +41,15 @@ export function videoCard(v, { big = false, row = false } = {}) {
   const p = D.people[v.person];
   const watched = store.hasWatched(v.id);
   const img = `<div class="thumb"><img src="${thumb(v.id, big ? "hqdefault" : "mqdefault")}" alt="" loading="lazy" width="320" height="180">${v.sec ? `<span class="dur">${dur(v.sec)}</span>` : ""}${watched ? '<span class="seen" title="Watched"></span>' : ""}</div>`;
-  const sub = `<span class="who">${esc(p.name)}</span><br>${num(v.views)} views${v.ts ? `<span class="dot"></span>${ago(v.ts)}` : ""}${v.fresh ? ' <span class="badge">New</span>' : ""}`;
+  const sub = `<span class="who">${esc(p.name)}</span><br>${v.views ? num(v.views) + " views" : ""}${v.views && v.ts ? `<span class="dot"></span>` : ""}${v.ts ? ago(v.ts) : ""}${v.fresh ? ' <span class="badge">New</span>' : ""}`;
   if (row) return `<a class="vrow" href="/watch/${v.id}">${img}<div class="vtext"><h3 class="vt">${esc(v.title)}</h3><div class="vsub">${sub}</div></div></a>`;
   return `<a class="vcard${big ? " big" : ""}" href="/watch/${v.id}"${big ? "" : ""}>${img}<div class="vmeta">${avatar(p)}<div class="vtext"><h3 class="vt">${esc(v.title)}</h3><div class="vsub">${sub}</div></div></div></a>`;
 }
 
 const URL_RE = /(https?:\/\/[^\s<]+[^\s<.,:;"')\]!?])/g;
 export function linkify(text) {
-  let s = esc(text);
+  // X has no markup, so people type *emphasis* and "- " lists. Show what they meant.
+  let s = esc(text).replace(/(^|[\s(])\*([^*\n]{1,80})\*(?=[\s.,!?:;)]|$)/g, "$1<em>$2</em>").replace(/^- /gm, "• ");
   s = s.replace(URL_RE, (u) => {
     const yt = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
     const label = u.replace(/^https?:\/\/(www\.)?/, "").slice(0, 42) + (u.length > 50 ? "..." : "");
@@ -101,7 +104,6 @@ export function postCard(post) {
         <span title="Likes">${icon("heart")}${num(post.l)}</span>
         ${post.v ? `<span title="Views">${icon("eye")}${num(post.v)}</span>` : ""}
         <button data-save="p:${post.id}" aria-pressed="${saved}" aria-label="Save post">${icon(saved ? "bookmarked" : "bookmark")}</button>
-        <a href="${url}" target="_blank" rel="noopener" aria-label="Open on X">${icon("x")}</a>
       </div>
     </div>
   </article>`;
@@ -123,7 +125,7 @@ export function chips(active, { all = "All", extra = [] } = {}) {
 let toastTimer;
 export function toast(msg) {
   const t = document.getElementById("toast");
-  t.textContent = msg; t.classList.add("on");
+  t.textContent = msg; t.classList.add("on"); t.dataset.at = Date.now();
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2200);
 }
 
@@ -147,9 +149,9 @@ const BADGES = {
 export function badges(u) {
   if (!u) return "";
   const keys = [];
-  if (u.verified) keys.push("verified");
-  if (u.role && u.role !== "user") keys.push(u.role);
-  if (u.teach) keys.push(u.teach);
+  // One mark per person: the role that says the most, or the check.
+  const top = ["owner", "admin", "mod", "professor", "tutor", "contributor"].find((k) => k === u.role || k === u.teach);
+  if (top) keys.push(top); else if (u.verified) keys.push("verified");
   return keys.map((k) => { const [label, color, path] = BADGES[k]; const stroke = k === "contributor";
     return `<span class="badge-mark" title="${label}"><svg viewBox="0 0 24 24" aria-hidden="true" style="${stroke ? `stroke:${color};fill:none` : `fill:${color}`}">${path}</svg><span class="sr-only">${label}</span></span>`; }).join("");
 }

@@ -2,6 +2,7 @@
 import { api, signedIn, user, can, like, rate, mine, stats, loadStats } from "./account.js";
 import { esc, ago, num, toast, badges, userAvatar } from "./ui.js";
 import { icon } from "./icons.js";
+import { haptic } from "./haptics.js";
 
 // Like and dislike, one pill. The like count shows; the dislike count never does. stacked: the Shorts action
 // column, where they're round buttons with a label under each, like Save and Share.
@@ -13,7 +14,7 @@ export function likeButton(item, { label = true, stacked = false } = {}) {
 
 export function stars(item) {
   const r = stats.ratings[item], my = mine.ratings[item] || 0;
-  return `<div class="stars" role="radiogroup" aria-label="Rate it">${[1, 2, 3, 4, 5].map((k) => `<button role="radio" aria-checked="${my === k}" aria-label="${k} star${k > 1 ? "s" : ""}" data-rate="${esc(item)}" data-stars="${k}" class="${k <= my ? "on" : ""}">${icon("star")}</button>`).join("")}<span class="muted mono">${r ? `${r[0].toFixed(1)} · ${r[1]}` : ""}</span></div>`;
+  return `<div class="stars" role="radiogroup" aria-label="Rate it">${[1, 2, 3, 4, 5].map((k) => `<button role="radio" aria-checked="${my === k}" aria-label="${k} star${k > 1 ? "s" : ""}" data-rate="${esc(item)}" data-stars="${k}" class="${k <= my ? "on" : ""}">${icon("star")}</button>`).join("")}<span class="muted rate-n">${r ? `${r[0].toFixed(1)} · ${r[1]} rating${r[1] === 1 ? "" : "s"}` : my ? "" : "Rate it"}</span></div>`;
 }
 
 const needCode = () => toast("Sign in first.");
@@ -27,6 +28,7 @@ export function bindSocial(root) {
       const kind = lb.dataset.dislike ? "dislike" : "like", item = lb.dataset.like || lb.dataset.dislike;
       const on = lb.getAttribute("aria-pressed") !== "true", pill = lb.closest(".vote");
       lb.setAttribute("aria-pressed", on);
+      haptic.tick();
       try { await like(item, on, kind); pill.outerHTML = likeButton(item, { stacked: !!pill.dataset.stacked }); if (kind === "dislike" && on) toast("Got it. You'll see less like this."); }
       catch (err) { lb.setAttribute("aria-pressed", !on); toast(err.message); }
       return;
@@ -47,10 +49,10 @@ const canReply = () => signedIn() && !!user() && (user().verified || can("contri
 
 // Comments: list plus composer. Mods and above can hide; authors can delete their own.
 export async function comments(el, item) {
-  el.innerHTML = `<section class="comments" aria-label="Comments"><div class="sec-h"><h2>Comments</h2><span class="muted mono" id="cn"></span></div>
+  el.innerHTML = `<section class="comments" aria-label="Comments"><div class="sec-h"><h2>Comments</h2><span class="muted" id="cn"></span></div>
     ${canReply() ? `<form class="compose"><label class="sr-only" for="cbody">Add a comment</label><textarea id="cbody" rows="2" maxlength="1500" placeholder="Add a thoughtful comment" required></textarea><button class="btn primary" type="submit">Post</button></form>`
-      : `<p class="muted signin-line">Replies are for verified members, so every voice here is a real person. Talk it through in your communities any time.</p>`}
-    <div class="clist"><div class="ascii" role="status" aria-label="Loading comments" data-label="loading comments"></div></div></section>`;
+      : `<p class="muted signin-line">Only verified members can comment, so every voice here is a real person. <a class="link" href="/me">How to get verified</a> or <a class="link" href="/chat">talk it through in Chat</a>.</p>`}
+    <div class="clist"><div class="skel" role="status" aria-label="Loading comments"><i></i><i></i><i></i></div></div></section>`;
   const list = el.querySelector(".clist");
   const me = user();
   const row = (c) => `<article class="cmt${c.hidden ? " hidden-c" : ""}" data-cid="${esc(c.id)}">
@@ -61,7 +63,7 @@ export async function comments(el, item) {
   const load = async () => {
     try {
       const d = await api("/api/comments?item=" + encodeURIComponent(item));
-      el.querySelector("#cn").textContent = d.comments.length ? String(d.comments.length) : "";
+      el.querySelector("#cn").textContent = d.comments.length ? `${d.comments.length} comment${d.comments.length === 1 ? "" : "s"}` : "";
       list.innerHTML = d.comments.map(row).join("") || `<p class="muted empty-c">No comments yet. Start the conversation.</p>`;
     } catch (e) { list.innerHTML = `<p class="muted">Comments didn't load.</p>`; }
   };

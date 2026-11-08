@@ -16,7 +16,11 @@ let pass = 0; const ok = (m) => { pass++; console.log("ok  " + m); };
 const b = await chromium.launch();
 // Each browser gets its own simulated address, so the real per-network limits don't trip across runs.
 const ip = () => `10.${Math.random() * 255 | 0}.${Math.random() * 255 | 0}.${Math.random() * 255 | 0}`;
-const page = async () => { const c = await b.newContext({ viewport: { width: 390, height: 844 }, extraHTTPHeaders: { "cf-connecting-ip": ip() } }); const p = await c.newPage(); const errs = []; p.on("pageerror", (e) => errs.push(e.message)); return { c, p, errs }; };
+const page = async () => {
+  const c = await b.newContext({ viewport: { width: 390, height: 844 } });
+  // The simulated address goes only to Feedforward; on a CDN request it would trigger a CORS preflight.
+  const addr = ip();
+  await c.route("**/*", (r) => (r.request().url().startsWith(BASE) ? r.continue({ headers: { ...r.request().headers(), "cf-connecting-ip": addr } }) : r.continue())); const p = await c.newPage(); const errs = []; p.on("pageerror", (e) => errs.push(e.message)); return { c, p, errs }; };
 
 // Apply
 {
@@ -32,7 +36,7 @@ const page = async () => { const c = await b.newContext({ viewport: { width: 390
   assert.deepEqual(errs, []);
 }
 // Accept an invite, keep the code, land in the app
-let code;
+let code, codeOfMember;
 {
   const { p, c, errs } = await page();
   await p.goto(`${BASE}/join/${INVITE}`);
@@ -42,6 +46,7 @@ let code;
   await p.click("#joinForm .door-go");
   await p.waitForSelector(".door-welcome .door-code", { timeout: 20000 });
   code = (await p.textContent(".door-code")).trim();
+  codeOfMember = code;
   ok("accepting an invite shows your code before anything else");
   await c.grantPermissions(["clipboard-read", "clipboard-write"]);
   await p.click("#copyCode"); await p.click("#enter");
@@ -59,6 +64,27 @@ let code;
   await p.waitForSelector("body:not(.door)", { timeout: 20000 });
   ok("signing in with the code on another device works");
   assert.deepEqual(errs, []);
+}
+// Pair a TV from a phone: the TV shows a code, the signed-in phone approves it, the TV opens TV mode.
+{
+  const tv = await page();
+  await tv.p.goto(BASE + "/?tv=1");
+  await tv.p.waitForSelector(".door-paircode", { timeout: 15000 });
+  const code = (await tv.p.textContent(".door-paircode")).replace(/[^A-Z0-9]/g, "");
+  assert.match(code, /^[A-Z0-9]{6}$/); ok("a TV shows a pairing code and QR");
+  const phone = await page();
+  await phone.p.goto(BASE + "/"); await phone.p.click('[data-tab="signin"]');
+  await phone.p.fill('#siForm input[name="code"]', code === "" ? "" : codeOfMember);
+  await phone.p.click("#siForm .door-go"); await phone.p.waitForSelector("body:not(.door)", { timeout: 20000 });
+  await phone.p.goto(`${BASE}/pair#${code}`);
+  await phone.p.waitForSelector("#pairInfo .hint b", { timeout: 10000 });
+  ok("the phone shows what it's about to sign in");
+  await phone.p.fill('#pairForm input[name="check"]', (await tv.p.textContent(".door-paircheck")).trim());
+  await phone.p.click('#pairForm button[type="submit"]');
+  await phone.p.waitForSelector(".pg-pair h1", { timeout: 10000 });
+  await tv.p.waitForFunction(() => !document.body.classList.contains("door"), null, { timeout: 15000 });
+  ok("approving on the phone signs the TV in");
+  assert.deepEqual(tv.errs, []); assert.deepEqual(phone.errs, []);
 }
 // The X video frame loads inside Feedforward (a header that refuses framing would leave it blank).
 {

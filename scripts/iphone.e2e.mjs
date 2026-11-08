@@ -53,9 +53,9 @@ assert.ok(!(await p.evaluate(() => document.querySelector(".topbar").classList.c
 ok("the top bar hides on scroll down and returns on scroll up");
 
 // Turn off Shorts: the tab goes away and a Shorts link explains they're off.
-await p.goto(BASE + "/library", { waitUntil: "load" });
-await p.waitForSelector("#shortsOff", { timeout: 20000 });
-await p.check("#shortsOff");
+await p.goto(BASE + "/me", { waitUntil: "load" });
+await p.waitForSelector("#prefShorts", { timeout: 20000 });
+await p.check("#prefShorts");
 assert.ok(!(await p.$('.tabbar a[href="/shorts"]')), "no Shorts tab");
 ok("turning off Shorts removes them from the tab bar");
 await p.goto(BASE + "/shorts", { waitUntil: "load" });

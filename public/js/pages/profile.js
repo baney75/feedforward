@@ -27,11 +27,11 @@ export async function render(el, qs, parts) {
       <div class="me-id"><h1>${esc(u.name)}${badges(u)}</h1>
         <p class="muted">${roles.length ? esc(roles.join(", ")) + '<span class="dot"></span>' : ""}Joined ${fmtDate(u.created, { month: "long", year: "numeric" })}</p>
         ${linkChips(d.links)}
-        <p class="prof-stats"><span><b class="mono">${d.likes}</b> likes</span><span><b class="mono">${d.referrals}</b> referred</span><span><b class="mono">${d.comments.length}</b> recent comments</span></p>
+        <p class="prof-stats"><span><b>${d.likes}</b> like${d.likes === 1 ? "" : "s"}</span><span><b>${d.comments.length}</b> comment${d.comments.length === 1 ? "" : "s"}</span></p>
       </div>
+      ${self || teachBtn ? `<div class="acts prof-acts">${self ? `<a class="btn" href="/me">Edit</a>` : ""}${teachBtn}</div>` : ""}
     </header>
     <div id="profFeed"></div>
-    ${self || teachBtn ? `<div class="acts prof-acts">${self ? `<a class="btn" href="/me">Edit your profile</a>` : ""}${teachBtn}</div>` : ""}
     <section class="set" aria-labelledby="rcH"><h2 class="set-h" id="rcH">Recent comments</h2>
       ${d.comments.length ? `<ul class="rows prof-cmts">${d.comments.map((c) => { const h = itemHref(c.item); return `<li><p class="muted pc-h">On ${h ? `<a class="link" href="${esc(h)}">${itemLabel(c.item)}</a>` : itemLabel(c.item)}<span class="dot"></span>${ago(c.ts)}</p><p class="pc-b">${esc(c.body)}</p></li>`; }).join("")}</ul>`
         : `<p class="muted empty-row">No comments yet.</p>`}
@@ -50,13 +50,15 @@ export async function render(el, qs, parts) {
 // Latest posts on X and uploads on YouTube, for verified members. Loads after the page so it never holds it up.
 async function showFeed(box, u, links) {
   let f;
-  try { f = await api("/api/u/" + encodeURIComponent(u.id) + "/feed"); } catch { return; }
+  box.innerHTML = `<div class="skel" role="status" aria-label="Loading"><i></i></div>`;
+  const get = () => api("/api/u/" + encodeURIComponent(u.id) + "/feed");
+  try { f = await get().catch(() => new Promise((r) => setTimeout(r, 1200)).then(get)); } catch { box.innerHTML = ""; return; }
   if (!box.isConnected) return;
   const vids = f.videos.length ? `<section class="set" aria-labelledby="pfV"><h2 class="set-h" id="pfV">Latest on YouTube</h2>
     <ul class="pf-vids">${f.videos.map((v) => `<li><a href="https://www.youtube.com/watch?v=${esc(v.id)}" target="_blank" rel="noopener"><img src="https://i.ytimg.com/vi/${esc(v.id)}/mqdefault.jpg" alt="" width="320" height="180" loading="lazy"><b>${esc(v.title)}</b><span class="muted">${ago(v.ts)}</span></a></li>`).join("")}</ul></section>` : "";
   const posts = f.posts.length ? `<section class="set" aria-labelledby="pfX"><h2 class="set-h" id="pfX">Latest on X</h2>
     <ul class="rows pf-posts">${f.posts.map((p) => `<li><a class="pf-post" href="https://x.com/${esc(links.x)}/status/${esc(p.id)}" target="_blank" rel="noopener"><p class="pc-b">${esc(p.text)}</p>${p.photo ? `<img src="${esc(p.photo)}" alt="" loading="lazy">` : ""}<p class="muted pc-h">@${esc(links.x)}<span class="dot"></span>${ago(p.ts)}</p></a></li>`).join("")}</ul></section>` : "";
   const repos = (f.repos || []).length ? `<section class="set" aria-labelledby="pfG"><h2 class="set-h" id="pfG">On GitHub</h2>
-    <ul class="pf-repos">${f.repos.map((r) => `<li><a href="${esc(r.url)}" target="_blank" rel="noopener"><b class="mono">${esc(r.name)}</b>${r.desc ? `<span>${esc(r.desc)}</span>` : ""}<small class="muted">${r.lang ? esc(r.lang) + '<span class="dot"></span>' : ""}${r.stars ? `${r.stars} star${r.stars === 1 ? "" : "s"}<span class="dot"></span>` : ""}updated ${ago(r.ts)}</small></a></li>`).join("")}</ul></section>` : "";
-  box.innerHTML = vids + repos + posts;
+    <ul class="pf-repos">${f.repos.map((r) => `<li><a href="${esc(r.url)}" target="_blank" rel="noopener"><b>${esc(r.name)}</b>${r.desc && r.desc.trim() ? `<span>${esc(r.desc.trim())}</span>` : ""}<small class="muted">${r.lang ? esc(r.lang) + '<span class="dot"></span>' : ""}${r.stars ? `${r.stars} star${r.stars === 1 ? "" : "s"}<span class="dot"></span>` : ""}updated ${ago(r.ts)}</small></a></li>`).join("")}</ul></section>` : "";
+  box.innerHTML = posts + vids + repos;
 }
