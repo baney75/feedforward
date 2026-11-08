@@ -145,7 +145,7 @@ export function watch(el, qs, id) {
       </div>
       <div class="vsub wmeta" style="margin-top:12px">${v.views ? num(v.views) + " views" : ""}${v.ts ? `<span class="dot"></span>${ago(v.ts)}` : ""}${v.sec ? `<span class="dot"></span>${dur(v.sec)}` : ""}${v.topic != null && v.topic >= 0 ? `<span class="dot"></span><a href="/?topic=${TOPICS[v.topic].code}">${topicLabel(v.topic)}</a>` : ""}</div>
       ${p ? `<div class="why"><span class="muted">Why ${esc(p.name)} is on Feedforward</span><br>${esc(p.why)}</div>` : ""}
-      <section class="notes-pane" aria-label="Notes"><div class="notes-h"><label for="notes">Your notes</label><button class="btn" type="button" id="focusX">Exit focus</button></div><textarea id="notes" placeholder="Write down what you want to keep. Notes stay on this device.">${esc((store.get("notes", {})[id] || ""))}</textarea></section>
+      <section class="notes-pane" aria-label="Notes"><div class="notes-h"><label for="notes">Your notes</label><button class="btn" type="button" id="focusX">Exit focus</button></div><textarea id="notes" placeholder="Write down what you want to keep. Notes stay on this device until you sign out.">${esc((store.get("notes", {})[id] || ""))}</textarea></section>
       ${!track && next ? `<section class="nextstep" aria-label="Next"><div class="side-h"><h2>${v.topic != null && v.topic >= 0 ? `Next in ${esc(topicLabel(v.topic))}` : "Next"}</h2><label class="toggle"><input type="checkbox" id="autoplay" ${store.get("autoplay", true) !== false ? "checked" : ""}> Autoplay</label></div>${videoCard(next, { row: true })}${upNext.length > 1 ? `<button class="more" type="button" id="moreNext">Show more videos</button><div class="grid" id="moreList" hidden></div>` : ""}</section>` : ""}
       <div id="cmts"></div>
     </div>
@@ -164,7 +164,7 @@ export function watch(el, qs, id) {
   const stage = openStage({ id, title: v.title, slotEl: $(".player", el), cover, on: {
     onPlay: () => store.watched(id),
     onEnd: () => {
-      if (store.get("autoplay", true) === false || !next || track) { endCard(); return; }
+      if (document.body.classList.contains("focus") || store.get("autoplay", true) === false || !next || track) { endCard(); return; }
       const nx = next;
       let n = 6;
       stage.video.insertAdjacentHTML("beforeend", `<div class="autonext" role="status"><img src="${thumb(nx.id, "hqdefault")}" alt=""><div><span class="topic-tag">Up next in <b class="an">${n}</b></span><h3>${esc(nx.title)}</h3><div class="row"><button class="btn cancel">Cancel</button><a class="btn primary" href="/watch/${nx.id}">${icon("play")}Play now</a></div></div></div>`);

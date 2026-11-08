@@ -17,7 +17,7 @@
   #big { position: absolute; inset: 0; margin: auto; width: 64px; height: 64px; border-radius: 50%; background: rgba(0, 0, 0, .6); }
   #big svg { width: 28px; height: 28px; fill: #fff; }
   #bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: linear-gradient(transparent, rgba(0, 0, 0, .7)); transition: opacity .2s; }
-  body.playing.idle #bar { opacity: 0; }
+  body.playing.idle #bar:not(:has(:focus-visible)) { opacity: 0; }
   body.playing #big, [hidden] { display: none; }
   #bar button { width: 32px; height: 32px; flex: none; }
   input { flex: 1; min-width: 0; accent-color: #ffb224; height: 24px; margin: 0; cursor: pointer; }

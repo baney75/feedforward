@@ -279,7 +279,7 @@ test("every new shell module is cached for offline", () => {
 });
 
 test("a typed code gets its dashes, whatever word it holds", async () => {
-  const { formatCode, isCode } = await import(path.join(root, "public/js/code.js"));
+  const { formatCode, isCode, stepCode } = await import(path.join(root, "public/js/code.js"));
   const { WORDS } = await import(path.join(root, "public/js/words.js"));
   const type = (s) => [...s].reduce((v, c) => formatCode(v + c), "");
   for (let i = 0; i + 3 < WORDS.length; i += 3) {
@@ -290,6 +290,16 @@ test("a typed code gets its dashes, whatever word it holds", async () => {
   assert.equal(formatCode("Otter River cedar_ACORN 42"), "otter-river-cedar-acorn-42");
   assert.equal(formatCode("otter-maple-rocket-42"), "otter-maple-rocket-42", "a whole pasted code is never re-split");
   assert.equal(formatCode("zzzq-qqq-zzz-42"), "zzzq-qqq-zzz-42", "old three-word codes keep working");
+  const keys = (text) => { const st = {}; let v = ""; for (const c of text) v = stepCode(st, v + c, { inputType: "insertText", data: c }); return v; };
+  assert.equal(keys("otter-maple-rocket-42"), "otter-maple-rocket-42", "an old code typed with its dashes is not split");
+  assert.equal(keys("otter maple rocket 42"), "otter-maple-rocket-42", "spaces work the same way");
+  assert.equal(keys("otterrivercedaracorn42"), "otter-river-cedar-acorn-42", "no dashes typed still gets auto dashes");
+  { const st = {}; let v = "";
+    for (const c of "ottermap") v = stepCode(st, v + c, { inputType: "insertText", data: c });
+    assert.equal(v, "otter-map-");
+    v = stepCode(st, v.slice(0, -1), { inputType: "deleteContentBackward" });
+    for (const c of "le") v = stepCode(st, v + c, { inputType: "insertText", data: c });
+    assert.equal(v, "otter-maple", "deleting an auto dash keeps it deleted"); }
 });
 
 test("iPhone haptics: buttons carry a real switch label, and scripted flips only follow a real tap", () => {

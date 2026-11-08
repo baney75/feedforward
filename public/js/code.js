@@ -28,14 +28,32 @@ export function formatCode(raw) {
   return parts.length ? parts.join("-") + (done || typedDash ? "-" : "") : "";
 }
 
+// One keystroke. Typing your own dash or space, or deleting a dash, means you know better than the auto dashes,
+// so they stay off until the field is empty. Old codes with words outside the list need that ("maple" begins with "map").
+const tidy = (v) => String(v).toLowerCase().replace(/[\s_]+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-/, "");
+export function stepCode(st, value, e = {}) {
+  if (!value) st.manual = false;
+  if (e.inputType?.startsWith("delete")) {
+    if (st.last?.endsWith("-") && value === st.last.slice(0, -1)) st.manual = true;
+    return (st.last = value);
+  }
+  if (e.data?.length === 1 && /[-\s_]/.test(e.data)) st.manual = true;
+  return (st.last = st.manual ? tidy(value) : formatCode(value));
+}
+
 // Any input marked data-code formats itself, and signs in by itself when the last digit lands.
 if (typeof document !== "undefined") {
   let tried = "";
+  const states = new WeakMap();
   document.addEventListener("input", (e) => {
     const el = e.target;
-    if (el.matches?.("[data-code]") && !isCode(el.value)) tried = "";
-    if (!el.matches?.("[data-code]") || e.isComposing || e.inputType?.startsWith("delete") || el.selectionStart !== el.value.length) return;
-    el.value = formatCode(el.value);
+    if (!el.matches?.("[data-code]")) return;
+    if (!isCode(el.value)) tried = "";
+    if (!states.has(el)) states.set(el, {});
+    const st = states.get(el);
+    if (e.isComposing || el.selectionStart !== el.value.length) { st.last = el.value; return; }
+    el.value = stepCode(st, el.value, e);
+    if (e.inputType?.startsWith("delete")) return;
     if (isCode(el.value) && el.value !== tried) { tried = el.value; el.form?.requestSubmit(el.form.querySelector("[type=submit]") || undefined); }
   });
 }

@@ -23,7 +23,7 @@ function label(style) {
 }
 // Submit buttons stay plain: a label inside one would take over its default action. Links navigate through the app,
 // so the tab bar gets labels beside its links that pass the tap along.
-const BUTTONS = "button[type=button]:not(.term):not(:disabled), button:not([type]):not(form button):not(.term):not(:disabled)";
+const BUTTONS = "button[type=button]:not(.term), button:not([type]):not(form button):not(.term)";
 function scan() {
   if (!enabled()) return;
   document.querySelectorAll(BUTTONS).forEach((b) => {
