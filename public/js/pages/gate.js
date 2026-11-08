@@ -166,7 +166,7 @@ function invitePane(pane, { code = "" } = {}) {
     <div class="door-msg" aria-live="polite"></div>
     <div class="door-or" role="separator"><span>No invite yet?</span></div>
     <button class="btn door-apply" type="button" data-tab="apply">Apply for an invite</button>
-    <p class="door-hint door-center">A person reads every application. You get your code right away, and it lets you in the moment you're approved.</p>`;
+    <p class="door-hint door-center">You get your code the moment you apply. It starts working when a person approves you.</p>`;
     $("#invForm", pane).onsubmit = (e) => {
       e.preventDefault();
       const c = codeOf(e.currentTarget.inv.value);

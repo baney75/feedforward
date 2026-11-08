@@ -477,12 +477,17 @@ export function shortsPage(el, qs, startId) {
   const soundOn = () => sessionStorage.getItem("ff:sound") === "1";
   const activate = (slide) => {
     if (active === slide) return;
-    if (active) { const f = active.querySelector("iframe"); if (f) f.remove(); active.classList.remove("playing", "paused"); }
+    if (active) { const f = active.querySelector("iframe"); if (f) f.remove(); active.classList.remove("playing", "paused", "started"); }
     active = slide; paused = false;
     const id = slide.dataset.id;
     const params = new URLSearchParams({ autoplay: "1", mute: soundOn() ? "0" : "1", controls: "0", disablekb: "1", fs: "0", iv_load_policy: "3", playsinline: "1", rel: "0", loop: "1", playlist: id, enablejsapi: "1", origin: location.origin });
     slide.querySelector(".sframe").insertAdjacentHTML("afterbegin", `<iframe src="${YT}/embed/${id}?${params}" allow="autoplay; encrypted-media; picture-in-picture" title="${esc(slide.dataset.title)}"></iframe>`);
     const f = slide.querySelector("iframe");
+    // YouTube draws its mobile controls on small players and ignores controls=0 there. So the player is laid
+    // out at 720x1280 and scaled down to the frame: YouTube sees a big player and keeps its controls hidden.
+    const frame = slide.querySelector(".sframe");
+    const fit = () => frame.style.setProperty("--ys", (frame.clientWidth / 720).toFixed(4));
+    fit(); new ResizeObserver(fit).observe(frame);
     f.addEventListener("load", () => f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), YT));
     slide.classList.add("playing");
     slide.classList.toggle("muted", !soundOn());
@@ -507,6 +512,8 @@ export function shortsPage(el, qs, startId) {
     let d; try { d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch { return; }
     const info = d && d.info;
     if (info && info.currentTime != null && info.duration) active.style.setProperty("--prog", (100 * info.currentTime / info.duration).toFixed(2) + "%");
+    // The thumbnail covers the player until it's really playing, so YouTube's start screen never shows.
+    if (info && info.playerState === 1) active.classList.add("started");
   };
   addEventListener("message", onMsg);
   let tapT = 0, lastTap = 0;
