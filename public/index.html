@@ -77,35 +77,18 @@
   </div>
 </header>
 <nav class="rail" aria-label="Main"></nav>
-<main id="view" tabindex="-1"><div class="ascii" role="status" aria-label="Loading"></div></main>
+<main id="view" tabindex="-1"><div class="skel-grid" role="status" aria-label="Loading"><div class="skel-card"><b></b><span><em></em><i></i><i></i></span></div><div class="skel-card"><b></b><span><em></em><i></i><i></i></span></div><div class="skel-card"><b></b><span><em></em><i></i><i></i></span></div><div class="skel-card"><b></b><span><em></em><i></i><i></i></span></div></div></main>
+<div id="bar" aria-hidden="true"></div>
+<!-- Launch: the tile springs in, the layers fire, the output pops, and the camera dives through it into the
+     app. About a second, once per session, never with reduced motion. It plays while the app loads. -->
+<div id="launch" aria-hidden="true"><div class="ln-tile"><svg viewBox="0 0 64 64"><rect class="ln-bg" width="64" height="64" rx="15"/><rect class="ln-b1" x="15.5" y="15.7" width="8.2" height="32.6" rx="4.1"/><rect class="ln-b2" x="27.7" y="21.8" width="8.2" height="20.4" rx="4.1"/><circle class="ln-dot" cx="44" cy="32" r="4.5"/></svg></div></div>
 <script>
-/* ASCII forward pass: inputs light up layer by layer, then the output fires. Runs before any module loads. */
 (function () {
-  var caps = ["loading weights", "embedding tokens", "attending", "forward pass", "sampling your feed"];
-  var still = matchMedia("(prefers-reduced-motion: reduce)").matches, t = 0;
-  function frame(p) {
-    var rows = [];
-    for (var r = 0; r < 3; r++) {
-      var line = " ";
-      for (var k = 0; k < 4; k++) line += (k < p ? "<b>@</b>" : "o") + (k < 3 ? (k < p - 1 ? "<b>---</b>" : "---") : "");
-      if (r === 1) line += (p >= 5 ? "<b>---&gt; #</b>" : "---&gt;  ");
-      rows.push(line);
-    }
-    return rows.join("\n");
-  }
-  function tick() {
-    var els = document.querySelectorAll(".ascii");
-    if (!els.length || document.hidden) return;
-    var p = still ? 5 : t % 8, cap = caps[Math.floor(t / 8) % caps.length];
-    for (var i = 0; i < els.length; i++) {
-      var el = els[i];
-      if (!el.firstChild) el.innerHTML = '<pre aria-hidden="true"></pre><span class="ascii-cap"></span>';
-      el.firstChild.innerHTML = frame(Math.min(p, 5));
-      el.lastChild.textContent = (el.dataset.label || cap) + (still ? "" : ".".repeat(t % 4));
-    }
-    t++;
-  }
-  tick(); setInterval(tick, 150);
+  var l = document.getElementById("launch"), seen = false;
+  try { seen = sessionStorage.getItem("ff:launched") === "1"; sessionStorage.setItem("ff:launched", "1"); } catch (e) {}
+  if (seen || matchMedia("(prefers-reduced-motion: reduce)").matches) { l.remove(); return; }
+  l.classList.add("play");
+  setTimeout(function () { l.remove(); }, 1250);
 })();
 </script>
 <nav class="tabbar" aria-label="Main"></nav>

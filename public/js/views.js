@@ -347,7 +347,7 @@ export async function labPage(el, qs, slug) {
   setTitle(l.title);
   const track = qs.get("track") && D.learn.tracks.find((t) => t.slug === qs.get("track"));
   el.innerHTML = `<div class="lab-page"><nav class="crumbs"><a href="/learn">Learn</a>${icon("right")}${track ? `<a href="/learn/${track.slug}">${esc(track.title)}</a>${icon("right")}` : ""}<span>Lab</span></nav>
-    <div class="page-h"><div><h1>${esc(l.title)}</h1><p>${esc(l.blurb)}</p></div></div><div id="lab"><div class="ascii" role="status" aria-label="Loading the lab" data-label="loading the lab"></div></div>
+    <div class="page-h"><div><h1>${esc(l.title)}</h1><p>${esc(l.blurb)}</p></div></div><div id="lab"><div class="skel" role="status" aria-label="Loading the lab"><i></i><i></i><i></i></div></div>
     ${track ? `<div class="act" style="margin-top:32px;display:flex"><a class="btn" href="/learn/${track.slug}">${icon("left")}Back to ${esc(track.title)}</a></div>` : ""}</div>`;
   let stop;
   const my = el.dataset.seq;

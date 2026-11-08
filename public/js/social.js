@@ -48,7 +48,7 @@ export async function comments(el, item) {
   el.innerHTML = `<section class="comments" aria-label="Comments"><div class="sec-h"><h2>Comments</h2><span class="muted mono" id="cn"></span></div>
     ${canReply() ? `<form class="compose"><label class="sr-only" for="cbody">Add a comment</label><textarea id="cbody" rows="2" maxlength="1500" placeholder="Add a thoughtful comment" required></textarea><button class="btn primary" type="submit">Post</button></form>`
       : `<p class="muted signin-line">Replies are for verified members, so every voice here is a real person. Talk it through in your communities any time.</p>`}
-    <div class="clist"><div class="ascii" role="status" aria-label="Loading comments" data-label="loading comments"></div></div></section>`;
+    <div class="clist"><div class="skel" role="status" aria-label="Loading comments"><i></i><i></i><i></i></div></div></section>`;
   const list = el.querySelector(".clist");
   const me = user();
   const row = (c) => `<article class="cmt${c.hidden ? " hidden-c" : ""}" data-cid="${esc(c.id)}">

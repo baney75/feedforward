@@ -55,8 +55,13 @@ function startMember() {
   }
   return started;
 }
+// The amber line: starts on every page change, finishes when the page has painted.
+const bar = document.getElementById("bar");
+function barGo() { if (!bar) return; bar.className = ""; void bar.offsetWidth; bar.className = "go"; }
+function barDone() { if (bar) requestAnimationFrame(() => (bar.className = "done")); }
 async function route() {
   const my = ++seq;
+  barGo();
   const url = new URL(location.href);
   const path = url.pathname.replace(/\/+$/, "") || "/";
   const qs = url.searchParams;
@@ -68,7 +73,7 @@ async function route() {
   if (door) {
     view.dataset.seq = my;
     const out = loadPage("gate", qs, path.split("/").filter(Boolean));
-    out.then((c) => { if (my === seq) cleanup = c; else if (typeof c === "function") c(); });
+    out.then((c) => { barDone(); if (my === seq) cleanup = c; else if (typeof c === "function") c(); });
     scrollTo(0, 0);
     return;
   }
@@ -110,8 +115,8 @@ async function route() {
   else if (PAGES[r]) out = loadPage(PAGES[r], qs, parts);
   else if (r === "books") out = V.booksPage(view, qs);
   else out = V.notFound(view);
-  if (out instanceof Promise) out.then((c) => { if (my === seq) cleanup = c; else if (typeof c === "function") c(); });
-  else cleanup = out;
+  if (out instanceof Promise) out.then((c) => { barDone(); if (my === seq) cleanup = c; else if (typeof c === "function") c(); });
+  else { cleanup = out; barDone(); }
   const st = history.state;
   if (st && typeof st.y === "number") requestAnimationFrame(() => scrollTo(0, st.y)); else scrollTo(0, 0);
 }
@@ -123,7 +128,7 @@ function nav(href, { replace = false, state = {} } = {}) {
 }
 async function loadPage(name, qs, parts) {
   const my = view.dataset.seq;
-  view.innerHTML = `<div class="ascii" role="status" aria-label="Loading"></div>`;
+  view.innerHTML = `<div class="skel" role="status" aria-label="Loading"><i></i><i></i><i></i></div>`;
   try {
     const mod = await import(`/js/pages/${name}.js`);
     if (view.dataset.seq !== my) return null;
@@ -135,7 +140,7 @@ async function loadPage(name, qs, parts) {
   }
 }
 function goTV(start) { if (location.pathname !== "/tv") nav("/tv", { state: { tv: 1, start } }); }
-function skeleton() { return `<div class="ascii" role="status" aria-label="Loading"></div>`; }
+function skeleton() { return `<div class="skel" role="status" aria-label="Loading"><i></i><i></i><i></i></div>`; }
 
 document.addEventListener("click", (e) => {
   const more = e.target.closest("[data-more]");
