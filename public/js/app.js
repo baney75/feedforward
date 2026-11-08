@@ -298,7 +298,6 @@ function askInstall() {
   addEventListener("popstate", back);
   bar.addEventListener("focusin", back);
 }
-addEventListener("lt:fresh", (e) => toast(`${e.detail} new since the last update`));
 if ("serviceWorker" in navigator && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
   addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
 }
