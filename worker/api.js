@@ -208,13 +208,11 @@ on("POST", "/api/account", async (req, env) => {
   const role = invite && RANK[invite.role] && RANK[invite.role] < RANK[invite.maker_role] && invite.role !== "owner" ? invite.role : "user";
   const teach = invite && invite.teach && RANK[invite.maker_role] >= RANK.admin ? invite.teach : "";
   // Taking a use is atomic, so a limited invite can't be overshot by parallel joins.
-  if (invite && invite.max_uses) {
-    const took = await env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ? AND uses < max_uses AND disabled = 0").bind(invite.code).run();
+  if (invite) {
+    // Taking a use re-checks the switch and the limit as they are right now, so a join that started before
+    // "turn off" or a lowered limit can't finish after it.
+    const took = await env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ? AND disabled = 0 AND (max_uses = 0 OR uses < max_uses)").bind(invite.code).run();
     if (!took.meta.changes) return err(403, "That invite has been used up or turned off. Ask for a new one.");
-  } else if (invite) {
-    // Taking the use re-checks the switch, so a join that started before "turn off" can't finish after it.
-    const took = await env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ? AND disabled = 0").bind(invite.code).run();
-    if (!took.meta.changes) return err(403, "That invite link was turned off. Ask for a new one.");
   }
   // A member's referral cap is checked in the INSERT itself, so parallel joins on one link can't overshoot it.
   const cap = referrer && referrer.role !== "owner" ? REF_CAP[referrer.role] || REF_CAP.user : 1e9;
@@ -712,11 +710,16 @@ on("POST", "/api/admin/invites/([\\w-]{1,40})", async (req, env, u, [code]) => {
   if (!inv) return err(404, "No such invite.");
   if (inv.creator !== u.id && !staff(u, "admin")) return err(403, "Only its maker or an admin can change this invite.");
   const b = await body(req);
-  const disabled = b.disabled === undefined ? inv.disabled : b.disabled ? 1 : 0;
-  const max = b.max_uses === undefined ? inv.max_uses : Math.max(0, Math.min(10000, Math.floor(Number(b.max_uses) || 0)));
-  await env.DB.prepare("UPDATE invites SET disabled = ?, max_uses = ? WHERE code = ?").bind(disabled, max, code).run();
-  await log(env, u.id, `invite-edit:${disabled ? "off" : "on"}:${max}`, code);
-  return json({ ok: true, disabled: !!disabled, max_uses: max });
+  // Each field is written on its own, never read-then-written, so a uses edit and a turn-off that overlap
+  // both stick.
+  const writes = [];
+  if (b.disabled !== undefined) writes.push(env.DB.prepare("UPDATE invites SET disabled = ? WHERE code = ?").bind(b.disabled ? 1 : 0, code));
+  if (b.max_uses !== undefined) writes.push(env.DB.prepare("UPDATE invites SET max_uses = ? WHERE code = ?").bind(Math.max(0, Math.min(10000, Math.floor(Number(b.max_uses) || 0))), code));
+  if (!writes.length) return err(400, "Nothing to change.");
+  await env.DB.batch(writes);
+  const now_ = await env.DB.prepare("SELECT disabled, max_uses FROM invites WHERE code = ?").bind(code).first();
+  await log(env, u.id, `invite-edit:${now_.disabled ? "off" : "on"}:${now_.max_uses}`, code);
+  return json({ ok: true, disabled: !!now_.disabled, max_uses: now_.max_uses });
 });
 
 on("GET", "/api/chat/([\\w-]+)", async (req, env, u, [room]) => {

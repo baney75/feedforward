@@ -210,3 +210,26 @@ test("an invite can be turned off and on, and its total uses changed", async () 
   const m = await call(env, "/api/account", { method: "POST", body: { ref: "ownref1", pow: await aged(env) } });
   assert.equal((await call(env, `/api/admin/invites/${code}`, { method: "POST", token: m.d.token, body: { disabled: false } })).status, 403);
 });
+
+test("a uses edit and a turn-off that overlap both stick", async () => {
+  const { env, owner } = await setup();
+  const code = (await call(env, "/api/admin/invites", { method: "POST", token: owner, body: { max_uses: 5 } })).d.code;
+  // Slow the invite read down so both requests read before either writes: the race the old code lost.
+  const prep = env.DB.prepare;
+  env.DB.prepare = (sql) => { const st = prep(sql); if (!/^SELECT \* FROM invites WHERE code/.test(sql)) return st;
+    return { bind: (...a) => { const b = st.bind(...a); return { ...b, first: async () => { const r = await b.first(); await new Promise((res) => setTimeout(res, 40)); return r; } }; } }; };
+  await Promise.all([
+    call(env, `/api/admin/invites/${code}`, { method: "POST", token: owner, body: { disabled: true } }),
+    call(env, `/api/admin/invites/${code}`, { method: "POST", token: owner, body: { max_uses: 3 } }),
+  ]);
+  const row = env.DB.raw.prepare("SELECT disabled, max_uses FROM invites WHERE code = ?").get(code);
+  assert.deepEqual([row.disabled, row.max_uses], [1, 3]);
+});
+
+test("lowering an unlimited invite to a spent limit stops the next join", async () => {
+  const { env, owner } = await setup();
+  const code = (await call(env, "/api/admin/invites", { method: "POST", token: owner, body: { max_uses: 0 } })).d.code;
+  assert.equal((await call(env, "/api/account", { method: "POST", body: { invite: code, pow: await aged(env) } })).status, 200);
+  await call(env, `/api/admin/invites/${code}`, { method: "POST", token: owner, body: { max_uses: 1 } });
+  assert.equal((await call(env, "/api/account", { method: "POST", body: { invite: code, pow: await aged(env) } })).status, 403);
+});

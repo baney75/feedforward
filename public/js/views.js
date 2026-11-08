@@ -441,7 +441,8 @@ export function shortsPage(el, qs, startId) {
   setTitle("Shorts");
   const topic = topicFromQuery(qs);
   const tIdx = topic >= 0 ? topic : -1;
-  const pool = D.shorts.filter((s) => tIdx < 0 || s.topic === tIdx);
+  // Shorts you disliked leave your Shorts feed.
+  const pool = D.shorts.filter((s) => (tIdx < 0 || s.topic === tIdx) && !mine.dislikes.has("s:" + s.id));
   // Best-first with some randomness, and never the same person twice in a row.
   const ranked = pool.map((s) => [s, s.score + Math.random() * 30]).sort((a, b) => b[1] - a[1]).map((x) => x[0]);
   const list = [];
