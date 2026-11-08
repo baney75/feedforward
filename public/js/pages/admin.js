@@ -248,7 +248,7 @@ async function invites(pane, me) {
         <label class="field">Joins as<select class="input" name="role">${roles.map((r) => `<option value="${r}">${ROLE_LABEL[r]}</option>`).join("")}</select></label>
         ${isAdmin ? `<label class="field">Teaching role<select class="input" name="teach"><option value="">None</option><option value="tutor">Tutor</option><option value="professor">Professor</option></select></label>` : ""}
       </div>
-      <div class="two"><label class="field">Uses <span class="opt">0 is no limit</span><input class="input" name="max_uses" type="number" min="0" max="10000" value="1"></label>
+      <div class="two"><label class="field">Uses <span class="opt" id="usesHint">0 is no limit</span><input class="input" name="max_uses" type="number" min="0" max="10000" value="1"></label>
       <label class="field">Expires in days <span class="opt">0 never</span><input class="input" name="days" type="number" min="0" max="365" value="14"></label></div>
       ${isAdmin ? `<label class="toggle inv-ver"><input type="checkbox" name="verified">Verified: everyone who joins gets the check</label>` : ""}
       <div class="acts"><button class="btn primary" type="submit">Make invite link</button></div>
@@ -256,9 +256,11 @@ async function invites(pane, me) {
   const list = $("#invList", pane);
   const load = async () => {
     const { invites: inv } = await api("/api/admin/feed");
-    list.innerHTML = inv.map((i) => `<li class="inv"><div class="inv-t"><span class="mono">/join/${esc(i.code)}</span>
-      <span class="muted">${i.role && i.role !== "user" ? esc(ROLE_LABEL[i.role] || i.role) + '<span class="dot"></span>' : ""}${i.teach ? esc(i.teach) + '<span class="dot"></span>' : ""}${i.verified ? "Verified<span class=\"dot\"></span>" : ""}${i.expires ? (i.expires * 1000 < Date.now() ? "Expired" : "Expires " + fmtDate(i.expires, { month: "short", day: "numeric" })) + '<span class="dot"></span>' : ""}${i.uses}${i.max_uses ? " of " + i.max_uses : ""} used<span class="dot"></span>${fmtDate(i.created, { month: "short", day: "numeric" })}${i.note ? `<span class="dot"></span>${esc(i.note)}` : ""}</span></div>
-      <button class="btn sm" type="button" data-copy="${esc(SITE + "/join/" + i.code)}">Copy</button></li>`).join("") || `<li class="muted empty-row">No invites yet.</li>`;
+    list.innerHTML = inv.map((i) => `<li class="inv${i.disabled ? " off" : ""}" data-inv="${esc(i.code)}"><div class="inv-t"><span class="mono">/join/${esc(i.code)}</span>
+      <span class="muted">${i.disabled ? "Off<span class=\"dot\"></span>" : ""}${i.role && i.role !== "user" ? esc(ROLE_LABEL[i.role] || i.role) + '<span class="dot"></span>' : ""}${i.teach ? esc(i.teach) + '<span class="dot"></span>' : ""}${i.verified ? "Verified<span class=\"dot\"></span>" : ""}${i.expires ? (i.expires * 1000 < Date.now() ? "Expired" : "Expires " + fmtDate(i.expires, { month: "short", day: "numeric" })) + '<span class="dot"></span>' : ""}${i.uses} used${i.note ? `<span class="dot"></span>${esc(i.note)}` : ""}</span></div>
+      <div class="inv-acts"><label class="inv-uses"><span class="sr-only">Total uses for /join/${esc(i.code)}, 0 for no limit</span><input class="input mono" type="number" min="0" max="10000" value="${i.max_uses}" data-uses aria-describedby="usesHint"><span class="muted">uses</span></label>
+      <button class="btn sm" type="button" data-toggle="${i.disabled ? "on" : "off"}">${i.disabled ? "Turn on" : "Turn off"}</button>
+      <button class="btn sm" type="button" data-copy="${esc(SITE + "/join/" + i.code)}"${i.disabled ? " disabled" : ""}>Copy</button></div></li>`).join("") || `<li class="muted empty-row">No invites yet.</li>`;
   };
   $("#invForm", pane).onsubmit = (e) => {
     e.preventDefault();
@@ -269,7 +271,19 @@ async function invites(pane, me) {
     });
   };
   await load();
-  return on(list, "[data-copy]", (b) => copy(b.dataset.copy, "Link copied"));
+  const save = (row, body, done) => post("/api/admin/invites/" + row.dataset.inv, body).then(() => { toast(done); return load(); }).catch((e) => toast(e.message));
+  // Total uses save when the field changes (0 means no limit).
+  // An empty field is someone mid-edit, not "no limit": put the saved number back.
+  list.addEventListener("change", (e) => {
+    const f = e.target.closest("[data-uses]"); if (!f) return;
+    if (f.value.trim() === "" || !Number.isFinite(+f.value) || +f.value < 0) { f.value = f.defaultValue; return; }
+    save(f.closest("[data-inv]"), { max_uses: Math.floor(+f.value) }, +f.value ? `Limit set to ${Math.floor(+f.value)}` : "No limit");
+  });
+  const offs = [
+    on(list, "[data-copy]", (b) => copy(b.dataset.copy, "Link copied")),
+    on(list, "[data-toggle]", (b) => { const off = b.dataset.toggle === "off"; if (off && !confirm("Turn this invite link off? Nobody can join with it until you turn it back on.")) return; busy(b, () => save(b.closest("[data-inv]"), { disabled: off }, off ? "Invite link turned off" : "Invite link is on again")); }),
+  ];
+  return () => offs.forEach((f) => f());
 }
 
 // ---------- Log ----------

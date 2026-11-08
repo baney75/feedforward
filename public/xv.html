@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- X's video host refuses requests that carry another site as the referrer, and a <video> can't opt out on its
+     own. This frame plays one X video with no referrer. Only Feedforward may frame it (see _headers), and it
+     only plays video.twimg.com files. -->
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video</title>
+<style>html, body { margin: 0; height: 100%; background: #000; } video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }</style>
+</head>
+<body>
+<video controls playsinline preload="metadata"></video>
+<script>
+  var parts = decodeURIComponent(location.hash.slice(1)).split("|"), v = document.querySelector("video");
+  function ok(u, host) { try { var x = new URL(u); return x.protocol === "https:" && x.hostname === host; } catch (e) { return false; } }
+  if (ok(parts[0], "video.twimg.com")) { if (ok(parts[1], "pbs.twimg.com")) v.poster = parts[1]; v.src = parts[0]; }
+</script>
+</body>
+</html>

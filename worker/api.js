@@ -186,6 +186,7 @@ on("POST", "/api/account", async (req, env) => {
   let referrer = null, invite = null;
   if (b.invite) invite = await env.DB.prepare("SELECT i.*, u.role maker_role, u.banned maker_banned FROM invites i JOIN users u ON u.id = i.creator WHERE i.code = ?").bind(String(b.invite).slice(0, 40)).first();
   if (invite && invite.maker_banned) invite = null;
+  if (invite && invite.disabled) return err(403, "That invite link was turned off. Ask for a new one.");
   if (invite && invite.max_uses && invite.uses >= invite.max_uses) return err(403, "That invite has been used up. Ask for a new one.");
   if (invite && invite.expires && invite.expires < now()) return err(403, "That invite has expired. Ask for a new one.");
   if (!invite && b.ref) referrer = await env.DB.prepare("SELECT id, role, banned FROM users WHERE ref_code = ?").bind(String(b.ref).slice(0, 20)).first();
@@ -207,10 +208,12 @@ on("POST", "/api/account", async (req, env) => {
   const role = invite && RANK[invite.role] && RANK[invite.role] < RANK[invite.maker_role] && invite.role !== "owner" ? invite.role : "user";
   const teach = invite && invite.teach && RANK[invite.maker_role] >= RANK.admin ? invite.teach : "";
   // Taking a use is atomic, so a limited invite can't be overshot by parallel joins.
-  if (invite && invite.max_uses) {
-    const took = await env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ? AND uses < max_uses").bind(invite.code).run();
-    if (!took.meta.changes) return err(403, "That invite has been used up. Ask for a new one.");
-  } else if (invite) await env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ?").bind(invite.code).run();
+  if (invite) {
+    // Taking a use re-checks the switch and the limit as they are right now, so a join that started before
+    // "turn off" or a lowered limit can't finish after it.
+    const took = await env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ? AND disabled = 0 AND (max_uses = 0 OR uses < max_uses)").bind(invite.code).run();
+    if (!took.meta.changes) return err(403, "That invite has been used up or turned off. Ask for a new one.");
+  }
   // A member's referral cap is checked in the INSERT itself, so parallel joins on one link can't overshoot it.
   const cap = referrer && referrer.role !== "owner" ? REF_CAP[referrer.role] || REF_CAP.user : 1e9;
   const ins = await env.DB.prepare("INSERT INTO users (id, code_hash, ref_code, referred_by, verified, created, name, links, avatar_x, avatar_x_ts, role, teach) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ? IS NULL OR (SELECT COUNT(*) FROM users WHERE referred_by = ? AND created > ?) < ?")
@@ -277,9 +280,9 @@ on("GET", "/api/invite/([\\w-]{1,40})", async (req, env, _u, [code]) => {
 
 // The invite behind a /join link: who made it and what it grants. Shared by the front door and the link preview.
 export async function inviteInfo(env, code) {
-  const i = await env.DB.prepare("SELECT u.*, i.verified grant_verified, i.uses, i.max_uses, i.expires, i.role grant_role, i.teach grant_teach FROM invites i JOIN users u ON u.id = i.creator WHERE i.code = ? AND u.banned = 0").bind(code).first();
+  const i = await env.DB.prepare("SELECT u.*, i.verified grant_verified, i.uses, i.max_uses, i.expires, i.disabled, i.role grant_role, i.teach grant_teach FROM invites i JOIN users u ON u.id = i.creator WHERE i.code = ? AND u.banned = 0").bind(code).first();
   if (i) {
-    const gone = i.max_uses && i.uses >= i.max_uses ? "That invite has been used up. Ask for a new one." : i.expires && i.expires < now() ? "That invite has expired. Ask for a new one." : "";
+    const gone = i.disabled ? "That invite link was turned off. Ask for a new one." : i.max_uses && i.uses >= i.max_uses ? "That invite has been used up. Ask for a new one." : i.expires && i.expires < now() ? "That invite has expired. Ask for a new one." : "";
     const role = RANK[i.grant_role] && RANK[i.grant_role] < RANK[i.role] ? i.grant_role : "user";
     return { kind: "invite", gone, verified: !!i.grant_verified && RANK[i.role] >= RANK.admin, role, teach: RANK[i.role] >= RANK.admin ? i.grant_teach || "" : "", by: pub(i) };
   }
@@ -308,16 +311,17 @@ on("POST", "/api/apply", async (req, env) => {
 
 on("GET", "/api/me", async (req, env, u) => {
   if (!u) return err(401, "Sign in first.");
-  const [data, likes, ratings, refs] = await Promise.all([
+  const [data, likes, dislikes, ratings, refs] = await Promise.all([
     env.DB.prepare("SELECT kind, json FROM userdata WHERE user_id = ?").bind(u.id).all(),
     env.DB.prepare("SELECT item FROM likes WHERE user_id = ?").bind(u.id).all(),
+    env.DB.prepare("SELECT item FROM dislikes WHERE user_id = ?").bind(u.id).all(),
     env.DB.prepare("SELECT item, stars FROM ratings WHERE user_id = ?").bind(u.id).all(),
     env.DB.prepare("SELECT COUNT(*) n FROM users WHERE referred_by = ?").bind(u.id).first(),
   ]);
   return json({
     user: me(u), referrals: refs.n,
     data: Object.fromEntries(data.results.map((r) => [r.kind, JSON.parse(r.json)])),
-    likes: likes.results.map((r) => r.item), ratings: Object.fromEntries(ratings.results.map((r) => [r.item, r.stars])),
+    likes: likes.results.map((r) => r.item), dislikes: dislikes.results.map((r) => r.item), ratings: Object.fromEntries(ratings.results.map((r) => [r.item, r.stars])),
   });
 });
 
@@ -407,10 +411,14 @@ on("POST", "/api/like", async (req, env, u) => {
   if (!(await rate(env, "like:" + u.id, 300, 3600))) return err(429, "Slow down.");
   const b = await body(req);
   if (!ITEM.test(b.item || "")) return err(400, "Bad item.");
-  if (b.on) await env.DB.prepare("INSERT OR IGNORE INTO likes (user_id, item, ts) VALUES (?, ?, ?)").bind(u.id, b.item, now()).run();
-  else await env.DB.prepare("DELETE FROM likes WHERE user_id = ? AND item = ?").bind(u.id, b.item).run();
+  // Like and dislike are one choice: picking one clears the other. Dislikes stay private.
+  const dis = b.kind === "dislike";
+  const mine = dis ? "dislikes" : "likes", other = dis ? "likes" : "dislikes";
+  await env.DB.batch(b.on
+    ? [env.DB.prepare(`INSERT OR IGNORE INTO ${mine} (user_id, item, ts) VALUES (?, ?, ?)`).bind(u.id, b.item, now()), env.DB.prepare(`DELETE FROM ${other} WHERE user_id = ? AND item = ?`).bind(u.id, b.item)]
+    : [env.DB.prepare(`DELETE FROM ${mine} WHERE user_id = ? AND item = ?`).bind(u.id, b.item)]);
   const n = await env.DB.prepare("SELECT COUNT(*) n FROM likes WHERE item = ?").bind(b.item).first();
-  return json({ item: b.item, on: !!b.on, likes: n.n });
+  return json({ item: b.item, on: !!b.on, kind: dis ? "dislike" : "like", likes: n.n });
 });
 
 on("POST", "/api/rate", async (req, env, u) => {
@@ -457,8 +465,11 @@ on("GET", "/api/comments", async (req, env, u) => {
 });
 
 on("POST", "/api/comments", async (req, env, u) => {
-  if (!u) return err(401, "Get a free code to comment.");
+  if (!u) return err(401, "Sign in to comment.");
   if (u.banned) return err(403, "This account can't comment.");
+  // Replies are for verified members (and staff), so a bot that slips in still can't post. Community channels
+  // are open to every member.
+  if (!u.verified && RANK[u.role] < RANK.contributor) return err(403, "Replies are for verified members. Staff give the check.");
   if (!(await rate(env, "c:" + u.id, 8, 600)) || !(await rate(env, "cd:" + u.id, 60, 86400))) return err(429, "You're commenting fast. Take a breather.");
   const b = await body(req);
   if (!ITEM.test(b.item || "")) return err(400, "Bad item.");
@@ -690,6 +701,25 @@ on("POST", "/api/admin/invites", async (req, env, u) => {
     .bind(code, u.id, b.verified ? 1 : 0, Math.max(0, Math.min(10000, Number(b.max_uses) || 0)), note, now(), role, teach, days ? now() + days * 86400 : 0).run();
   await log(env, u.id, ["invite", b.verified && "verified", role !== "user" && role, teach].filter(Boolean).join(":"), code);
   return json({ code });
+});
+
+// Turn an invite off or on, or change its total uses. The maker can; so can admins and the owner.
+on("POST", "/api/admin/invites/([\\w-]{1,40})", async (req, env, u, [code]) => {
+  if (!staff(u, "mod")) return err(403, "Staff only.");
+  const inv = await env.DB.prepare("SELECT * FROM invites WHERE code = ?").bind(code).first();
+  if (!inv) return err(404, "No such invite.");
+  if (inv.creator !== u.id && !staff(u, "admin")) return err(403, "Only its maker or an admin can change this invite.");
+  const b = await body(req);
+  // Each field is written on its own, never read-then-written, so a uses edit and a turn-off that overlap
+  // both stick.
+  const writes = [];
+  if (b.disabled !== undefined) writes.push(env.DB.prepare("UPDATE invites SET disabled = ? WHERE code = ?").bind(b.disabled ? 1 : 0, code));
+  if (b.max_uses !== undefined) writes.push(env.DB.prepare("UPDATE invites SET max_uses = ? WHERE code = ?").bind(Math.max(0, Math.min(10000, Math.floor(Number(b.max_uses) || 0))), code));
+  if (!writes.length) return err(400, "Nothing to change.");
+  await env.DB.batch(writes);
+  const now_ = await env.DB.prepare("SELECT disabled, max_uses FROM invites WHERE code = ?").bind(code).first();
+  await log(env, u.id, `invite-edit:${now_.disabled ? "off" : "on"}:${now_.max_uses}`, code);
+  return json({ ok: true, disabled: !!now_.disabled, max_uses: now_.max_uses });
 });
 
 on("GET", "/api/chat/([\\w-]+)", async (req, env, u, [room]) => {

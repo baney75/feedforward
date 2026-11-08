@@ -14,7 +14,9 @@ const INVITE = `door${RUN.slice(-5)}`;
 let pass = 0; const ok = (m) => { pass++; console.log("ok  " + m); };
 
 const b = await chromium.launch();
-const page = async () => { const c = await b.newContext({ viewport: { width: 390, height: 844 } }); const p = await c.newPage(); const errs = []; p.on("pageerror", (e) => errs.push(e.message)); return { c, p, errs }; };
+// Each browser gets its own simulated address, so the real per-network limits don't trip across runs.
+const ip = () => `10.${Math.random() * 255 | 0}.${Math.random() * 255 | 0}.${Math.random() * 255 | 0}`;
+const page = async () => { const c = await b.newContext({ viewport: { width: 390, height: 844 }, extraHTTPHeaders: { "cf-connecting-ip": ip() } }); const p = await c.newPage(); const errs = []; p.on("pageerror", (e) => errs.push(e.message)); return { c, p, errs }; };
 
 // Apply
 {
@@ -56,6 +58,20 @@ let code;
   await p.click("#siForm .door-go");
   await p.waitForSelector("body:not(.door)", { timeout: 20000 });
   ok("signing in with the code on another device works");
+  assert.deepEqual(errs, []);
+}
+// The X video frame loads inside Feedforward (a header that refuses framing would leave it blank).
+{
+  const { p, errs } = await page();
+  await p.goto(BASE + "/");
+  const loaded = await p.evaluate(() => new Promise((res) => {
+    const f = document.createElement("iframe");
+    f.src = "/xv#" + encodeURIComponent("https://video.twimg.com/amplify_video/1/vid/avc1/640x360/x.mp4|");
+    f.onload = () => { try { res(!!f.contentDocument.querySelector("video") && f.contentDocument.querySelector("video").src.startsWith("https://video.twimg.com/")); } catch { res(false); } };
+    document.body.appendChild(f);
+    setTimeout(() => res(false), 8000);
+  }));
+  assert.equal(loaded, true); ok("the X video frame loads inside Feedforward and takes only X video URLs");
   assert.deepEqual(errs, []);
 }
 await b.close();

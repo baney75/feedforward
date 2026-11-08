@@ -41,7 +41,7 @@ export async function render(el, qs, parts) {
         </div>
         <div class="door-pane" id="doorPane" role="tabpanel"></div>
       </section>
-      <p class="door-foot">Your code is your account: no email, no password, no tracking. <a href="https://github.com/baney75/feedforward" target="_blank" rel="noopener">Open source</a></p>
+      <p class="door-foot">Your code is your account: no email, no password, no tracking. <a href="https://github.com/baney75/feedforward" target="_blank" rel="noopener">Open source</a>. Questions? <a href="mailto:support@dbaney.com">support@dbaney.com</a></p>
     </div>
   </div>`;
 
@@ -58,7 +58,7 @@ export async function render(el, qs, parts) {
   paintWall([]);
   fetch("/api/pulse").then((r) => r.json()).then((p) => {
     if (p.wall && p.wall.length) paintWall(p.wall);
-    if (p.learners) $("#doorCount", el).textContent = `${fmt(p.learners)} members`;
+    if (p.learners) $("#doorCount", el).textContent = `${fmt(p.learners)} member${p.learners === 1 ? "" : "s"}`;
     if (p.people) $("#doorPeople", el).textContent = String(Math.max(0, p.people - 4));
   }).catch(() => {});
 
