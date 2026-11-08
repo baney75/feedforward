@@ -157,3 +157,20 @@ test("install metadata is complete", () => {
   assert.ok(fs.existsSync(path.join(root, "public/icons/apple-touch-icon.png")));
   assert.ok(fs.existsSync(path.join(root, "public/favicon.ico")));
 });
+
+test("share previews stay within what search and social cards show", () => {
+  const html = read("public/index.html");
+  const meta = (attr) => (html.match(new RegExp(`<meta ${attr} content="([^"]*)"`)) || [])[1] || "";
+  const d = meta('name="description"'), og = meta('property="og:description"');
+  assert.ok(d && d.length <= 160, `meta description is ${d.length} characters; keep it at 160 or fewer`);
+  assert.ok(og && og.length <= 125, `og:description is ${og.length} characters; keep it at 125 or fewer`);
+});
+
+test("one logo everywhere: the header, icons and OG scene share the layers mark", () => {
+  const files = ["public/index.html", "public/icons/icon.svg", "public/icons/maskable.svg", "scripts/og/scene.html"];
+  for (const f of files) {
+    const s = read(f);
+    assert.ok(!s.includes("M17.5 17l15 15-15 15"), `${f} still has the old prompt-and-dot logo`);
+    assert.ok(s.includes('width="8.2" height="32.6" rx="4.1"'), `${f} is missing the layers mark`);
+  }
+});
