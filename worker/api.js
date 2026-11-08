@@ -1,6 +1,7 @@
 // Feedforward API: device-code accounts, sync, likes, ratings, comments, referrals, invites, roles and moderation.
 // Codes and tokens are only ever stored hashed. Every write is rate limited. Staff actions go to the mod log.
 import { WORDS } from "./words.js";
+import { gateCookie, clearGate, powChallenge, checkPow } from "./gate.js";
 
 export const RANK = { user: 1, contributor: 2, mod: 3, admin: 4, owner: 5 };
 const ITEM = /^(v|s|p|b|r|l|d|k|e):[\w.:-]{1,80}$/;
@@ -167,26 +168,59 @@ async function body(req, max = 20000) {
 const routes = [];
 const on = (method, pattern, fn) => routes.push([method, new RegExp("^" + pattern + "$"), fn]);
 
+// One proof-of-work challenge can be spent once. rate() returns true only the first time it sees a key.
+const takePow = (env) => (key) => rate(env, key, 1, 900);
+// A filled-in honeypot means a script filled every field. Answer like a success so it learns nothing.
+const isBot = (b) => typeof b.website === "string" && b.website.trim() !== "";
+// How many people one member can bring in per day. Staff vouch for more; the owner has no cap.
+const REF_CAP = { user: 5, contributor: 10, mod: 25, admin: 100 };
+
+// Joining needs an invite: a staff invite link, or a member's referral link. No invite, no account.
 on("POST", "/api/account", async (req, env) => {
   if (!(await rate(env, "new:" + ip(req), 5, 3600))) return err(429, "Too many new accounts from here. Try again in an hour.");
   if (!(await rate(env, "new48:" + ip(req, 48), 20, 3600))) return err(429, "Too many new accounts from your network. Try again in an hour.");
   const b = await body(req);
+  if (isBot(b)) return err(400, "Something went wrong. Reload and try again.");
+  const bad = await checkPow(env, b.pow, { minAge: 2, take: takePow(env) });
+  if (bad) return err(400, bad);
   let referrer = null, invite = null;
-  if (b.invite) invite = await env.DB.prepare("SELECT * FROM invites WHERE code = ?").bind(String(b.invite).slice(0, 40)).first();
-  if (invite && invite.max_uses && invite.uses >= invite.max_uses) invite = null;
-  if (b.ref) referrer = await env.DB.prepare("SELECT id FROM users WHERE ref_code = ?").bind(String(b.ref).slice(0, 20)).first();
+  if (b.invite) invite = await env.DB.prepare("SELECT i.*, u.role maker_role, u.banned maker_banned FROM invites i JOIN users u ON u.id = i.creator WHERE i.code = ?").bind(String(b.invite).slice(0, 40)).first();
+  if (invite && invite.maker_banned) invite = null;
+  if (invite && invite.max_uses && invite.uses >= invite.max_uses) return err(403, "That invite has been used up. Ask for a new one.");
+  if (invite && invite.expires && invite.expires < now()) return err(403, "That invite has expired. Ask for a new one.");
+  if (!invite && b.ref) referrer = await env.DB.prepare("SELECT id, role, banned FROM users WHERE ref_code = ?").bind(String(b.ref).slice(0, 20)).first();
+  if (referrer && referrer.banned) referrer = null;
+  if (!invite && !referrer) return err(403, "Feedforward is invite-only. Use a member's invite link, or apply.");
+  if (referrer && referrer.role !== "owner") {
+    const n = await env.DB.prepare("SELECT COUNT(*) n FROM users WHERE referred_by = ? AND created > ?").bind(referrer.id, now() - 86400).first();
+    if (n.n >= (REF_CAP[referrer.role] || REF_CAP.user)) return err(429, "This invite link has brought in all the people it can today. Try again tomorrow.");
+  }
   const code = newCode();
-  const u = { id: rid(10), code_hash: await sha(env.PEPPER + code), ref_code: rid(7), referred_by: (invite && invite.creator) || (referrer && referrer.id) || null, verified: invite && invite.verified ? 1 : 0, created: now() };
+  // The check, like a role, needs the maker to still hold the rank to give it.
+  const verified = invite && invite.verified && RANK[invite.maker_role] >= RANK.admin ? 1 : 0;
+  const u = { id: rid(10), code_hash: await sha(env.PEPPER + code), ref_code: rid(7), referred_by: (invite && invite.creator) || (referrer && referrer.id) || null, verified, created: now() };
   let links = cleanLinks(b.links);
   let [nm] = b.name ? clean(b.name, 40) : [""];
-  if (impersonates({ verified: invite && invite.verified }, nm, links)) { links = { ...links }; delete links.x; nm = ""; }
+  if (impersonates({ verified }, nm, links)) { links = { ...links }; delete links.x; nm = ""; }
   const ax = links.x ? await xAvatar(links.x) : "";
-  await env.DB.prepare("INSERT INTO users (id, code_hash, ref_code, referred_by, verified, created, name, links, avatar_x, avatar_x_ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(u.id, u.code_hash, u.ref_code, u.referred_by, u.verified, u.created, nm || "", JSON.stringify(links), ax, ax ? now() : 0).run();
-  if (invite) await env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ?").bind(invite.code).run();
+  // Permissions come from the invite, re-checked against the maker's role today (they may have been demoted).
+  const role = invite && RANK[invite.role] && RANK[invite.role] < RANK[invite.maker_role] && invite.role !== "owner" ? invite.role : "user";
+  const teach = invite && invite.teach && RANK[invite.maker_role] >= RANK.admin ? invite.teach : "";
+  // Taking a use is atomic, so a limited invite can't be overshot by parallel joins.
+  if (invite && invite.max_uses) {
+    const took = await env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ? AND uses < max_uses").bind(invite.code).run();
+    if (!took.meta.changes) return err(403, "That invite has been used up. Ask for a new one.");
+  } else if (invite) await env.DB.prepare("UPDATE invites SET uses = uses + 1 WHERE code = ?").bind(invite.code).run();
+  // A member's referral cap is checked in the INSERT itself, so parallel joins on one link can't overshoot it.
+  const cap = referrer && referrer.role !== "owner" ? REF_CAP[referrer.role] || REF_CAP.user : 1e9;
+  const ins = await env.DB.prepare("INSERT INTO users (id, code_hash, ref_code, referred_by, verified, created, name, links, avatar_x, avatar_x_ts, role, teach) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE ? IS NULL OR (SELECT COUNT(*) FROM users WHERE referred_by = ? AND created > ?) < ?")
+    .bind(u.id, u.code_hash, u.ref_code, u.referred_by, u.verified, u.created, nm || "", JSON.stringify(links), ax, ax ? now() : 0, role, teach,
+      referrer ? 1 : null, referrer ? referrer.id : "", now() - 86400, cap).run();   // NULL: no referrer, no cap
+  if (!ins.meta.changes) return err(429, "This invite link has brought in all the people it can today. Try again tomorrow.");
+  if (role !== "user" || teach) await log(env, invite.creator, `invite-grant:${role}${teach ? ":" + teach : ""}`, u.id);
   const token = await session(env, u.id, b.device);
   const full = await env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(u.id).first();
-  return json({ code, token, user: me(full) });
+  return json({ code, token, user: me(full) }, 200, { "set-cookie": await gateCookie(env, u.id, await sha(token)) });
 });
 
 on("POST", "/api/login", async (req, env) => {
@@ -194,19 +228,82 @@ on("POST", "/api/login", async (req, env) => {
   // A wider limit per IPv6 /48. (No site-wide ceiling: anyone could fill it and lock everyone out.)
   if (!(await rate(env, "login48:" + ip(req, 48), 60, 900))) return err(429, "Too many tries from your network. Wait 15 minutes.");
   const b = await body(req);
+  const bad = await checkPow(env, b.pow, { take: takePow(env) });
+  if (bad) return err(400, bad);
   const code = normCode(b.code);
   if (!/^[a-z]+-[a-z]+-[a-z]+(-[a-z]+)?-\d{2}$/.test(code)) return err(400, "That doesn't look like a code. It's words and two digits, like otter-maple-rocket-acorn-42.");
-  const u = await env.DB.prepare("SELECT * FROM users WHERE code_hash = ?").bind(await sha(env.PEPPER + code)).first();
-  if (!u) return err(404, "No account has that code.");
+  const h = await sha(env.PEPPER + code);
+  const u = await env.DB.prepare("SELECT * FROM users WHERE code_hash = ?").bind(h).first();
+  if (!u) {
+    // An application code signs in once it's approved; until then it tells the applicant where they stand.
+    const a = await env.DB.prepare("SELECT status FROM applications WHERE code_hash = ?").bind(h).first();
+    if (a && a.status === "pending") return json({ error: "Your application is still being reviewed. This code will let you in the moment it's approved.", status: "pending" }, 409);
+    if (a && a.status === "denied") return json({ error: "This application wasn't approved. A member's invite link still gets you in.", status: "denied" }, 403);
+    return err(404, "No account has that code.");
+  }
   if (u.banned) return err(403, "This account is suspended.");
   const token = await session(env, u.id, b.device);
-  return json({ token, user: me(u) });
+  return json({ token, user: me(u) }, 200, { "set-cookie": await gateCookie(env, u.id, await sha(token)) });
 });
 
 on("POST", "/api/logout", async (req, env) => {
   const tok = (req.headers.get("authorization") || "").slice(7);
   if (tok) await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(await sha(tok)).run();
-  return json({ ok: true });
+  return json({ ok: true }, 200, { "set-cookie": clearGate });
+});
+
+// A signed-in browser refreshes its read-only gate cookie on start.
+on("POST", "/api/gate", async (req, env, u) => {
+  if (!u || u.banned) return json({ error: "Sign in first." }, 401, { "set-cookie": clearGate });
+  return json({ ok: true }, 200, { "set-cookie": await gateCookie(env, u.id, await sha((req.headers.get("authorization") || "").slice(7))) });
+});
+
+on("GET", "/api/pow", async (req, env) => {
+  if (!(await rate(env, "pow:" + ip(req), 60, 3600))) return err(429, "Slow down.");
+  return json(await powChallenge(env));
+});
+
+// Who sent this invite, for the front door ("Donovan invited you"). Says nothing about codes that don't exist
+// beyond "not found", and is rate limited so it can't be used to guess codes.
+on("GET", "/api/invite/([\\w-]{1,40})", async (req, env, _u, [code]) => {
+  if (!(await rate(env, "invq:" + ip(req), 30, 3600))) return err(429, "Slow down.");
+  const inv = await inviteInfo(env, code);
+  if (inv) {
+    if (inv.gone) return err(410, inv.gone);
+    return json({ kind: inv.kind, verified: inv.verified, role: inv.role, teach: inv.teach, by: inv.by });
+  }
+  return err(404, "That invite link isn't valid. Check it, or apply.");
+});
+
+// The invite behind a /join link: who made it and what it grants. Shared by the front door and the link preview.
+export async function inviteInfo(env, code) {
+  const i = await env.DB.prepare("SELECT u.*, i.verified grant_verified, i.uses, i.max_uses, i.expires, i.role grant_role, i.teach grant_teach FROM invites i JOIN users u ON u.id = i.creator WHERE i.code = ? AND u.banned = 0").bind(code).first();
+  if (i) {
+    const gone = i.max_uses && i.uses >= i.max_uses ? "That invite has been used up. Ask for a new one." : i.expires && i.expires < now() ? "That invite has expired. Ask for a new one." : "";
+    const role = RANK[i.grant_role] && RANK[i.grant_role] < RANK[i.role] ? i.grant_role : "user";
+    return { kind: "invite", gone, verified: !!i.grant_verified && RANK[i.role] >= RANK.admin, role, teach: RANK[i.role] >= RANK.admin ? i.grant_teach || "" : "", by: pub(i) };
+  }
+  const r = await env.DB.prepare("SELECT * FROM users WHERE ref_code = ? AND banned = 0").bind(code).first();
+  return r ? { kind: "ref", gone: "", verified: false, role: "user", teach: "", by: pub(r) } : null;
+}
+
+// Apply for an invite. The applicant gets their code now; it signs them in once staff approve.
+on("POST", "/api/apply", async (req, env) => {
+  if (!(await rate(env, "apply:" + ip(req), 3, 86400))) return err(429, "You've applied from here already today. Use your application code to check on it.");
+  if (!(await rate(env, "apply48:" + ip(req, 48), 10, 86400))) return err(429, "Too many applications from your network today.");
+  const b = await body(req);
+  if (isBot(b)) return json({ code: newCode() });
+  const bad = await checkPow(env, b.pow, { minAge: 4, take: takePow(env) });
+  if (bad) return err(400, bad);
+  const [name, e1] = clean(b.name, 40); if (e1 || !name) return err(400, "Add your name.");
+  const [reason, e2] = clean(b.reason, 600); if (e2) return err(400, e2);
+  if (!reason || reason.length < 20) return err(400, "Tell us a little more: what do you want to learn or build? (A sentence or two.)");
+  const links = cleanLinks(b.links);
+  if (impersonates({ verified: false }, name, links)) return err(400, "That name or handle belongs to someone listed on Feedforward. If it's you, ask them for an invite.");
+  const code = newCode();
+  await env.DB.prepare("INSERT INTO applications (id, code_hash, name, links, reason, created) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(rid(12), await sha(env.PEPPER + code), name, JSON.stringify(links), reason, now()).run();
+  return json({ code });
 });
 
 on("GET", "/api/me", async (req, env, u) => {
@@ -531,9 +628,40 @@ on("GET", "/api/admin/feed", async (req, env, u) => {
     env.DB.prepare(`${COMMENT_SELECT} ORDER BY c.reports DESC, c.ts DESC LIMIT 60`).all(),
     env.DB.prepare("SELECT s.*, u.name FROM suggestions s JOIN users u ON u.id = s.user_id ORDER BY CASE s.status WHEN 'open' THEN 0 ELSE 1 END, s.ts DESC LIMIT 60").all(),
     env.DB.prepare("SELECT m.*, u.name FROM modlog m LEFT JOIN users u ON u.id = m.actor ORDER BY m.id DESC LIMIT 40").all(),
-    staff(u, "admin") ? env.DB.prepare("SELECT * FROM invites WHERE creator = ? OR ? = 'owner' ORDER BY created DESC LIMIT 50").bind(u.id, u.role).all() : { results: [] },
+    env.DB.prepare("SELECT * FROM invites WHERE creator = ? OR ? = 'owner' ORDER BY created DESC LIMIT 50").bind(u.id, u.role).all(),
   ]);
   return json({ comments: c.results.map(pubComment), suggestions: s.results, log: l.results, invites: inv.results });
+});
+
+// ---------- Applications ----------
+on("GET", "/api/admin/applications", async (req, env, u) => {
+  if (!staff(u, "mod")) return err(403, "Staff only.");
+  const rows = await env.DB.prepare("SELECT a.id, a.name, a.links, a.reason, a.status, a.created, a.decided, d.name decider FROM applications a LEFT JOIN users d ON d.id = a.decided_by ORDER BY CASE a.status WHEN 'pending' THEN 0 ELSE 1 END, a.created DESC LIMIT 100").all();
+  return json({ applications: rows.results.map((r) => ({ ...r, links: JSON.parse(r.links || "{}") })) });
+});
+on("POST", "/api/admin/applications/([\\w]+)", async (req, env, u, [id]) => {
+  if (!staff(u, "mod")) return err(403, "Staff only.");
+  const b = await body(req);
+  const a = await env.DB.prepare("SELECT * FROM applications WHERE id = ?").bind(id).first();
+  if (!a) return err(404, "No such application.");
+  if (a.status !== "pending") return err(409, "Someone already decided this one.");
+  if (b.decision === "deny") {
+    await env.DB.prepare("UPDATE applications SET status = 'denied', decided_by = ?, decided = ? WHERE id = ? AND status = 'pending'").bind(u.id, now(), id).run();
+    await log(env, u.id, "deny-application", id);
+    return json({ ok: true });
+  }
+  if (b.decision !== "approve") return err(400, "Approve or deny.");
+  // The account takes the applicant's own code, so their code works the moment this lands.
+  const uid = rid(10), links = JSON.parse(a.links || "{}");
+  const ax = links.x ? await xAvatar(links.x) : "";
+  const r = await env.DB.batch([
+    env.DB.prepare("UPDATE applications SET status = 'approved', decided_by = ?, decided = ?, user_id = ? WHERE id = ? AND status = 'pending'").bind(u.id, now(), uid, id),
+    env.DB.prepare("INSERT INTO users (id, code_hash, ref_code, referred_by, verified, created, name, links, avatar_x, avatar_x_ts) SELECT ?, ?, ?, ?, 0, ?, ?, ?, ?, ? WHERE changes() = 1")
+      .bind(uid, a.code_hash, rid(7), u.id, now(), a.name, a.links, ax, ax ? now() : 0),
+  ]);
+  if (!r[0].meta.changes) return err(409, "Someone already decided this one.");
+  await log(env, u.id, "approve-application", uid);
+  return json({ ok: true, user: uid });
 });
 
 on("POST", "/api/admin/suggestions/([\\w]+)", async (req, env, u, [id]) => {
@@ -545,13 +673,22 @@ on("POST", "/api/admin/suggestions/([\\w]+)", async (req, env, u, [id]) => {
   return json({ ok: true });
 });
 
+// Staff invite links, optionally with permissions. Mods and up make them; a link can grant a role below the
+// maker's own, and admins can also grant a teaching role. Expiry is in days (0 means it never expires).
 on("POST", "/api/admin/invites", async (req, env, u) => {
-  if (!staff(u, "admin")) return err(403, "Admins only.");
+  if (!staff(u, "mod")) return err(403, "Staff only.");
   const b = await body(req);
+  const role = b.role && RANK[b.role] ? b.role : "user";
+  if (role === "owner" || RANK[role] >= RANK[u.role]) return err(403, "An invite can only grant a role below your own.");
+  const teach = ["professor", "tutor"].includes(b.teach) ? b.teach : "";
+  if (teach && !staff(u, "admin")) return err(403, "Only admins can grant teaching roles.");
+  if (b.verified && !staff(u, "admin")) return err(403, "Only admins can give the green check.");
+  const days = Math.max(0, Math.min(365, Math.floor(Number(b.days) || 0)));
   const code = rid(9);
   const note = String(b.note || "").slice(0, 80);
-  await env.DB.prepare("INSERT INTO invites (code, creator, verified, max_uses, note, created) VALUES (?, ?, ?, ?, ?, ?)").bind(code, u.id, b.verified ? 1 : 0, Math.max(0, Math.min(10000, Number(b.max_uses) || 0)), note, now()).run();
-  await log(env, u.id, "invite" + (b.verified ? ":verified" : ""), code);
+  await env.DB.prepare("INSERT INTO invites (code, creator, verified, max_uses, note, created, role, teach, expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(code, u.id, b.verified ? 1 : 0, Math.max(0, Math.min(10000, Number(b.max_uses) || 0)), note, now(), role, teach, days ? now() + days * 86400 : 0).run();
+  await log(env, u.id, ["invite", b.verified && "verified", role !== "user" && role, teach].filter(Boolean).join(":"), code);
   return json({ code });
 });
 
@@ -771,7 +908,9 @@ on("GET", "/api/pulse", async (req, env) => {
     env.DB.prepare("SELECT COUNT(*) n FROM people_extra WHERE active = 1").first(),
     env.FRESH.get("fresh", "json"),
   ]);
-  const res = json({ learners: users.n, comments: comments.n, extraPeople: extra.n, freshVideos: (fresh && fresh.videos || []).length, freshPosts: (fresh && fresh.posts || []).length, updated: (fresh && fresh.updated) || 0 },
+  // wall: recent upload ids for the front door's thumbnail wall (YouTube thumbnails are public anyway).
+  const wall = ((fresh && fresh.videos) || []).map((v) => (Array.isArray(v) ? v[0] : v && v.id)).filter((id) => /^[\w-]{11}$/.test(id || "")).slice(0, 36);
+  const res = json({ learners: users.n, comments: comments.n, extraPeople: extra.n, freshVideos: (fresh && fresh.videos || []).length, freshPosts: (fresh && fresh.posts || []).length, updated: (fresh && fresh.updated) || 0, people: LISTED_NAMES.size + extra.n, wall },
     200, { "cache-control": "public, max-age=30" });
   await cache.put(key, res.clone());
   return res;

@@ -24,7 +24,7 @@ const CLIENTS = [
     "With a token, send it as a header:",
     JSON.stringify({ mcpServers: { feedforward: { type: "http", url: URL_, headers: { Authorization: "Bearer ffk_your_token" } } } }, null, 2)],
 ];
-const CURL = `curl -s ${URL_} \\\n  -H "content-type: application/json" \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"define","arguments":{"term":"attention"}}}'`;
+const CURL = `curl -s ${URL_} \\\n  -H "Authorization: Bearer ffk_your_token" \\\n  -H "content-type: application/json" \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"define","arguments":{"term":"attention"}}}'`;
 const TOKEN_TOOLS = new Set(["save", "my_library"]);
 const ME_URL = `${SITE}/mcp/me`;
 // Click paths checked against the current docs on 2026-11-07:
@@ -33,15 +33,15 @@ const APPS = [
   ["claude", "claude.ai", [
     `Open <a class="link" href="https://claude.ai/customize/connectors" target="_blank" rel="noopener">Customize &gt; Connectors</a> on claude.ai.`,
     "Click <b>+ Add</b>, then <b>Add custom connector</b>.",
-    "Name it Feedforward, paste one of the addresses above and click <b>Continue</b>, then <b>Add</b>.",
-    "For your library, click <b>Connect</b>. Feedforward asks you to approve it.",
+    "Name it Feedforward, paste the address above and click <b>Continue</b>, then <b>Add</b>.",
+    "Click <b>Connect</b>. Feedforward asks you to approve it.",
   ], "On a Team or Enterprise plan, an owner adds it under Organization settings &gt; Connectors first."],
   ["chatgpt", "ChatGPT", [
     `Open <a class="link" href="https://chatgpt.com/plugins" target="_blank" rel="noopener">chatgpt.com/plugins</a>.`,
     "Click <b>+</b>, then <b>Add custom MCP server</b>.",
-    "Name it Feedforward, add a short description and paste one of the addresses above.",
-    "Pick OAuth for your library, or no sign-in for the open address. Read the warning and choose <b>I understand and want to continue</b>.",
-    "Click <b>Create as a plugin</b>. For your library, Feedforward asks you to approve it.",
+    "Name it Feedforward, add a short description and paste the address above.",
+    "Pick <b>OAuth</b>. Read the warning and choose <b>I understand and want to continue</b>.",
+    "Click <b>Create as a plugin</b>. Feedforward asks you to approve it.",
   ], "Workspace policies decide whether custom servers are allowed on business plans."],
 ];
 
@@ -55,7 +55,6 @@ export async function render(el, qs) {
     <section class="set" aria-labelledby="appsH">
       <h2 class="set-h" id="appsH">Add to claude.ai or ChatGPT</h2>
       <ul class="rows urls">
-        <li><div class="url-t"><b>Open</b><span class="muted">Search, define, cite and plan. No sign-in.</span><span class="mono url">${esc(URL_)}</span></div><button class="btn sm" type="button" data-copy="${esc(URL_)}" aria-label="Copy the open address">Copy</button></li>
         <li><div class="url-t"><b>Your library</b><span class="muted">Adds your saves and history. You approve it on Feedforward and can revoke it any time.</span><span class="mono url">${esc(ME_URL)}</span></div><button class="btn sm" type="button" data-copy="${esc(ME_URL)}" aria-label="Copy the library address">Copy</button></li>
       </ul>
       <div class="seg app-seg" role="tablist" aria-label="App">${APPS.map(([k, l], i) => `<button type="button" role="tab" id="app-${k}" data-app="${k}" aria-selected="${i === 0}" aria-pressed="${i === 0}" aria-controls="steps">${l}</button>`).join("")}</div>
@@ -77,7 +76,7 @@ export async function render(el, qs) {
     <section class="set" aria-labelledby="safeH">
       <h2 class="set-h" id="safeH">How it stays safe</h2>
       <ul class="safe">
-        <li>Reading needs no token. Search, define, cite, tracks and sessions are open to any agent.</li>
+        <li>Every call needs your token, or the connector's sign-in. Feedforward is invite-only, so agents connect as you.</li>
         <li>A token only adds your own library. A read token can see your saves and history. A read and save token can also save things for you.</li>
         <li>Tokens are stored hashed, so nobody can read them back, not even us. You see each one once.</li>
         <li>Connecting your library in claude.ai or ChatGPT makes a token named after the app, after you approve it on Feedforward.</li>
@@ -93,7 +92,9 @@ export async function render(el, qs) {
   const paint = () => {
     const [, label, lead, plain, tokLead, tok] = CLIENTS.find((c) => c[0] === pick);
     cfg.setAttribute("aria-labelledby", "tab-" + pick);
-    cfg.innerHTML = block(lead, plain, label + " setup") + block(tokLead, tok, label + " setup with a token");
+    // Feedforward is invite-only, so every setup carries the member's token.
+    void plain; void tokLead;
+    cfg.innerHTML = block(lead + " Make a token on your profile first.", tok, label + " setup");
   };
   paint();
   const steps = $("#steps", el);

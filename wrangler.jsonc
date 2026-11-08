@@ -10,7 +10,7 @@
     "directory": "./public",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*", "/u/*", "/mcp", "/mcp/*", "/oauth/*", "/.well-known/*"]
+    "run_worker_first": ["/api/*", "/u/*", "/mcp", "/mcp/*", "/oauth/*", "/.well-known/*", "/data/*", "/labs/*", "/join/*"]
   },
   "routes": [{ "pattern": "feedforward.dbaney.com", "custom_domain": true }],
   "d1_databases": [{ "binding": "DB", "database_name": "feedforward", "database_id": "049d7620-d2e2-444c-bce7-cb028f1c03c9", "migrations_dir": "migrations" }],

@@ -1,6 +1,7 @@
 // End-to-end check of accounts, roles, moderation, teaching, skills, agent tokens, MCP and chat against a dev server.
 // Usage: node scripts/api.smoke.mjs http://127.0.0.1:8795   (needs `wrangler dev` with local D1 migrated)
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 
 const BASE = process.argv[2] || "http://127.0.0.1:8795";
@@ -9,23 +10,51 @@ const RUN = Date.now().toString(36);
 const BOOK = "b:smoke-" + RUN;
 const VID = "v:smoke" + RUN;
 const ok = (name) => { pass++; console.log("ok  " + name); };
-async function api(path, { token, method = "GET", body, headers = {} } = {}) {
-  const r = await fetch(BASE + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: "Bearer " + token } : {}), ...headers }, body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body) });
+// Feedforward is invite-only: once a member signs in, reads carry their gate cookie (anon: true leaves it off).
+let COOKIE = "";
+async function api(path, { token, method = "GET", body, headers = {}, anon = false } = {}) {
+  const r = await fetch(BASE + path, { method, headers: { "content-type": "application/json", ...(COOKIE && !anon ? { cookie: COOKIE } : {}), ...(token ? { authorization: "Bearer " + token } : {}), ...headers }, body: body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body) });
   let d = null; try { d = await r.json(); } catch {}
   return { status: r.status, d };
 }
 const sql = (q) => execFileSync("npx", ["-y", "wrangler@4.154.0", "d1", "execute", "feedforward", "--local", "--command", q], { stdio: "pipe" });
 const ip = () => `10.${Math.random() * 255 | 0}.${Math.random() * 255 | 0}.${Math.random() * 255 | 0}`;
-const make = async (extra = {}) => (await api("/api/account", { method: "POST", body: extra, headers: { "cf-connecting-ip": ip() } })).d;
+// Proof of work, solved the way the browser does. Joining refuses work younger than 2 seconds, so a pool of
+// challenges is fetched up front and aged while the suite runs.
+const solve = ({ c, bits }) => { for (let n = 0; ; n++) { const h = createHash("sha256").update(`${c}:${n}`).digest(); let z = 0; for (const x of h) { if (x === 0) { z += 8; continue; } z += Math.clz32(x) - 24; break; } if (z >= bits) return { c, n: String(n) }; } };
+const powCh = async () => ({ at: Date.now(), ch: (await api("/api/pow", { anon: true, headers: { "cf-connecting-ip": ip() } })).d });
+let pool = await Promise.all(Array.from({ length: 30 }, powCh));
+async function pow() {
+  const next = pool.shift() || (await powCh());
+  pool.push(await powCh());
+  const wait = 2100 - (Date.now() - next.at);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  return solve(next.ch);
+}
+// The suite's own founder and invite, so the first accounts have a way in.
+const SYS = "sys" + RUN.slice(-7);
+sql(`INSERT INTO users (id, code_hash, ref_code, role, created) VALUES ('${SYS}', 'sys-${RUN}', 's${RUN.slice(-6)}', 'owner', 0)`);
+sql(`INSERT INTO invites (code, creator, created) VALUES ('smk${RUN}', '${SYS}', 0)`);
+const make = async (extra = {}) => (await api("/api/account", { method: "POST", body: { invite: extra.ref ? undefined : `smk${RUN}`, ...extra, pow: await pow() }, headers: { "cf-connecting-ip": ip() } })).d;
+const loginBody = async (code) => ({ code, pow: await pow() });
+
+// The front door
+assert.equal((await api("/api/account", { method: "POST", body: { pow: await pow() }, headers: { "cf-connecting-ip": ip() } })).status, 403); ok("no invite, no account");
+assert.equal((await api("/api/account", { method: "POST", body: { invite: `smk${RUN}` }, headers: { "cf-connecting-ip": ip() } })).status, 400); ok("no proof of work, no account");
+assert.equal((await api("/api/stats", { anon: true })).status, 401); ok("catalog reads need a member");
+assert.equal((await fetch(BASE + "/data/home.json")).status, 401); ok("catalog files need a member");
 
 // Accounts
 const A = await make(); assert.match(A.code, /^[a-z]+(-[a-z]+){3}-\d{2}$/); ok("new account gets a friendly code " + A.code);
 sql(`UPDATE users SET role = 'owner' WHERE id = '${A.user.id}'`);
 const B = await make({ ref: A.user.ref }), C = await make(), D = await make();
 assert.equal((await api("/api/me", { token: A.token })).d.referrals, 1); ok("referral counted");
-const login = await api("/api/login", { method: "POST", body: { code: A.code.toUpperCase().replace(/-/g, " ") }, headers: { "cf-connecting-ip": ip() } });
-assert.equal(login.status, 200); ok("login with the code, case and spacing forgiven");
-assert.equal((await api("/api/login", { method: "POST", body: { code: "otter-maple-rocket-00" }, headers: { "cf-connecting-ip": ip() } })).status, 404); ok("wrong code is refused");
+const loginR = await fetch(BASE + "/api/login", { method: "POST", headers: { "content-type": "application/json", "cf-connecting-ip": ip() }, body: JSON.stringify(await loginBody(A.code.toUpperCase().replace(/-/g, " "))) });
+assert.equal(loginR.status, 200); ok("login with the code, case and spacing forgiven");
+COOKIE = (loginR.headers.get("set-cookie") || "").split(";")[0];
+assert.match(COOKIE, /^__Host-ff_gate=/); ok("sign-in sets the gate cookie");
+assert.equal((await fetch(BASE + "/data/home.json", { headers: { cookie: COOKIE } })).status, 200); ok("members load the catalog");
+assert.equal((await api("/api/login", { method: "POST", body: await loginBody("otter-maple-rocket-00"), headers: { "cf-connecting-ip": ip() } })).status, 404); ok("wrong code is refused");
 assert.equal((await api("/api/me")).status, 401); ok("no token, no profile");
 assert.equal((await api("/api/me", { token: "ffk_" + "x".repeat(40) })).status, 401); ok("agent tokens can't use the account API");
 
@@ -105,7 +134,8 @@ assert.equal((await rpc(null, "ping", {}, { origin: "https://evil.example" })).s
 // Chat
 const ws = (token, headers) => new Promise((res, rej) => {
   const url = BASE.replace("http", "ws") + "/api/chat/general";
-  const s = token ? new WebSocket(url, { protocols: ["ff", "t." + token], ...(headers ? { headers } : {}) }) : new WebSocket(url, headers ? { headers } : undefined);
+  const h = { cookie: COOKIE, ...(headers || {}) };
+  const s = token ? new WebSocket(url, { protocols: ["ff", "t." + token], headers: h }) : new WebSocket(url, { headers: h });
   const got = []; s.onmessage = (e) => got.push(JSON.parse(e.data)); s.onopen = () => res({ s, got }); s.onerror = rej;
 });
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -134,7 +164,7 @@ await wait(1200);
 // Closing (2) or closed (3): local workerd may leave the handshake half done, but the socket can no longer send.
 assert.ok(before.s.readyState >= 2); ok("a ban closes an already-open chat socket");
 assert.equal((await api("/api/me", { token: D.token })).status, 401); ok("ban ends the banned user's sessions");
-assert.equal((await api("/api/login", { method: "POST", body: { code: D.code }, headers: { "cf-connecting-ip": ip() } })).status, 403); ok("a banned user can't sign back in");
+assert.equal((await api("/api/login", { method: "POST", body: await loginBody(D.code), headers: { "cf-connecting-ip": ip() } })).status, 403); ok("a banned user can't sign back in");
 
 // Rate limits hold under a parallel burst
 const burstIp = ip();
@@ -180,7 +210,7 @@ assert.equal((await api(`/api/skills/${ownerSkill.d.id}/decline`, { token: C.tok
   lw.s.send(JSON.stringify({ type: "msg", text: "A question about quantization levels." })); await wait(500);
   const mid = (lw.got.find((m) => m.type === "msg") || {}).msg?.id;
   await api(`/api/admin/users/${L.user.id}`, { token: A.token, method: "POST", body: { role: "admin" } });
-  const C2 = await api("/api/login", { method: "POST", body: { code: C.code }, headers: { "cf-connecting-ip": ip() } });
+  const C2 = await api("/api/login", { method: "POST", body: await loginBody(C.code), headers: { "cf-connecting-ip": ip() } });
   const mw = await new Promise((res) => { const s3 = new WebSocket(BASE.replace("http", "ws") + "/api/chat/help", { protocols: ["ff", "t." + C2.d.token] }); const got = []; s3.onmessage = (e) => got.push(JSON.parse(e.data)); s3.onopen = () => res({ s: s3, got }); });
   mw.s.send(JSON.stringify({ type: "del", id: mid })); await wait(500);
   assert.ok(mw.got.some((m) => m.type === "error") && !mw.got.some((m) => m.type === "del" && m.id === mid)); ok("a mod can't delete a message from someone since promoted above them");

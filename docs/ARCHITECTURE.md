@@ -79,7 +79,7 @@ On install it pre-caches the app shell and the three starter data files. On acti
 
 ## The Worker
 
-`worker/index.js` is the entry point. `wrangler.jsonc` sets `run_worker_first` for `/api/*`, `/u/*` and `/mcp`. Every other request is answered from the static assets in `public/`.
+`worker/index.js` is the entry point. `wrangler.jsonc` sets `run_worker_first` for `/api/*`, `/u/*`, `/mcp`, `/oauth/*`, `/.well-known/*`, `/join/*` and the member-only `/data/*` and `/labs/*`. `worker/gate.js` decides what is public (see SECURITY.md, Invite-only). Every other request is answered from the static assets in `public/`.
 
 ### Routes
 

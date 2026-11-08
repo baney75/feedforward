@@ -1,0 +1,261 @@
+// The front door. Feedforward is invite-only, so signed out, every path lands here.
+// Each part has one job:
+//   the moving wall of real lessons      curiosity: what's behind the glass is real and worth it
+//   "Invite only" and the live count     exclusivity and social proof: people you'd want to learn with are in
+//   named teachers                       authority: you know these people
+//   three doors, one button each         one decision at a time
+//   "Donovan invited you"                a person vouched for you, so you're expected
+//   the human check's progress           visible progress, so a wait feels like work being done for you
+//   your code, big, with "save it"       ownership: it's your key
+import { createAccount, signIn, apply, inviteInfo, prepare } from "../account.js";
+import { esc, toast, userAvatar, badges } from "../ui.js";
+import { $, setTitle, cssReady, copy } from "./_shared.js";
+
+const TEACHERS = ["Andrej Karpathy", "3Blue1Brown", "Sebastian Lague", "Welch Labs", "Theo", "Tsoding", "Simon Willison", "StatQuest"];
+// A few lessons for the wall when the live list is short. YouTube thumbnails are public.
+const WALL = ["kCc8FmEb1nY", "zjkBMFhNj_g", "wjZofJX0v4M", "7xTGNNLPyMI", "eMlx5fFNoYc", "aircAruvnKk", "1DtMiRKg-cs", "VMj-3S1tku0", "l8pRSuU81PU", "9vM4p9NN0Ts", "LPZh9BOjkQs", "fNk_zzaMoSs"];
+const ROLE = { contributor: "Contributor", mod: "Moderator", admin: "Admin" };
+const store = { get: (k) => { try { return JSON.parse(localStorage.getItem("lt:" + k)); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem("lt:" + k) : localStorage.setItem("lt:" + k, JSON.stringify(v)); } catch {} } };
+const fmt = (n) => (n >= 10000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, "") + "K" : Number(n || 0).toLocaleString());
+
+export async function render(el, qs, parts) {
+  await cssReady;
+  setTitle("");
+  const joinCode = parts[0] === "join" && parts[1] ? parts[1] : "";
+  const pending = store.get("application");
+  let tab = joinCode ? "invite" : pending ? "signin" : "apply";
+
+  el.innerHTML = `<div class="door-pg">
+    <div class="door-wall" aria-hidden="true"><div class="dw-cols"></div></div>
+    <div class="door-main">
+      <a class="door-brand" href="/" aria-label="Feedforward">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--accent)"/><g fill="var(--accent-ink)"><rect x="15.5" y="15.7" width="8.2" height="32.6" rx="4.1"/><rect x="27.7" y="21.8" width="8.2" height="20.4" rx="4.1"/><circle cx="44" cy="32" r="4.5"/></g></svg>
+        <span>Feedforward</span>
+      </a>
+      <p class="door-eyebrow"><span class="door-live" aria-hidden="true"></span>Invite only<span class="door-sep" aria-hidden="true"></span><span id="doorCount">Members learning now</span></p>
+      <h1 class="door-h">Learn AI from the people <em>building it.</em></h1>
+      <p class="door-sub">${TEACHERS.slice(0, 4).map(esc).join(", ")} and <span id="doorPeople">80+</span> more, in one feed with labs, live sessions and a room full of builders. Free. No ads. No politics.</p>
+      <section class="door-card" aria-label="Get in">
+        <div class="door-tabs" role="tablist">
+          ${[["invite", "I have an invite"], ["signin", "Sign in"], ["apply", "Apply"]].map(([k, l]) => `<button role="tab" type="button" data-tab="${k}" aria-selected="${k === tab}">${l}</button>`).join("")}
+        </div>
+        <div class="door-pane" id="doorPane" role="tabpanel"></div>
+      </section>
+      <p class="door-foot">Your code is your account: no email, no password, no tracking. <a href="https://github.com/baney75/feedforward" target="_blank" rel="noopener">Open source</a></p>
+    </div>
+  </div>`;
+
+  // Live wall and counts. The wall is real lessons, slowly moving, behind glass.
+  const cols = $(".dw-cols", el);
+  const paintWall = (ids) => {
+    const pool = [...new Set([...ids, ...WALL])];
+    cols.innerHTML = [0, 1, 2, 3].map((c) => {
+      const mine = pool.filter((_, i) => i % 4 === c);
+      const tiles = [...mine, ...mine].map((id) => `<img src="https://i.ytimg.com/vi/${esc(id)}/mqdefault.jpg" alt="" loading="lazy" width="320" height="180">`).join("");
+      return `<div class="dw-col" style="--d:${48 + c * 9}s;--dir:${c % 2 ? "reverse" : "normal"}">${tiles}</div>`;
+    }).join("");
+  };
+  paintWall([]);
+  fetch("/api/pulse").then((r) => r.json()).then((p) => {
+    if (p.wall && p.wall.length) paintWall(p.wall);
+    if (p.learners) $("#doorCount", el).textContent = `${fmt(p.learners)} members`;
+    if (p.people) $("#doorPeople", el).textContent = String(Math.max(0, p.people - 4));
+  }).catch(() => {});
+
+  const pane = $("#doorPane", el);
+  const show = (k, opts) => {
+    tab = k;
+    el.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", b.dataset.tab === k));
+    PANES[k](pane, opts);
+  };
+  el.querySelector(".door-tabs").onclick = (e) => { const b = e.target.closest("[data-tab]"); if (b) show(b.dataset.tab); };
+  show(tab, { code: joinCode });
+  return () => {};
+}
+
+// ---------- Panes ----------
+const PANES = { invite: invitePane, signin: signinPane, apply: applyPane };
+
+// The human check, shown as progress on the button that started it.
+async function withCheck(btn, label, fn) {
+  const was = btn.innerHTML;
+  btn.disabled = true;
+  btn.classList.add("checking");
+  const set = (p) => { btn.style.setProperty("--p", Math.round(p * 100) + "%"); btn.innerHTML = `<span>${label} ${Math.round(p * 100)}%</span>`; };
+  set(0);
+  try { return await fn(set); }
+  finally { btn.disabled = false; btn.classList.remove("checking"); btn.style.removeProperty("--p"); btn.innerHTML = was; }
+}
+const fail = (box, e) => { box.innerHTML = `<p class="door-err" role="alert">${esc(e.message || "Something went wrong. Try again.")}</p>`; };
+
+function codeOf(input) {
+  const s = String(input || "").trim();
+  const m = s.match(/\/join\/([\w-]{1,40})/) || s.match(/^([\w-]{5,40})$/);
+  return m ? m[1] : "";
+}
+
+function invitePane(pane, { code = "" } = {}) {
+  if (!code) {
+    pane.innerHTML = `<form class="door-form" id="invForm">
+      <label class="door-field"><span>Paste your invite link or code</span>
+        <input class="input" name="inv" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="feedforward.dbaney.com/join/..." required></label>
+      <button class="btn primary door-go" type="submit">Continue</button>
+      <p class="door-hint">Members can invite friends from their profile. No invite yet? <button class="textbtn" type="button" data-goto="apply">Apply</button></p>
+      <div class="door-msg" aria-live="polite"></div>
+    </form>`;
+    pane.querySelector("[data-goto]").onclick = () => document.querySelector('[data-tab="apply"]').click();
+    $("#invForm", pane).onsubmit = (e) => {
+      e.preventDefault();
+      const c = codeOf(e.currentTarget.inv.value);
+      if (!c) return fail($(".door-msg", pane), new Error("That doesn't look like an invite link."));
+      history.replaceState(null, "", "/join/" + c);
+      invitePane(pane, { code: c });
+    };
+    return;
+  }
+  pane.innerHTML = `<div class="door-loading">Checking your invite...</div>`;
+  inviteInfo(code).then((inv) => {
+    const by = inv.by || {}, named = by.name && by.name !== "Learner";
+    const grants = [inv.role && inv.role !== "user" && ROLE[inv.role], inv.teach && inv.teach[0].toUpperCase() + inv.teach.slice(1), inv.verified && "Verified"].filter(Boolean);
+    pane.innerHTML = `<div class="door-invite">
+        <div class="door-from">${userAvatar(by, "l")}<div><p class="door-kicker">You're invited</p><p class="door-who">${named ? `${esc(by.name)}${badges(by)}` : "A member"} <span>invited you</span></p></div></div>
+        ${grants.length ? `<p class="door-grants">${grants.map((g) => `<span>${esc(g)}</span>`).join("")}</p>` : ""}
+      </div>
+      <form class="door-form" id="joinForm">
+        <label class="door-field"><span>Your name <i>optional</i></span><input class="input" name="name" maxlength="40" autocomplete="name" placeholder="How people will see you"></label>
+        <input class="door-trap" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <button class="btn primary door-go" type="submit">Accept invite</button>
+        <div class="door-msg" aria-live="polite"></div>
+      </form>`;
+    let ready = prepare();
+    $("#joinForm", pane).onsubmit = (e) => {
+      e.preventDefault();
+      const f = e.currentTarget, msg = $(".door-msg", pane);
+      msg.innerHTML = "";
+      const join = inv.kind === "invite" ? { invite: code } : { ref: code };
+      // Hold the app back until they've seen and kept their code.
+      sessionStorage.setItem("ff:hold", "1");
+      withCheck(f.querySelector(".door-go"), "Checking you're human", async (p) => {
+        const r = ready; ready = prepare();   // each challenge is single use
+        const d = await createAccount(join, { onProgress: p, ready: r, extra: { name: f.name.value.trim(), website: f.website.value } });
+        welcome(pane, d.code);
+      }).catch((err) => { sessionStorage.removeItem("ff:hold"); fail(msg, err); });
+    };
+  }).catch((e) => {
+    pane.innerHTML = `<div class="door-msg"></div><p class="door-hint"><button class="textbtn" type="button" data-other>Use a different invite</button> or <button class="textbtn" type="button" data-apply>apply</button>.</p>`;
+    fail($(".door-msg", pane), e);
+    pane.querySelector("[data-other]").onclick = () => { history.replaceState(null, "", "/"); invitePane(pane); };
+    pane.querySelector("[data-apply]").onclick = () => document.querySelector('[data-tab="apply"]').click();
+  });
+}
+
+// "You're in": the code is the account, so it's shown big, with one clear way to keep it.
+function welcome(pane, code) {
+  pane.innerHTML = `<div class="door-welcome">
+    <p class="door-kicker">You're in</p>
+    <h2>This is your key.</h2>
+    <p class="door-code mono">${esc(code)}</p>
+    <p class="door-hint">It signs you in on any device. Keep it somewhere safe, like a password manager. Nobody can recover it for you.</p>
+    <div class="door-acts"><button class="btn" type="button" id="copyCode">Copy code</button><button class="btn primary" type="button" id="enter" disabled>I saved it</button></div>
+  </div>`;
+  const enter = $("#enter", pane);
+  $("#copyCode", pane).onclick = () => { copy(code, "Code copied"); enter.disabled = false; };
+  // Copying unlocks the way in, so the code gets kept. A short wait does too, for people who write it down.
+  setTimeout(() => (enter.disabled = false), 4000);
+  enter.onclick = () => { sessionStorage.removeItem("ff:hold"); sessionStorage.setItem("ff:new", "1"); dispatchEvent(new Event("ff:account")); };
+}
+
+function signinPane(pane) {
+  const pending = store.get("application");
+  const canScan = "BarcodeDetector" in window && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+  pane.innerHTML = `${pending ? `<p class="door-pending"><b>Your application is in review.</b> Sign in with its code to check. It works the moment you're approved.</p>` : ""}
+    <form class="door-form" id="siForm">
+      <label class="door-field"><span>Your code</span>
+        <input class="input mono" name="code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="otter-maple-rocket-acorn-42" value="${pending ? esc(pending.code) : ""}" required></label>
+      <button class="btn primary door-go" type="submit">Sign in</button>
+      ${canScan ? `<button class="btn door-scan" type="button" id="scan">Scan a QR code</button>` : ""}
+      <p class="door-hint">Signed in on another device? Open your profile there, show your QR code, and point this phone's camera at it.</p>
+      <div class="door-msg" aria-live="polite"></div>
+    </form>`;
+  const msg = $(".door-msg", pane), form = $("#siForm", pane);
+  let ready = prepare();
+  const go = (code) => withCheck(form.querySelector(".door-go"), "Checking you're human", async (p) => {
+    const r = ready; ready = prepare();   // each challenge is single use
+    try { await signIn(code, { onProgress: p, ready: r }); store.set("application", null); }
+    catch (e) { if (e.status === 409) { msg.innerHTML = `<p class="door-pending" role="status">${esc(e.message)}</p>`; return; } throw e; }
+  }).catch((e) => fail(msg, e));
+  form.onsubmit = (e) => { e.preventDefault(); msg.innerHTML = ""; go(form.code.value); };
+  const scan = $("#scan", pane);
+  if (scan) scan.onclick = () => scanQR().then((text) => {
+    if (!text) return;
+    const link = text.match(/\/link#([a-z0-9-]+)/i), join = text.match(/\/join\/([\w-]+)/);
+    if (link) { form.code.value = link[1]; go(link[1]); }
+    else if (join) { history.replaceState(null, "", "/join/" + join[1]); document.querySelector('[data-tab="invite"]').click(); }
+    else toast("That QR code isn't a Feedforward code.");
+  }).catch((e) => fail(msg, e));
+}
+
+// Camera QR scanning where the browser can (Chrome, Edge, Android). Elsewhere the phone's own camera app reads
+// the same codes, because they're plain links.
+async function scanQR() {
+  const d = document.getElementById("sheet");
+  d.innerHTML = `<h2>Scan a QR code</h2><div class="door-cam"><video playsinline muted></video><i aria-hidden="true"></i></div><div class="row"><button class="btn" id="camX">Cancel</button></div>`;
+  d.showModal();
+  const video = d.querySelector("video");
+  let stream, stop = false;
+  const close = () => { stop = true; try { stream && stream.getTracks().forEach((t) => t.stop()); } catch {} d.close(); };
+  d.querySelector("#camX").onclick = close;
+  d.addEventListener("close", () => { stop = true; try { stream && stream.getTracks().forEach((t) => t.stop()); } catch {} }, { once: true });
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+  } catch { close(); throw new Error("Feedforward needs the camera to scan. You can type the code instead."); }
+  video.srcObject = stream; await video.play().catch(() => {});
+  const det = new window.BarcodeDetector({ formats: ["qr_code"] });
+  while (!stop) {
+    try { const [hit] = await det.detect(video); if (hit) { close(); return hit.rawValue; } } catch {}
+    await new Promise((r) => setTimeout(r, 180));
+  }
+  return "";
+}
+
+function applyPane(pane) {
+  const pending = store.get("application");
+  if (pending) {
+    pane.innerHTML = `<div class="door-welcome"><p class="door-kicker">Application in review</p><h2>We'll let you in soon.</h2>
+      <p class="door-code mono">${esc(pending.code)}</p>
+      <p class="door-hint">This code is your account. It signs you in the moment you're approved, so keep it. Check any time from Sign in.</p>
+      <div class="door-acts"><button class="btn" type="button" id="copyCode">Copy code</button><button class="btn primary" type="button" id="check">Check now</button></div>
+      <p class="door-hint"><button class="textbtn" type="button" id="again">Start a new application</button></p></div>`;
+    $("#copyCode", pane).onclick = () => copy(pending.code, "Code copied");
+    $("#check", pane).onclick = () => document.querySelector('[data-tab="signin"]').click();
+    $("#again", pane).onclick = () => { if (confirm("Start over? Your current application code will stop being shown here.")) { store.set("application", null); applyPane(pane); } };
+    return;
+  }
+  pane.innerHTML = `<form class="door-form" id="apForm">
+    <label class="door-field"><span>Your name</span><input class="input" name="name" maxlength="40" autocomplete="name" required></label>
+    <label class="door-field"><span>What do you want to learn or build?</span>
+      <textarea class="input" name="reason" rows="3" minlength="20" maxlength="600" required placeholder="I want to run models on my own GPU and understand how they work."></textarea></label>
+    <div class="door-two">
+      <label class="door-field"><span>X handle <i>optional</i></span><input class="input" name="x" maxlength="16" autocomplete="off" autocapitalize="off" placeholder="@you"></label>
+      <label class="door-field"><span>GitHub <i>optional</i></span><input class="input" name="github" maxlength="40" autocomplete="off" autocapitalize="off" placeholder="you"></label>
+    </div>
+    <input class="door-trap" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <button class="btn primary door-go" type="submit">Apply for an invite</button>
+    <p class="door-hint">You'll get a code right away. It becomes your account the moment we approve you.</p>
+    <div class="door-msg" aria-live="polite"></div>
+  </form>`;
+  const form = $("#apForm", pane);
+  let ready = prepare();
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const msg = $(".door-msg", pane);
+    msg.innerHTML = "";
+    withCheck(form.querySelector(".door-go"), "Checking you're human", async (p) => {
+      const d = await apply({ name: form.name.value, reason: form.reason.value, website: form.website.value,
+        links: { x: form.x.value.replace(/^@/, ""), github: form.github.value } }, { onProgress: p, ready: ((r) => (ready = prepare(), r))(ready) });
+      store.set("application", { code: d.code, ts: Date.now() });
+      applyPane(pane);
+    }).catch((err) => fail(msg, err));
+  };
+}
+
