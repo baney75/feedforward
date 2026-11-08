@@ -1069,5 +1069,6 @@ dialog#sheet.notif h2 { position: sticky; top: 0; background: var(--bg-2); margi
 .lib-x svg { width: 16px; height: 16px; }
 .lib-item:hover .lib-x, .lib-x:focus-visible { opacity: 1; }
 @media (hover: none) { .lib-x { opacity: 1; } }
-#toast.has-action { white-space: nowrap; display: flex; align-items: center; gap: var(--s3); pointer-events: auto; }
+#toast.has-action { white-space: nowrap; display: flex; align-items: center; gap: var(--s3); }
+#toast.has-action.on { pointer-events: auto; }
 #toast button { color: var(--accent-text, var(--accent)); font-weight: 600; font: inherit; font-weight: 600; min-height: 32px; }

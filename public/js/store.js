@@ -60,7 +60,7 @@ export const store = {
     try { localStorage.setItem("lt:pos", JSON.stringify(all)); } catch {}
   },
   history() { return read("history", []); },
-  clearHistory() { write("historyReset", Date.now()); write("history", []); },
+  clearHistory() { write("historyReset", Date.now()); write("history", []); try { localStorage.removeItem("lt:pos"); } catch {} },
   hasWatched(id) { return read("history", []).includes(id); },
   // Learning progress: {"lab:<slug>": ts, "step:<track>:<n>": ts, "quiz:<track>:<n>": ts}
   done(key) { const d = read("progress", {}); if (!(d[key] > 0)) d[key] = Date.now(); write("progress", d); markDay(); },

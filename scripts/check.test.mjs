@@ -252,6 +252,10 @@ test("one player: the watch page uses the stage, and saving position never start
   assert.doesNotMatch(pos, /write\(/, "write() fires ff:changed, and a 5 second tick would starve the debounced sync");
 });
 
+test("Library: a swipe inside a sideways shelf scrolls it and never removes an item", () => {
+  assert.match(read("public/js/views.js"), /it\.closest\("\.shelf"\)\) it = null/);
+});
+
 test("member home has no animated counters (reported twice: they looked glitchy)", () => {
   const src = read("public/js/views.js");
   assert.doesNotMatch(src, /data-count|liveCounters/, "the count-up stats row must stay gone");

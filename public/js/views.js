@@ -406,7 +406,7 @@ function bindLibrary(lib) {
   };
   lib.addEventListener("click", (e) => { const x = e.target.closest(".lib-x"); if (x) remove(x.closest(".lib-item")); });
   let it = null, x0 = 0, y0 = 0, dx = 0, sideways = false;
-  lib.addEventListener("touchstart", (e) => { it = e.target.closest(".lib-item"); if (it) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; sideways = false; } }, { passive: true });
+  lib.addEventListener("touchstart", (e) => { it = e.target.closest(".lib-item"); if (it && it.closest(".shelf")) it = null; /* A shelf scrolls sideways; its items use the X. */ if (it) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; sideways = false; } }, { passive: true });
   lib.addEventListener("touchmove", (e) => {
     if (!it) return;
     const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
