@@ -48,7 +48,8 @@ export function videoCard(v, { big = false, row = false } = {}) {
 
 const URL_RE = /(https?:\/\/[^\s<]+[^\s<.,:;"')\]!?])/g;
 export function linkify(text) {
-  let s = esc(text);
+  // X has no markup, so people type *emphasis* and "- " lists. Show what they meant.
+  let s = esc(text).replace(/(^|[\s(])\*([^*\n]{1,80})\*(?=[\s.,!?:;)]|$)/g, "$1<em>$2</em>").replace(/^- /gm, "• ");
   s = s.replace(URL_RE, (u) => {
     const yt = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
     const label = u.replace(/^https?:\/\/(www\.)?/, "").slice(0, 42) + (u.length > 50 ? "..." : "");
@@ -149,9 +150,9 @@ const BADGES = {
 export function badges(u) {
   if (!u) return "";
   const keys = [];
-  if (u.verified) keys.push("verified");
-  if (u.role && u.role !== "user") keys.push(u.role);
-  if (u.teach) keys.push(u.teach);
+  // One mark per person: the role that says the most, or the check.
+  const top = ["owner", "admin", "mod", "professor", "tutor", "contributor"].find((k) => k === u.role || k === u.teach);
+  if (top) keys.push(top); else if (u.verified) keys.push("verified");
   return keys.map((k) => { const [label, color, path] = BADGES[k]; const stroke = k === "contributor";
     return `<span class="badge-mark" title="${label}"><svg viewBox="0 0 24 24" aria-hidden="true" style="${stroke ? `stroke:${color};fill:none` : `fill:${color}`}">${path}</svg><span class="sr-only">${label}</span></span>`; }).join("");
 }

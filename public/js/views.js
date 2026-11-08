@@ -157,7 +157,6 @@ export function watch(el, qs, id) {
   const trackSlug = qs.get("track");
   const track = trackSlug && D.learn.tracks.find((t) => t.slug === trackSlug);
   const saved = store.isSaved("v:" + id);
-  const posts = p ? topPosts({ personIdx: p.i, limit: 3 }) : [];
   const upNext = related(v, 14);
   el.innerHTML = `<div class="watch">
     <div style="min-width:0">
@@ -175,7 +174,6 @@ export function watch(el, qs, id) {
       ${p ? `<div class="why"><span class="muted">Why ${esc(p.name)} is on Feedforward</span><br>${esc(p.why)}</div>` : ""}
       <section class="upnext-inline" aria-label="Up next"><div class="sec-h" style="margin-top:0"><h2>Up next</h2></div><div class="shelf">${upNext.slice(0, 10).map((x) => videoCard(x)).join("")}</div></section>
       <div id="cmts"></div>
-      ${posts.length ? `<div class="sec-h"><h2>Posts by ${esc(p.name)}</h2><a href="/p/${p.slug}?tab=posts">All posts</a></div>${posts.map(postCard).join("")}` : ""}
     </div>
     <aside class="side"><div class="side-h"><h2>Up next</h2><label class="toggle"><input type="checkbox" id="autoplay" ${store.get("autoplay", true) !== false ? "checked" : ""}> Autoplay</label></div>${upNext.map((x) => videoCard(x, { row: true })).join("")}</aside>
   </div>`;

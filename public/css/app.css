@@ -918,3 +918,16 @@ body.door-tv .door-paircode { font-size: clamp(40px, 9vh, 80px); }
 /* TV: while the poster shows, say what's on and what you can do. */
 #tv.covered .osd, #tv.covered .tvtop { opacity: 1; }
 @media (orientation: portrait) { .tvcover img { object-fit: contain; } }
+/* Comments: no lit button until there's something to post. */
+.compose:has(textarea:placeholder-shown) .btn { opacity: .4; pointer-events: none; }
+@media (max-width: 719px) { .compose { flex-direction: column; align-items: stretch; } .compose .btn { align-self: flex-end; } }
+/* Watch: one right edge under the player. Phone actions are one short row. */
+.why, .comments { max-width: none; }
+@media (min-width: 1180px) { .why, .comments, .watch h1, .wbar, .wmeta { max-width: calc((100vh - 240px) * 16 / 9); } }
+@media (max-width: 719px) { .wbar .btn { flex-direction: row; min-height: 44px; border-radius: var(--r-pill); gap: 6px; font-size: 13px; } }
+/* Shorts on a phone: the video owns the screen, like every other Shorts player. */
+@media (max-width: 719px) {
+  body.on-shorts .topbar, body.on-shorts .shorts-page .chips { display: none; }
+  body.on-shorts main { padding-top: var(--safe-top); }
+  .shorts { --sh: calc(100dvh - var(--safe-top) - var(--tab) - env(safe-area-inset-bottom)); }
+}
