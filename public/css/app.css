@@ -1027,3 +1027,48 @@ dialog#sheet.notif h2 { position: sticky; top: 0; background: var(--bg-2); margi
 .notif-dot { flex: none; width: 8px; height: 8px; margin-top: 6px; border-radius: 50%; background: var(--accent); }
 .notif-empty { padding: 0 var(--s4) var(--s5); color: var(--fg-2); font-size: var(--t-s); line-height: 1.5; }
 @media (max-width: 719px) { dialog#sheet.notif { margin: calc(var(--top) + 4px) 8px auto auto; } }
+
+/* The one player: over the watch page's slot, or in the corner. */
+#stage { position: absolute; z-index: 5; background: #000; border-radius: var(--r); overflow: hidden; }
+#stage[hidden], body.door #stage { display: none; }
+.stage-video { position: absolute; inset: 0; }
+.stage-video iframe, .stage-yt { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+#stage.started .pcover { opacity: 0; pointer-events: none; }
+.stage-bar { display: none; }
+#stage.mini { position: fixed; z-index: 19; right: var(--s4); bottom: var(--s4); width: clamp(280px, 26vw, 400px); height: auto; aspect-ratio: auto; display: grid; grid-template-rows: auto 44px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r); box-shadow: 0 12px 40px rgba(0,0,0,.45); }
+#stage.mini .stage-video { position: relative; inset: auto; aspect-ratio: 16 / 9; background: #000; }
+#stage.mini .stage-bar { display: flex; align-items: center; gap: 2px; padding: 0 4px 0 12px; min-width: 0; }
+.stage-title { flex: 1; min-width: 0; color: var(--fg); font-size: var(--t-s); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
+.stage-btn { flex: none; width: 36px; height: 36px; display: grid; place-items: center; color: var(--fg); border-radius: var(--r-pill); }
+.stage-btn svg { width: 18px; height: 18px; }
+.stage-btn:hover { background: var(--bg-3); }
+@media (max-width: 719px) { #stage { border-radius: 0; } #stage.mini { right: 8px; bottom: calc(var(--tab) + 8px + env(safe-area-inset-bottom)); width: 52vw; min-width: 200px; border-radius: var(--r); } }
+.vt-morph { view-transition-name: vt-thumb; }
+::view-transition-group(vt-thumb) { animation-duration: .28s; animation-timing-function: cubic-bezier(.2,.8,.2,1); z-index: 2; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .14s; }
+
+/* Top bar: search, bell, you. The theme lives in the rail footer and on your profile. */
+#themeBtn { display: none; }
+.rail .foot .textbtn { font: inherit; color: inherit; }
+
+/* Progress on cards */
+.thumb .seen { right: auto; }
+.done-mark { position: absolute; left: 6px; top: 6px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: rgba(14,14,12,.8); color: var(--accent); }
+.done-mark svg { width: 14px; height: 14px; }
+
+/* Keep watching */
+.shelf.kw.few { grid-auto-columns: minmax(250px, 320px); justify-content: start; }
+.resume { display: grid; grid-template-columns: 240px minmax(0, 1fr) auto; gap: var(--s4); align-items: center; padding: var(--s3); border: 1px solid var(--line); border-radius: var(--r); color: var(--fg); text-decoration: none; }
+.resume:hover { background: var(--bg-2); }
+.resume-t { min-width: 0; }
+@media (max-width: 719px) { .resume { grid-template-columns: 120px minmax(0, 1fr); } .resume .btn { grid-column: 1 / -1; justify-content: center; } }
+
+/* Library */
+.lib-item { position: relative; min-width: 0; transition: transform .2s, opacity .2s; }
+.lib-x { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: rgba(14,14,12,.78); color: #fff; opacity: 0; transition: opacity .15s; }
+.lib-x svg { width: 16px; height: 16px; }
+.lib-item:hover .lib-x, .lib-x:focus-visible { opacity: 1; }
+@media (hover: none) { .lib-x { opacity: 1; } }
+#toast.has-action { white-space: nowrap; display: flex; align-items: center; gap: var(--s3); }
+#toast.has-action.on { pointer-events: auto; }
+#toast button { color: var(--accent-text, var(--accent)); font-weight: 600; font: inherit; font-weight: 600; min-height: 32px; }

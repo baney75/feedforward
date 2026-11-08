@@ -37,10 +37,26 @@ export function avatar(p, cls = "") {
   return `<span class="av ${cls}" aria-hidden="true" style="display:grid;place-items:center;font-weight:600;color:var(--fg-2)">${ch}</span>`;
 }
 
+// How far you got: a bar sized to your real position, and a check once you've finished.
+export function watchedPct(id) { const p = store.pos(id); return p ? Math.min(100, Math.round((p[0] / p[1]) * 100)) : store.hasWatched(id) ? 100 : 0; }
+export function finished(id) { const p = store.pos(id); return !!p && p[0] / p[1] >= 0.95; }
+function progress(id) {
+  const pct = watchedPct(id);
+  if (!pct) return "";
+  return `<span class="seen" style="width:${pct}%"></span>${finished(id) ? `<span class="done-mark" title="Finished">${icon("check")}<span class="sr-only">Finished</span></span>` : ""}`;
+}
+// YouTube answers a missing sharp thumbnail with a tiny grey placeholder instead of an error.
+export function watchThumbs() {
+  const back = (img) => { const m = /\/vi\/([\w-]+)\/(sd|maxres)default/.exec(img.currentSrc || img.src); if (m) { img.srcset = ""; img.src = thumb(m[1], "hqdefault"); } };
+  document.addEventListener("load", (e) => { const i = e.target; if (i.tagName === "IMG" && i.naturalWidth && i.naturalWidth <= 120) back(i); }, true);
+  document.addEventListener("error", (e) => { if (e.target.tagName === "IMG") back(e.target); }, true);
+}
+
 export function videoCard(v, { big = false, row = false } = {}) {
   const p = D.people[v.person];
-  const watched = store.hasWatched(v.id);
-  const img = `<div class="thumb"><img src="${thumb(v.id, big ? "hqdefault" : "mqdefault")}" alt="" loading="lazy" width="320" height="180">${v.sec ? `<span class="dur">${dur(v.sec)}</span>` : ""}${watched ? '<span class="seen" title="Watched"></span>' : ""}</div>`;
+  const srcset = `${thumb(v.id, "mqdefault")} 320w, ${thumb(v.id, "sddefault")} 640w${big ? `, ${thumb(v.id, "maxresdefault")} 1280w` : ""}`;
+  const sizes = big ? "(max-width: 719px) 100vw, 640px" : row ? "200px" : "(max-width: 719px) 78vw, 380px";
+  const img = `<div class="thumb"><img src="${thumb(v.id, big ? "hqdefault" : "mqdefault")}" srcset="${srcset}" sizes="${sizes}" alt="" loading="lazy" width="320" height="180">${v.sec ? `<span class="dur">${dur(v.sec)}</span>` : ""}${progress(v.id)}</div>`;
   const sub = `<span class="who">${esc(p.name)}</span><br>${v.views ? num(v.views) + " views" : ""}${v.views && v.ts ? `<span class="dot"></span>` : ""}${v.ts ? ago(v.ts) : ""}${v.fresh ? ' <span class="badge">New</span>' : ""}`;
   if (row) return `<a class="vrow" href="/watch/${v.id}">${img}<div class="vtext"><h3 class="vt">${esc(v.title)}</h3><div class="vsub">${sub}</div></div></a>`;
   return `<a class="vcard${big ? " big" : ""}" href="/watch/${v.id}"${big ? "" : ""}>${img}<div class="vmeta">${avatar(p)}<div class="vtext"><h3 class="vt">${esc(v.title)}</h3><div class="vsub">${sub}</div></div></div></a>`;
@@ -148,10 +164,16 @@ export function watchChipRails(root) {
 }
 
 let toastTimer;
-export function toast(msg) {
+export function toast(msg, { action, fn } = {}) {
   const t = document.getElementById("toast");
   t.textContent = msg; t.classList.add("on"); t.dataset.at = Date.now();
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), 2200);
+  t.classList.toggle("has-action", !!action);
+  if (action) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = action;
+    b.onclick = () => { t.classList.remove("on"); fn(); };
+    t.appendChild(b);
+  }
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("on"), action ? 6000 : 2200);
 }
 
 // Calls fn when the sentinel scrolls into view; returns a disconnect function.

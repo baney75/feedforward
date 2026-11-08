@@ -1,8 +1,8 @@
 import { D, TOPICS, topicIndex, sampler, take, todaysPicks, topPosts, related, search } from "./data.js";
-import { esc, num, ago, dur, thumb, avatar, videoCard, postCard, personCard, chips, toast, infinite, topicLabel } from "./ui.js";
+import { esc, num, ago, dur, thumb, avatar, finished, videoCard, postCard, personCard, chips, toast, infinite, topicLabel } from "./ui.js";
 import { icon } from "./icons.js";
 import { store } from "./store.js";
-import { mountPlayer } from "./tv.js";
+import { openStage, leaveStage } from "./stage.js";
 import { likeButton, stars, bindSocial, comments } from "./social.js";
 import { mine, like as likeItem, signedIn } from "./account.js";
 import { haptic } from "./haptics.js";
@@ -99,7 +99,7 @@ function startHere() {
 
 // "Keep going": the next step in the track you started, plus what you watched recently.
 function keepGoing() {
-  const hist = store.history().map((id) => D.byId.get(id)).filter(Boolean).slice(0, 10);
+  const hist = store.history().filter((id) => !finished(id)).map((id) => D.byId.get(id)).filter(Boolean).slice(0, 10);
   const active = D.learn.tracks.map((t) => [t, trackProgress(t)]).find(([, [d, n]]) => d > 0 && d < n);
   if (!hist.length && !active) return "";
   let next = "";
@@ -110,7 +110,13 @@ function keepGoing() {
     const href = st.kind === "video" ? `/watch/${st.id}?track=${t.slug}` : st.kind === "lab" ? `/lab/${st.slug}?track=${t.slug}` : `/learn/${t.slug}`;
     next = `<a class="start-here" href="${href}"><span class="topic-tag">Step ${k + 1} of ${n}</span><b>${esc(t.title)}</b><span class="muted">${meter(d, n)}</span><span class="btn primary">Continue${icon("right")}</span></a>`;
   }
-  return `${next}${hist.length ? `<div class="sec-h"><h2>Keep watching</h2>${store.streak() ? `<span class="streak">${icon("flame")}${store.streak()}-day streak</span>` : ""}</div><div class="shelf">${hist.map((v) => videoCard(v)).join("")}</div>` : ""}`;
+  return `${next}${hist.length ? `<div class="sec-h"><h2>Keep watching</h2>${store.streak() ? `<span class="streak">${icon("flame")}${store.streak()}-day streak</span>` : ""}</div>${hist.length === 1 ? resumeRow(hist[0]) : `<div class="shelf kw${hist.length < 4 ? " few" : ""}">${hist.map((v) => videoCard(v)).join("")}</div>`}` : ""}`;
+}
+
+// One unfinished video gets a full-width row instead of a lonely card.
+function resumeRow(v) {
+  const pos = store.pos(v.id), left = pos ? Math.ceil((pos[1] - pos[0]) / 60) : 0, p = D.people[v.person];
+  return `<a class="resume" href="/watch/${v.id}"><div class="thumb"><img src="${thumb(v.id, "hqdefault")}" alt="">${pos ? `<span class="seen" style="width:${Math.round((pos[0] / pos[1]) * 100)}%"></span>` : ""}</div><div class="resume-t"><h3 class="vt">${esc(v.title)}</h3><div class="vsub">${p ? esc(p.name) : ""}${left ? `<span class="dot"></span>${left} min left` : ""}</div></div><span class="btn primary">${icon("play")}Continue</span></a>`;
 }
 
 // ---------- Watch ----------
@@ -124,7 +130,7 @@ export function watch(el, qs, id) {
   const upNext = related(v, 14);
   el.innerHTML = `<div class="watch">
     <div style="min-width:0">
-      <div class="player"><div id="yt"></div><button class="pcover" type="button" aria-label="Play ${esc(v.title)}"><img src="${thumb(id, "maxresdefault")}" alt="" onerror="this.onerror=null;this.src='${thumb(id, "hqdefault")}'"><span class="pplay" aria-hidden="true">${icon("play")}</span></button></div>
+      <div class="player"></div>
       ${track ? trackBanner(track, id) : ""}
       <h1>${esc(v.title)}</h1>
       <div class="wbar">
@@ -144,21 +150,22 @@ export function watch(el, qs, id) {
   let countdown = 0;
   // Our poster covers YouTube's start screen until the video plays. A tap plays it; if the browser refuses,
   // the cover steps aside so YouTube's own play button can take the tap.
-  const pl = $(".player", el);
-  const stop = mountPlayer($("#yt", el), id, {
-    onPlaying: () => pl.classList.add("started"),
+  const cover = `<button class="pcover" type="button" aria-label="Play ${esc(v.title)}"><img src="${thumb(id, "maxresdefault")}" alt="" onerror="this.onerror=null;this.src='${thumb(id, "hqdefault")}'"><span class="pplay" aria-hidden="true">${icon("play")}</span></button>`;
+  const stage = openStage({ id, title: v.title, slotEl: $(".player", el), cover, on: {
     onPlay: () => store.watched(id),
     onEnd: () => {
       if (store.get("autoplay", true) === false || !upNext[0] || track) return;
-      const nx = upNext[0], pl = $(".player", el);
+      const nx = upNext[0];
       let n = 6;
-      pl.insertAdjacentHTML("beforeend", `<div class="autonext" role="status"><img src="${thumb(nx.id, "hqdefault")}" alt=""><div><span class="topic-tag">Up next in <b id="an">${n}</b></span><h3>${esc(nx.title)}</h3><div class="row"><button class="btn" id="anCancel">Cancel</button><a class="btn primary" href="/watch/${nx.id}">${icon("play")}Play now</a></div></div></div>`);
-      $("#anCancel", el).onclick = () => { clearInterval(countdown); el.querySelector(".autonext")?.remove(); };
-      countdown = setInterval(() => { n--; const c = $("#an", el); if (c) c.textContent = n; if (n <= 0) { clearInterval(countdown); el.querySelector(".autonext a.primary")?.click(); } }, 1000);
+      stage.video.insertAdjacentHTML("beforeend", `<div class="autonext" role="status"><img src="${thumb(nx.id, "hqdefault")}" alt=""><div><span class="topic-tag">Up next in <b class="an">${n}</b></span><h3>${esc(nx.title)}</h3><div class="row"><button class="btn cancel">Cancel</button><a class="btn primary" href="/watch/${nx.id}">${icon("play")}Play now</a></div></div></div>`);
+      const box = stage.video.querySelector(".autonext");
+      box.querySelector(".cancel").onclick = () => { clearInterval(countdown); box.remove(); };
+      countdown = setInterval(() => { n--; const c = box.querySelector(".an"); if (c) c.textContent = n; if (n <= 0) { clearInterval(countdown); box.querySelector("a.primary")?.click(); } }, 1000);
     },
-    onError: () => { const pl = $(".player", el); if (pl) pl.innerHTML = `<div class="noembed"><img src="${thumb(id, "hqdefault")}" alt=""><div><p>The owner only allows this video to play on YouTube.</p><a class="btn primary" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">${icon("yt")}Watch on YouTube</a></div></div>`; },
-  });
-  $(".pcover", el).onclick = () => { stop.play(); setTimeout(() => pl.classList.add("started"), 1500); };
+    onError: () => { stage.video.innerHTML = `<div class="noembed"><img src="${thumb(id, "hqdefault")}" alt=""><div><p>The owner only allows this video to play on YouTube.</p><a class="btn primary" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">${icon("yt")}Watch on YouTube</a></div></div>`; },
+  } });
+  const pc = stage.video.querySelector(".pcover");
+  if (pc) pc.onclick = () => { stage.play(); setTimeout(() => stage.video.parentElement.classList.add("started"), 1500); };
   $("#save", el).onclick = (e) => {
     const on = store.toggleSave("v:" + id);
     e.currentTarget.innerHTML = icon(on ? "bookmarked" : "bookmark") + `<span class="lbl">${on ? "Saved" : "Save"}</span>`;
@@ -172,7 +179,7 @@ export function watch(el, qs, id) {
   $("#autoplay", el).onchange = (e) => store.set("autoplay", e.target.checked);
   const unbind = bindSocial(el);
   comments($("#cmts", el), "v:" + id);
-  return () => { clearInterval(countdown); stop(); unbind(); };
+  return () => { clearInterval(countdown); stage.video.querySelector(".autonext")?.remove(); leaveStage(); unbind(); };
 }
 
 function extraVideo(id) {
@@ -383,9 +390,35 @@ export function libraryPage(el, qs) {
     lib.innerHTML = hist.length ? `<div class="grid">${hist.map((v) => videoCard(v)).join("")}</div><p style="margin-top:32px"><button class="btn" id="clear">Clear history</button></p>` : `${emptyState("library", "Nothing watched yet", "Videos you watch show up here, on every device you sign in on.", `<a class="btn primary" href="/">Find something to watch</a>`)}`;
     const c = $("#clear", el); if (c) c.onclick = () => { store.clearHistory(); dispatchEvent(new PopStateEvent("popstate")); };
   } else {
-    lib.innerHTML = (sv.length ? `<div class="grid">${sv.map((v) => videoCard(v)).join("")}</div>` : "") +
-      (ss.length ? `<div class="sec-h"><h2>Shorts</h2></div><div class="shelf">${ss.map((x) => `<a class="vcard" href="/shorts/${x.id}"><div class="thumb" style="aspect-ratio:9/16"><img src="https://i.ytimg.com/vi/${x.id}/oardefault.jpg" alt="" loading="lazy"></div><div class="vtext" style="margin-top:8px"><h3 class="vt">${esc(x.title)}</h3></div></a>`).join("")}</div>` : "") + (sp.length ? `<div class="sec-h"><h2>Posts</h2></div><div class="narrow">${sp.map(postCard).join("")}</div>` : "") || `${emptyState("bookmark", "Save it for later", "Tap Save on any video, or the bookmark on any post, and it waits here.", `<a class="btn primary" href="/">Browse Home</a>`)}`;
+    lib.innerHTML = (sv.length ? `<div class="grid">${sv.map((v) => libItem("v:" + v.id, videoCard(v), v.title)).join("")}</div>` : "") +
+      (ss.length ? `<div class="sec-h"><h2>Shorts</h2></div><div class="shelf">${ss.map((x) => libItem("s:" + x.id, `<a class="vcard" href="/shorts/${x.id}"><div class="thumb" style="aspect-ratio:9/16"><img src="https://i.ytimg.com/vi/${x.id}/oardefault.jpg" alt="" loading="lazy"></div><div class="vtext" style="margin-top:8px"><h3 class="vt">${esc(x.title)}</h3></div></a>`, x.title)).join("")}</div>` : "") + (sp.length ? `<div class="sec-h"><h2>Posts</h2></div><div class="narrow">${sp.map(postCard).join("")}</div>` : "") || `${emptyState("bookmark", "Save it for later", "Tap Save on any video, or the bookmark on any post, and it waits here.", `<a class="btn primary" href="/">Browse Home</a>`)}`;
+    bindLibrary(lib);
   }
+}
+function libItem(key, html, title) { return `<div class="lib-item" data-key="${esc(key)}">${html}<button class="lib-x" type="button" aria-label="Remove ${esc(title)}">${icon("close")}</button></div>`; }
+// Remove with the X or a swipe left, and take it back with Undo.
+function bindLibrary(lib) {
+  const remove = (item) => {
+    const key = item.dataset.key, parent = item.parentElement, after = item.nextSibling;
+    store.toggleSave(key); haptic.tick();
+    item.remove();
+    toast("Removed from your library", { action: "Undo", fn: () => { store.toggleSave(key); haptic.tick(); item.style.transform = ""; item.style.opacity = ""; parent.insertBefore(item, after && after.parentNode === parent ? after : null); } });
+  };
+  lib.addEventListener("click", (e) => { const x = e.target.closest(".lib-x"); if (x) remove(x.closest(".lib-item")); });
+  let it = null, x0 = 0, y0 = 0, dx = 0, sideways = false;
+  lib.addEventListener("touchstart", (e) => { it = e.target.closest(".lib-item"); if (it && it.closest(".shelf")) it = null; /* A shelf scrolls sideways; its items use the X. */ if (it) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; sideways = false; } }, { passive: true });
+  lib.addEventListener("touchmove", (e) => {
+    if (!it) return;
+    const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+    if (!sideways) { if (Math.abs(my) > 12) { it = null; return; } if (mx > -12) return; sideways = true; }
+    dx = Math.min(0, mx); it.style.transition = "none"; it.style.transform = `translateX(${dx}px)`; it.style.opacity = 1 + dx / it.offsetWidth;
+    e.preventDefault();
+  }, { passive: false });
+  lib.addEventListener("touchend", () => {
+    if (!it) return;
+    const el = it; it = null; el.style.transition = "";
+    if (sideways && -dx > el.offsetWidth * 0.35) remove(el); else { el.style.transform = ""; el.style.opacity = ""; }
+  });
 }
 
 export function aboutPage(el) {

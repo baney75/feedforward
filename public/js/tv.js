@@ -22,15 +22,16 @@ function fallbackIframe(host, id, autoplay = 1) {
   host.outerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=${autoplay}&rel=0&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="Video player"></iframe>`;
 }
 
-export function mountPlayer(host, id, { onPlay, onPlaying, onEnd, onError } = {}) {
+export function mountPlayer(host, id, { start = 0, onPlay, onPlaying, onPause, onEnd, onError } = {}) {
   let player, dead = false, played = false;
   api().then((YT) => {
     if (dead) return;
     player = new YT.Player(host, {
       host: "https://www.youtube-nocookie.com", videoId: id,
-      playerVars: { autoplay: 1, rel: 0, playsinline: 1, modestbranding: 1 },
+      playerVars: { autoplay: 1, rel: 0, playsinline: 1, modestbranding: 1, ...(start ? { start } : {}) },
       events: {
         onStateChange: (e) => {
+          if (e.data === 2) onPause && onPause();
           if (e.data === 1) onPlaying && onPlaying();
           if (e.data === 1 && !played) { played = true; onPlay && onPlay(); }
           if (e.data === 0) onEnd && onEnd();
@@ -42,6 +43,11 @@ export function mountPlayer(host, id, { onPlay, onPlaying, onEnd, onError } = {}
   }).catch(() => { if (!dead) { fallbackIframe(host, id); onPlay && onPlay(); onPlaying && onPlaying(); } });
   const stop = () => { dead = true; try { player && player.destroy(); } catch {} };
   stop.play = () => { try { player && player.playVideo(); } catch {} };
+  const read = (f, d) => { try { return player && player[f] ? player[f]() : d; } catch { return d; } };
+  stop.playing = () => [1, 3].includes(read("getPlayerState", -1));
+  stop.time = () => read("getCurrentTime", 0);
+  stop.duration = () => read("getDuration", 0);
+  stop.toggle = () => { try { stop.playing() ? player.pauseVideo() : player.playVideo(); } catch {} };
   return stop;
 }
 
