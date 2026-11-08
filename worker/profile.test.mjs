@@ -1,7 +1,7 @@
 // X avatar lookup and the profile feed, with fxtwitter and YouTube replaced by canned responses.
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { xAvatar, feedPosts, feedVideos, handle } from "./api.js";
+import { xAvatar, feedPosts, feedVideos, feedRepos, handle } from "./api.js";
 
 const AV = "https://pbs.twimg.com/profile_images/1/abc_200x200.jpg";
 const POSTS = { code: 200, results: [
@@ -12,6 +12,12 @@ const POSTS = { code: 200, results: [
 ] };
 const RSS = `<feed><entry><yt:videoId>AAAAAAAAAAA</yt:videoId><title>Tom &amp; Jerry &lt;3</title><published>2026-11-01T00:00:00+00:00</published></entry></feed>`;
 
+const REPOS = [
+  { name: "feedforward", description: "Learn AI", stargazers_count: 12, language: "JavaScript", html_url: "https://github.com/baney75/feedforward", pushed_at: "2026-11-07T00:00:00Z", fork: false },
+  { name: "someone-elses", fork: true, html_url: "https://github.com/baney75/someone-elses" },
+  { name: "old", archived: true, html_url: "https://github.com/baney75/old" },
+  { name: "evil", html_url: "javascript:alert(1)" },
+];
 let calls;
 beforeEach(() => {
   calls = [];
@@ -22,6 +28,7 @@ beforeEach(() => {
     if (u.endsWith("/2/profile/baney75/statuses")) return new Response(JSON.stringify(POSTS));
     if (u === "https://www.youtube.com/@baney75") return new Response('"externalId":"UCabcdefghijklmnopqrstuv"');
     if (u.includes("feeds/videos.xml")) return new Response(RSS);
+    if (u.startsWith("https://api.github.com/users/baney75/repos")) return new Response(JSON.stringify(REPOS));
     return new Response("{}", { status: 404 });
   };
 });
@@ -44,7 +51,7 @@ test("YouTube feed parses ids, unescapes titles and reads dates", () => {
 let ttls;
 function env(verified) {
   ttls = [];
-  const user = { id: "u1", verified, links: JSON.stringify({ x: "baney75", youtube: "@baney75" }) };
+  const user = { id: "u1", verified, links: JSON.stringify({ x: "baney75", youtube: "@baney75", github: "baney75" }) };
   const kv = new Map();
   return {
     DB: { prepare: () => ({ bind: () => ({ first: async () => user, run: async () => ({ meta: { changes: 1 } }), all: async () => ({ results: [] }) }) }) },
@@ -65,7 +72,7 @@ test("verified members get their X posts and YouTube uploads, cached", async () 
 
 test("unverified members show no outside posts", async () => {
   const f = await feed(env(0));
-  assert.deepEqual(f, { posts: [], videos: [] });
+  assert.deepEqual(f, { posts: [], videos: [], repos: [] });
   assert.equal(calls.length, 0);
 });
 
@@ -104,3 +111,14 @@ test("when every try fails, the last good copy is shown", async () => {
   assert.deepEqual(f.posts.map((p) => p.id), ["1", "4"]);
 });
 
+
+
+test("GitHub repos: own, active, safe links only", () => {
+  assert.deepEqual(feedRepos(REPOS).map((r) => r.name), ["feedforward"]);
+  assert.equal(feedRepos(REPOS)[0].stars, 12);
+});
+
+test("verified members' profiles include their GitHub repos", async () => {
+  const f = await feed(env(1));
+  assert.deepEqual(f.repos.map((r) => r.name), ["feedforward"]);
+});
