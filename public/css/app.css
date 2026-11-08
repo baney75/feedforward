@@ -12,8 +12,9 @@ p { margin: 0; }
 .skip:focus { left: 8px; }
 
 /* ---------- Layout ---------- */
-:root { --top: 60px; --rail: 232px; --wire: 340px; --tab: 64px; }
-.topbar { position: fixed; inset: 0 0 auto 0; z-index: 20; height: var(--top); display: flex; align-items: center; gap: var(--s4);
+:root { --safe-top: env(safe-area-inset-top, 0px); --top: calc(60px + var(--safe-top)); --rail: 232px; --wire: 340px; --tab: 64px; }
+/* Installed as an app, the page runs under the status bar: the top bar pads itself below the notch. */
+.topbar { position: fixed; inset: 0 0 auto 0; z-index: 20; height: var(--top); box-sizing: border-box; display: flex; align-items: center; gap: var(--s4);
   padding: 0 var(--s4); padding-top: env(safe-area-inset-top); background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: saturate(1.4) blur(12px); -webkit-backdrop-filter: saturate(1.4) blur(12px); border-bottom: 1px solid transparent; }
 .topbar.scrolled { border-bottom-color: var(--line); }
@@ -51,7 +52,7 @@ main { padding: calc(var(--top) + var(--s3)) var(--s5) var(--s7) calc(var(--rail
   .rail .rail-h, .rail .who, .rail hr, .rail .foot, .rail .opt { display: none; }
 }
 @media (max-width: 719px) {
-  :root { --top: 56px; }
+  :root { --top: calc(56px + var(--safe-top)); }
   .rail { display: none; }
   .search { display: none; }
   .search.open { display: block; position: fixed; inset: 0 0 auto 0; height: calc(var(--top) + env(safe-area-inset-top)); padding: calc(8px + env(safe-area-inset-top)) var(--s4) 8px; background: var(--bg); z-index: 30; max-width: none; }
@@ -59,7 +60,7 @@ main { padding: calc(var(--top) + var(--s3)) var(--s5) var(--s7) calc(var(--rail
   .brand { font-size: 18px; }
   .topbar { justify-content: space-between; }
   main { padding: calc(var(--top) + var(--s2) + env(safe-area-inset-top)) var(--s4) calc(var(--tab) + var(--s6) + env(safe-area-inset-bottom)); }
-  .tabbar { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; inset: auto 0 0 0; z-index: 20; height: calc(var(--tab) + env(safe-area-inset-bottom));
+  .tabbar { display: grid; grid-template-columns: repeat(var(--tabs, 5), 1fr); position: fixed; inset: auto 0 0 0; z-index: 20; height: calc(var(--tab) + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom); background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line); }
   .tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 500; color: var(--fg-2); }
   .tabbar a[aria-current="page"] { color: var(--fg); }
@@ -321,7 +322,6 @@ dialog#sheet .row { display: flex; justify-content: flex-end; gap: var(--s2); }
 .sframe img { width: 100%; height: 100%; object-fit: cover; }
 .sframe iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .sover { position: absolute; inset: auto 0 0 0; padding: 64px var(--s4) var(--s4); background: linear-gradient(transparent, rgba(0,0,0,.78)); color: #fff; pointer-events: none; }
-.sframe:has(iframe) .sover { display: none; }
 .sover .who { display: flex; align-items: center; gap: var(--s2); pointer-events: auto; }
 .sover p { margin-top: var(--s2); font-weight: 600; line-height: 1.35; }
 .sover .topic-tag { color: rgba(255,255,255,.8); display: block; margin-top: var(--s2); }
@@ -334,7 +334,7 @@ dialog#sheet .row { display: flex; justify-content: flex-end; gap: var(--s2); }
 @media (max-width: 719px) {
   body.on-shorts main { padding-left: 0; padding-right: 0; padding-bottom: 0; }
   body.on-shorts .shorts-page .chips { padding-left: var(--s4); padding-right: var(--s4); margin-left: 0; margin-right: 0; }
-  .shorts { --sh: calc(100dvh - var(--top) - var(--tab) - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 56px); }
+  .shorts { --sh: calc(100dvh - var(--top) - var(--tab) - env(safe-area-inset-bottom) - 56px); }
   .short { position: relative; padding: 0; }
   .sframe { width: 100%; height: 100%; aspect-ratio: auto; border-radius: 0; }
   .sacts { position: absolute; right: var(--s3); bottom: var(--s6); z-index: 2; }
@@ -602,3 +602,56 @@ body.door main { padding: 0; }
 .vote .dislike::before { content: ""; position: absolute; left: 0; top: 25%; bottom: 25%; width: 1px; background: var(--line); }
 .vote .btn:hover { background: color-mix(in srgb, var(--fg) 8%, transparent); }
 .vote .btn[aria-pressed="true"] { color: var(--accent-text); }
+
+/* ---------- Shorts: our controls over a chrome-free player ---------- */
+.sframe iframe { z-index: 1; pointer-events: none; }
+.scatch { position: absolute; inset: 0; z-index: 2; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.sover { z-index: 3; }
+.spause { position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -38px 0 0 -38px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(0, 0, 0, .45); color: #fff; opacity: 0; transform: scale(.8); transition: opacity .18s, transform .18s; pointer-events: none; }
+.spause svg { width: 34px; height: 34px; margin-left: 4px; }
+.short.paused .spause { opacity: 1; transform: scale(1); }
+.ssound { position: absolute; z-index: 5; top: 14px; right: 14px; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
+  border-radius: var(--r-pill); background: rgba(0, 0, 0, .55); color: #fff; font: 600 14px/1 var(--font); backdrop-filter: blur(6px); }
+.ssound .off { display: none; } .ssound .off svg { width: 20px; height: 20px; }
+.short:not(.muted) .ssound { padding: 0 10px; } .short:not(.muted) .ssound .on { display: none; } .short:not(.muted) .ssound .off { display: inline-flex; }
+.short:not(.playing) .ssound { display: none; }
+.sbar { position: absolute; z-index: 4; inset: auto 0 0 0; height: 3px; background: rgba(255, 255, 255, .22); }
+.sbar i { display: block; height: 100%; width: var(--prog, 0%); background: var(--accent); transition: width .25s linear; }
+.burst { position: absolute; width: 96px; height: 96px; margin: -48px 0 0 -48px; color: #ff3b5c; pointer-events: none; animation: burst .8s cubic-bezier(.2, 1.4, .4, 1) forwards; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .4)); }
+.burst svg { width: 100%; height: 100%; }
+@keyframes burst { 0% { transform: scale(.2) rotate(-12deg); opacity: 0; } 25% { transform: scale(1.15) rotate(6deg); opacity: 1; } 60% { transform: scale(1) rotate(0); opacity: 1; } 100% { transform: scale(1.4) translateY(-40px); opacity: 0; } }
+
+/* Shorts: our thumbnail covers YouTube's start screen; a pause blurs its pause screen away. */
+.sframe > img { position: absolute; inset: 0; z-index: 2; transition: opacity .25s; }
+.short.started .sframe > img { opacity: 0; pointer-events: none; }
+.scatch { z-index: 3; transition: backdrop-filter .2s, background .2s; }
+.short.paused .scatch { -webkit-backdrop-filter: blur(18px) brightness(.75); backdrop-filter: blur(18px) brightness(.75); background: rgba(0, 0, 0, .15); }
+.sover { z-index: 4; }
+.sbar { z-index: 5; }
+
+.sframe iframe { inset: 0 auto auto 0; width: 720px; height: 1280px; transform: scale(var(--ys, 1)); transform-origin: 0 0; }
+
+/* The Shorts action column: every action is the same round button with its label under it. */
+.sacts .vote.stacked { display: contents; }
+.sacts > button, .sacts > a, .sacts .vote.stacked > button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border: 0; background: none;
+  color: var(--fg); font: 600 12px/1.2 var(--font); text-decoration: none; cursor: pointer; -webkit-appearance: none; appearance: none; }
+.sacts > button > svg, .sacts > a > svg, .sacts .vote.stacked > button > svg { box-sizing: content-box; width: 24px; height: 24px; padding: 12px; border-radius: 50%;
+  background: color-mix(in srgb, var(--fg) 12%, transparent); transition: background .15s, transform .15s; }
+.sacts > button:active > svg, .sacts .vote.stacked > button:active > svg { transform: scale(.92); }
+.sacts .vote.stacked > button[aria-pressed="true"] > svg { background: var(--fg); color: var(--bg); }
+@media (max-width: 719px) { .sacts > button, .sacts > a, .sacts .vote.stacked > button { color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); }
+  .sacts > button > svg, .sacts > a > svg, .sacts .vote.stacked > button > svg { background: rgba(0, 0, 0, .38); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); } }
+
+.door-top { padding-top: calc(20px + var(--safe-top)); }
+@media (max-width: 719px) { .door-top { padding-top: calc(14px + var(--safe-top)); } }
+.sacts span { color: inherit; }
+/* Brand marks carry an inline 18px size; in the Shorts column they match the other actions. */
+.sacts svg.mark { width: 24px !important; height: 24px !important; }
+
+/* Turn off Shorts. */
+.lib-pref { display: flex; gap: var(--s3); align-items: flex-start; margin: 0 0 var(--s5); padding: var(--s4); border-radius: var(--r); background: var(--bg-2); border: 1px solid var(--line); }
+.lib-pref > span { display: grid; gap: 2px; } .lib-pref .muted { font-size: 14px; }
+.lib-pref input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--accent); }
+.shorts-off { text-align: center; } .shorts-off h1 { font-size: 28px; color: var(--fg); } .shorts-off .row { display: flex; gap: var(--s2); justify-content: center; flex-wrap: wrap; margin-top: var(--s5); }
+.shorts-off-btn { display: block; margin: var(--s3) auto 0; font-size: 13px; color: var(--fg-2); }

@@ -1,0 +1,48 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- Link-preview cards, centered for every crop: X and iMessage trim the sides, WhatsApp shows only the center
+     square. Everything that matters sits in the middle 600px; the lesson wall fills the edges. ?kind=invite|main -->
+<style>
+@font-face { font-family: "Plex"; src: url(../../public/fonts/ibm-plex-sans-latin-500-normal.woff2) format("woff2"); font-weight: 500; }
+@font-face { font-family: "Plex"; src: url(../../public/fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2"); font-weight: 600; }
+@font-face { font-family: "Plex"; src: url(../../public/fonts/ibm-plex-sans-latin-700-normal.woff2) format("woff2"); font-weight: 700; }
+@font-face { font-family: "Plex Mono"; src: url(../../public/fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2"); font-weight: 500; }
+html, body { margin: 0; background: #0e0e0c; }
+#c { position: relative; width: 1200px; height: 630px; overflow: hidden; background: #0e0e0c; color: #f3f0e8; font-family: "Plex", system-ui, sans-serif; }
+#wall { position: absolute; left: 50%; top: 50%; width: 1700px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; transform: translate(-50%, -50%) rotate(-6deg); opacity: .62; }
+#wall img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; display: block; }
+#veil { position: absolute; inset: 0; background: radial-gradient(ellipse 430px 330px at 50% 50%, rgba(14,14,12,.96) 0, rgba(14,14,12,.9) 55%, rgba(14,14,12,.55) 100%), linear-gradient(180deg, rgba(14,14,12,.35), rgba(14,14,12,0) 30%, rgba(14,14,12,0) 70%, rgba(14,14,12,.45)); }
+#mid { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 600px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.lock { display: flex; gap: 14px; align-items: center; font: 700 38px/1 "Plex"; letter-spacing: -.02em; }
+.lock svg { width: 56px; height: 56px; }
+.tag { margin-top: 26px; padding: 9px 18px; border-radius: 999px; border: 1px solid #3a372f; background: rgba(23,23,21,.85); font: 500 18px/1 "Plex Mono"; letter-spacing: .1em; color: #ffc457; text-transform: uppercase; }
+h1 { margin: 18px 0 0; font: 700 96px/.98 "Plex"; letter-spacing: -.04em; }
+h1.main { font-size: 62px; line-height: 1.04; letter-spacing: -.035em; }
+h1 em { font-style: normal; color: #ffc457; }
+p { margin: 16px 0 0; font: 500 24px/1.35 "Plex"; color: #c9c4b9; }
+.cta { margin-top: 24px; background: #ffb224; color: #1b1300; font: 600 28px/1 "Plex"; padding: 18px 32px; border-radius: 999px; letter-spacing: -.01em; }
+</style></head>
+<body><div id="c">
+  <div id="wall"></div><div id="veil"></div>
+  <div id="mid">
+    <div class="lock"><svg viewBox="0 0 64 64"><rect width="64" height="64" rx="15" fill="#ffb224"/><g fill="#1b1300"><rect x="15.5" y="15.7" width="8.2" height="32.6" rx="4.1"/><rect x="27.7" y="21.8" width="8.2" height="20.4" rx="4.1"/><circle cx="44" cy="32" r="4.5"/></g></svg>Feedforward</div>
+    <div class="tag" id="tag"></div>
+    <h1 id="h"></h1>
+    <p id="p"></p>
+    <div class="cta" id="cta"></div>
+  </div>
+</div>
+<script>
+const kind = new URLSearchParams(location.search).get("kind") || "invite";
+const T = {
+  invite: { tag: "Private invite", h: "You're<br><em>invited.</em>", p: "Learn AI from the people building it.", cta: "Accept your invite &rarr;" },
+  main: { tag: "Invite only &middot; Free", h: "Learn AI from the people <em>building it.</em>", p: "Hand-picked lessons, labs and live sessions.", cta: "Request an invite &rarr;", cls: "main" },
+}[kind];
+document.getElementById("tag").innerHTML = T.tag; document.getElementById("h").innerHTML = T.h; document.getElementById("p").innerHTML = T.p; document.getElementById("cta").innerHTML = T.cta;
+if (T.cls) document.getElementById("h").className = T.cls;
+fetch("thumbs.json").then((r) => r.json()).then((t) => {
+  document.getElementById("wall").innerHTML = [...t, ...t].slice(0, 36).map((x) => `<img src="thumbs/${x.id}.jpg">`).join("");
+  return Promise.all([...document.images].map((i) => i.decode().catch(() => {})));
+}).then(() => document.fonts.ready).then(() => { window.__ready = true; });
+</script>
+</body></html>
