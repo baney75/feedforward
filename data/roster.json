@@ -1,0 +1,621 @@
+{
+ "_note": "Curated sources. yt.mode: all = every upload is on-topic; ai = keep only AI/CS uploads (classified). x: every post is classified; only AI/CS/making posts are kept.",
+ "topics": {
+  "foundations": "How models work",
+  "local": "Local AI",
+  "agents": "Agents & harnesses",
+  "research": "Research & papers",
+  "math": "Math for AI",
+  "cs": "Computer science",
+  "systems": "GPUs & systems",
+  "making": "CAD & 3D printing",
+  "labs": "From the labs"
+ },
+ "people": [
+  {
+   "name": "Andrej Karpathy",
+   "topic": "foundations",
+   "yt": "@AndrejKarpathy",
+   "ytMode": "all",
+   "x": "karpathy",
+   "why": "Builds GPT from an empty file, then explains every line. The best place to start."
+  },
+  {
+   "name": "3Blue1Brown",
+   "topic": "math",
+   "yt": "@3blue1brown",
+   "ytMode": "all",
+   "x": "3blue1brown",
+   "why": "The clearest visual math on the internet, including the neural network and transformer series."
+  },
+  {
+   "name": "Welch Labs",
+   "topic": "foundations",
+   "yt": "@WelchLabs",
+   "ytMode": "all",
+   "x": "welchlabs",
+   "why": "Slow, beautiful explanations of why deep learning works."
+  },
+  {
+   "name": "StatQuest",
+   "topic": "foundations",
+   "yt": "@statquest",
+   "ytMode": "all",
+   "x": "joshuastarmer",
+   "why": "Statistics and machine learning, one small idea at a time."
+  },
+  {
+   "name": "Umar Jamil",
+   "topic": "foundations",
+   "yt": "@umarjamilai",
+   "ytMode": "all",
+   "why": "Long whiteboard builds of transformers, LLaMA, diffusion and RLHF from scratch."
+  },
+  {
+   "name": "Sebastian Raschka",
+   "topic": "foundations",
+   "yt": "@SebastianRaschka",
+   "ytMode": "all",
+   "x": "rasbt",
+   "why": "Author of Build a Large Language Model (From Scratch). Careful and practical."
+  },
+  {
+   "name": "Jeremy Howard",
+   "topic": "foundations",
+   "yt": "@howardjeremyp",
+   "ytMode": "ai",
+   "x": "jeremyphoward",
+   "why": "fast.ai: practical deep learning taught top-down."
+  },
+  {
+   "name": "Stanford Online",
+   "topic": "foundations",
+   "yt": "@stanfordonline",
+   "ytMode": "ai",
+   "why": "Full Stanford lectures: CS336 language models, CS25 transformers, CS229."
+  },
+  {
+   "name": "Alexander Amini",
+   "topic": "foundations",
+   "yt": "@AAmini",
+   "ytMode": "all",
+   "why": "MIT 6.S191, Introduction to Deep Learning, refreshed every year."
+  },
+  {
+   "name": "Serrano.Academy",
+   "topic": "foundations",
+   "yt": "@SerranoAcademy",
+   "ytMode": "all",
+   "why": "Friendly, visual intros to transformers, attention and embeddings."
+  },
+  {
+   "name": "AI Coffee Break",
+   "topic": "research",
+   "yt": "@AICoffeeBreak",
+   "ytMode": "all",
+   "x": "AICoffeeBreak",
+   "why": "Letitia explains new papers in a few minutes, with drawings."
+  },
+  {
+   "name": "Yannic Kilcher",
+   "topic": "research",
+   "yt": "@YannicKilcher",
+   "ytMode": "ai",
+   "x": "ykilcher",
+   "why": "Long paper readings, line by line."
+  },
+  {
+   "name": "Two Minute Papers",
+   "topic": "research",
+   "yt": "@TwoMinutePapers",
+   "ytMode": "all",
+   "x": "twominutepapers",
+   "why": "Short tours of new graphics and AI research."
+  },
+  {
+   "name": "Machine Learning Street Talk",
+   "topic": "research",
+   "yt": "@MachineLearningStreetTalk",
+   "ytMode": "ai",
+   "x": "MLStreetTalk",
+   "why": "Long technical interviews with researchers."
+  },
+  {
+   "name": "Dwarkesh Patel",
+   "topic": "research",
+   "yt": "@DwarkeshPatel",
+   "ytMode": "ai",
+   "x": "dwarkesh_sp",
+   "why": "Deeply prepared interviews with the people building AI."
+  },
+  {
+   "name": "Neel Nanda",
+   "topic": "research",
+   "yt": "@neelnanda2469",
+   "ytMode": "all",
+   "x": "NeelNanda5",
+   "why": "Mechanistic interpretability, taught by one of its founders."
+  },
+  {
+   "name": "Artem Kirsanov",
+   "topic": "research",
+   "yt": "@ArtemKirsanov",
+   "ytMode": "all",
+   "why": "Computational neuroscience meets machine learning, beautifully animated."
+  },
+  {
+   "name": "Latent Space",
+   "topic": "agents",
+   "yt": "@LatentSpacePod",
+   "ytMode": "ai",
+   "x": "swyx",
+   "why": "The AI engineer's podcast. swyx and Alessio talk to the people shipping."
+  },
+  {
+   "name": "AI Engineer",
+   "topic": "agents",
+   "yt": "@aiDotEngineer",
+   "ytMode": "ai",
+   "why": "Every talk from the AI Engineer conferences: agents, evals, harnesses."
+  },
+  {
+   "name": "IndyDevDan",
+   "topic": "agents",
+   "yt": "@indydevdan",
+   "ytMode": "ai",
+   "why": "Agentic coding workflows with Claude Code and friends."
+  },
+  {
+   "name": "Cole Medin",
+   "topic": "agents",
+   "yt": "@ColeMedin",
+   "ytMode": "ai",
+   "x": "cole_medin",
+   "why": "Building agents and local AI stacks, start to finish."
+  },
+  {
+   "name": "Theo",
+   "topic": "agents",
+   "yt": "@t3dotgg",
+   "ytMode": "ai",
+   "x": "theo",
+   "why": "Opinionated takes on models, harnesses and dev tools. Filtered to AI.",
+   "twitch": "theo"
+  },
+  {
+   "name": "Mario Zechner",
+   "topic": "agents",
+   "x": "badlogicgames",
+   "why": "Author of Pi, the minimal open coding-agent harness."
+  },
+  {
+   "name": "0xSero",
+   "topic": "local",
+   "x": "0xSero",
+   "why": "Runs frontier open models on his own hardware and writes the recipes down.",
+   "yt": "@0xSero",
+   "ytMode": "ai"
+  },
+  {
+   "name": "Alex Ziskind",
+   "topic": "local",
+   "yt": "@AZisk",
+   "ytMode": "ai",
+   "x": "digitalix",
+   "why": "Benchmarks local models on Macs, PCs and clusters."
+  },
+  {
+   "name": "Digital Spaceport",
+   "topic": "local",
+   "yt": "@DigitalSpaceport",
+   "ytMode": "ai",
+   "why": "Home AI servers: GPUs, builds, and what actually runs."
+  },
+  {
+   "name": "Matt Williams",
+   "topic": "local",
+   "yt": "@technovangelist",
+   "ytMode": "ai",
+   "x": "technovangelist",
+   "why": "Ollama founding team. Clear local-model explainers."
+  },
+  {
+   "name": "Jeff Geerling",
+   "topic": "local",
+   "yt": "@JeffGeerling",
+   "ytMode": "ai",
+   "x": "geerlingguy",
+   "why": "AI on Raspberry Pi, clusters and small hardware. Filtered to AI and computing."
+  },
+  {
+   "name": "Bijan Bowen",
+   "topic": "local",
+   "yt": "@Bijanbowen",
+   "ytMode": "ai",
+   "why": "Hands-on tests of new open models on local hardware."
+  },
+  {
+   "name": "Sam Witteveen",
+   "topic": "local",
+   "yt": "@samwitteveenai",
+   "ytMode": "ai",
+   "x": "Sam_Witteveen",
+   "why": "New open models and agent frameworks, tested in code."
+  },
+  {
+   "name": "Georgi Gerganov",
+   "topic": "local",
+   "x": "ggerganov",
+   "why": "Creator of llama.cpp and ggml, the engine under most local AI."
+  },
+  {
+   "name": "Awni Hannun",
+   "topic": "local",
+   "x": "awnihannun",
+   "why": "Leads MLX at Apple. Fast local inference on Apple silicon."
+  },
+  {
+   "name": "Daniel Han",
+   "topic": "local",
+   "x": "danielhanchen",
+   "why": "Unsloth: fine-tuning and quantizing open models, with bug finds in every release."
+  },
+  {
+   "name": "Prince Canuma",
+   "topic": "local",
+   "x": "Prince_Canuma",
+   "why": "MLX-VLM and day-one ports of new models to the Mac."
+  },
+  {
+   "name": "Ivan Fioravanti",
+   "topic": "local",
+   "x": "ivanfioravanti",
+   "why": "Benchmarks every new open model on Apple silicon."
+  },
+  {
+   "name": "Alex Cheema",
+   "topic": "local",
+   "x": "alexocheema",
+   "why": "EXO: run big models across the devices you already own."
+  },
+  {
+   "name": "Ahmad Osman",
+   "topic": "local",
+   "x": "TheAhmadOsman",
+   "why": "Home GPU clusters and the case for owning your inference."
+  },
+  {
+   "name": "Simon Willison",
+   "topic": "agents",
+   "x": "simonw",
+   "why": "The most careful daily notes on LLMs, tools and prompt injection."
+  },
+  {
+   "name": "Hamel Husain",
+   "topic": "agents",
+   "x": "HamelHusain",
+   "why": "Evals: how to tell whether your AI product works."
+  },
+  {
+   "name": "Ethan Mollick",
+   "topic": "agents",
+   "x": "emollick",
+   "why": "What AI changes for learning and work, tested in practice."
+  },
+  {
+   "name": "Boris Cherny",
+   "topic": "agents",
+   "x": "bcherny",
+   "why": "Created Claude Code."
+  },
+  {
+   "name": "Dax Raad",
+   "topic": "agents",
+   "x": "thdxr",
+   "why": "Builds opencode, an open-source coding agent."
+  },
+  {
+   "name": "Peter Steinberger",
+   "topic": "agents",
+   "x": "steipete",
+   "why": "Agentic engineering in the open, shipped daily."
+  },
+  {
+   "name": "Mitchell Hashimoto",
+   "topic": "agents",
+   "x": "mitchellh",
+   "why": "Ghostty and careful notes on working with coding agents."
+  },
+  {
+   "name": "Omar Khattab",
+   "topic": "research",
+   "x": "lateinteraction",
+   "why": "DSPy and ColBERT: programming, not prompting, language models."
+  },
+  {
+   "name": "Nathan Lambert",
+   "topic": "research",
+   "x": "natolambert",
+   "why": "Post-training, RLHF and open models, explained."
+  },
+  {
+   "name": "Lucas Beyer",
+   "topic": "research",
+   "x": "giffmana",
+   "why": "Vision transformers and sharp research commentary."
+  },
+  {
+   "name": "Jim Fan",
+   "topic": "research",
+   "x": "DrJimFan",
+   "why": "Robotics foundation models and embodied AI."
+  },
+  {
+   "name": "Lilian Weng",
+   "topic": "research",
+   "x": "lilianweng",
+   "why": "Long, definitive survey posts on agents, RL and safety."
+  },
+  {
+   "name": "Andrew Ng",
+   "topic": "foundations",
+   "x": "AndrewYNg",
+   "why": "Taught a generation machine learning. DeepLearning.AI."
+  },
+  {
+   "name": "Francois Chollet",
+   "topic": "research",
+   "x": "fchollet",
+   "why": "Keras and ARC-AGI: what intelligence is and how to measure it."
+  },
+  {
+   "name": "Chip Huyen",
+   "topic": "agents",
+   "x": "chipro",
+   "why": "AI engineering and ML systems design."
+  },
+  {
+   "name": "Horace He",
+   "topic": "systems",
+   "x": "cHHillee",
+   "why": "PyTorch compilers and making GPUs go fast."
+  },
+  {
+   "name": "Tri Dao",
+   "topic": "systems",
+   "x": "tri_dao",
+   "why": "FlashAttention and Mamba."
+  },
+  {
+   "name": "Tim Dettmers",
+   "topic": "systems",
+   "x": "Tim_Dettmers",
+   "why": "Quantization (QLoRA, bitsandbytes) and which GPU to buy."
+  },
+  {
+   "name": "GPU MODE",
+   "topic": "systems",
+   "yt": "@GPUMODE",
+   "ytMode": "all",
+   "x": "GPU_MODE",
+   "why": "Lectures on CUDA, Triton and kernels from people who write them."
+  },
+  {
+   "name": "Asianometry",
+   "topic": "systems",
+   "yt": "@Asianometry",
+   "ytMode": "ai",
+   "why": "How chips are made and why compute is the bottleneck."
+  },
+  {
+   "name": "Steve Brunton",
+   "topic": "math",
+   "yt": "@Eigensteve",
+   "ytMode": "all",
+   "x": "eigensteve",
+   "why": "Linear algebra, control and physics-informed machine learning."
+  },
+  {
+   "name": "Mutual Information",
+   "topic": "math",
+   "yt": "@Mutual_Information",
+   "ytMode": "all",
+   "why": "Probability and RL, explained with care."
+  },
+  {
+   "name": "Computerphile",
+   "topic": "cs",
+   "yt": "@Computerphile",
+   "ytMode": "all",
+   "why": "Computer science from the people at Nottingham who research it."
+  },
+  {
+   "name": "Sebastian Lague",
+   "topic": "cs",
+   "yt": "@SebastianLague",
+   "ytMode": "all",
+   "why": "Coding Adventures: build a thing, explain every idea along the way."
+  },
+  {
+   "name": "Ben Eater",
+   "topic": "cs",
+   "yt": "@BenEater",
+   "ytMode": "all",
+   "why": "Build a computer from chips on a breadboard. Then understand all of it."
+  },
+  {
+   "name": "Core Dumped",
+   "topic": "cs",
+   "yt": "@CoreDumpped",
+   "ytMode": "all",
+   "why": "Operating systems and memory, animated."
+  },
+  {
+   "name": "Reducible",
+   "topic": "cs",
+   "yt": "@Reducible",
+   "ytMode": "all",
+   "why": "Algorithms and compression, animated in the 3Blue1Brown style."
+  },
+  {
+   "name": "Spanning Tree",
+   "topic": "cs",
+   "yt": "@SpanningTree",
+   "ytMode": "all",
+   "why": "Short, crisp CS explainers."
+  },
+  {
+   "name": "Fireship",
+   "topic": "cs",
+   "yt": "@Fireship",
+   "ytMode": "ai",
+   "x": "fireship_dev",
+   "why": "Fast, funny tours of tech. Filtered to AI and CS."
+  },
+  {
+   "name": "Stuff Made Here",
+   "topic": "making",
+   "yt": "@StuffMadeHere",
+   "ytMode": "all",
+   "why": "Hard engineering projects: CAD, machining, code and a lot of failure."
+  },
+  {
+   "name": "CNC Kitchen",
+   "topic": "making",
+   "yt": "@CNCKitchen",
+   "ytMode": "all",
+   "why": "Stefan tests 3D printing claims with real measurements."
+  },
+  {
+   "name": "Teaching Tech",
+   "topic": "making",
+   "yt": "@TeachingTech",
+   "ytMode": "all",
+   "why": "Printer setup, calibration and CAD for makers."
+  },
+  {
+   "name": "Thomas Sanladerer",
+   "topic": "making",
+   "yt": "@MadeWithLayers",
+   "ytMode": "all",
+   "why": "3D printing materials, machines and honest reviews."
+  },
+  {
+   "name": "Maker's Muse",
+   "topic": "making",
+   "yt": "@MakersMuse",
+   "ytMode": "all",
+   "why": "Design for 3D printing: tolerances, mechanisms, print-in-place."
+  },
+  {
+   "name": "Zack Freedman",
+   "topic": "making",
+   "yt": "@ZackFreedman",
+   "ytMode": "all",
+   "x": "ZackFreedman",
+   "why": "Wearable and printed gadgets, designed in the open."
+  },
+  {
+   "name": "Product Design Online",
+   "topic": "making",
+   "yt": "@ProductDesignOnline",
+   "ytMode": "all",
+   "why": "Learn Fusion CAD from zero, one project at a time."
+  },
+  {
+   "name": "MangoJelly Solutions",
+   "topic": "making",
+   "yt": "@MangoJellySolutions",
+   "ytMode": "all",
+   "why": "The best FreeCAD tutorials. Free software, free lessons."
+  },
+  {
+   "name": "Zoo",
+   "topic": "making",
+   "x": "zoodotdev",
+   "why": "Text-to-CAD: AI that writes real, editable CAD models."
+  },
+  {
+   "name": "Anthropic",
+   "topic": "labs",
+   "yt": "@anthropic-ai",
+   "ytMode": "all",
+   "x": "AnthropicAI",
+   "why": "Claude, interpretability and safety research."
+  },
+  {
+   "name": "Claude",
+   "topic": "labs",
+   "x": "claudeai",
+   "why": "Claude product releases and how-tos."
+  },
+  {
+   "name": "OpenAI",
+   "topic": "labs",
+   "yt": "@OpenAI",
+   "ytMode": "all",
+   "x": "OpenAI",
+   "why": "Model launches and research."
+  },
+  {
+   "name": "Google DeepMind",
+   "topic": "labs",
+   "yt": "@googledeepmind",
+   "ytMode": "all",
+   "x": "GoogleDeepMind",
+   "why": "AlphaFold, Gemini and the science behind them."
+  },
+  {
+   "name": "Hugging Face",
+   "topic": "labs",
+   "yt": "@HuggingFace",
+   "ytMode": "all",
+   "x": "huggingface",
+   "why": "The home of open models, with courses to match."
+  },
+  {
+   "name": "Qwen",
+   "topic": "labs",
+   "x": "Alibaba_Qwen",
+   "why": "Open-weight models that run well locally."
+  },
+  {
+   "name": "DeepSeek",
+   "topic": "labs",
+   "x": "deepseek_ai",
+   "why": "Open frontier models and the papers behind them."
+  },
+  {
+   "name": "Ollama",
+   "topic": "local",
+   "x": "ollama",
+   "why": "One command to run a model on your own machine."
+  },
+  {
+   "name": "LM Studio",
+   "topic": "local",
+   "x": "lmstudio",
+   "why": "A desktop app for local models, GGUF and MLX."
+  },
+  {
+   "name": "Unsloth",
+   "topic": "local",
+   "x": "UnslothAI",
+   "why": "Fine-tune open models faster on less memory."
+  },
+  {
+   "name": "vLLM",
+   "topic": "systems",
+   "x": "vllm_project",
+   "why": "The open serving engine most providers run."
+  },
+  {
+   "name": "Tsoding",
+   "topic": "cs",
+   "yt": "@TsodingDaily",
+   "ytMode": "all",
+   "twitch": "tsoding",
+   "why": "Builds compilers, renderers and tools from scratch, live, with nothing hidden."
+  }
+ ]
+}

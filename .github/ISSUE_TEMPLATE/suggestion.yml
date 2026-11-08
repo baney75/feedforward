@@ -1,0 +1,52 @@
+name: Suggestion
+description: Suggest a person, channel, book, paper or dictionary term to add.
+title: "Add: "
+labels: ["suggestion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feedforward covers AI, computer science, GPUs, math, CAD and 3D printing. No politics, religion, ads or personal posts. See CONTRIBUTING.md.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What are you suggesting
+      options:
+        - Person (their YouTube channel and/or X account)
+        - Channel
+        - Book (an official free edition)
+        - Paper
+        - Dictionary term
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: name
+    attributes:
+      label: Name or title
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Link
+      description: The YouTube channel, X profile, book page, paper page or a good reference for the term.
+      placeholder: https://
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it belongs here
+      description: One or two sentences. What does a learner get from it? Name a good place to start, such as one video or one chapter.
+    validations:
+      required: true
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Check
+      options:
+        - label: It is about AI, computer science, GPUs, math, CAD or 3D printing.
+          required: true
+        - label: It is not mainly politics, religion, ads or personal content.
+          required: true

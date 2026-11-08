@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Feedforward, the live site
+    url: https://feedforward.dbaney.com
+    about: Try the site, get a free code and use the Report button on a comment.
+  - name: Report a security problem
+    url: https://github.com/baney75/feedforward/security/advisories/new
+    about: Report vulnerabilities privately. Do not open a public issue.

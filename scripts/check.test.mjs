@@ -1,0 +1,159 @@
+// The repo check: catalog integrity, learning content, labs, copy rules and syntax. Run with `npm test`.
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
+
+const root = path.resolve(new URL("..", import.meta.url).pathname);
+const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
+// Every .js file under a folder, recursively, as repo-relative paths.
+const jsUnder = (dir) => fs.readdirSync(path.join(root, dir), { withFileTypes: true }).flatMap((e) =>
+  e.isDirectory() ? jsUnder(path.join(dir, e.name)) : e.name.endsWith(".js") ? [path.join(dir, e.name)] : []);
+const json = (p) => JSON.parse(read(p));
+const learn = json("public/data/learn.json");
+// Generated catalog files live only on the build machine. CI checks code; the build machine checks both.
+const hasData = fs.existsSync(path.join(root, "public/data/videos.json"));
+const dataTest = hasData ? test : test.skip;
+const people = hasData ? json("public/data/people.json") : [];
+const videos = hasData ? json("public/data/videos.json").rows : [];
+const posts = hasData ? json("public/data/posts.json").rows : [];
+const ids = new Set(videos.map((v) => v[0]));
+
+dataTest("catalog is large and well formed", () => {
+  assert.ok(videos.length > 10000, `only ${videos.length} videos`);
+  assert.ok(posts.length > 1000, `only ${posts.length} posts`);
+  assert.equal(ids.size, videos.length, "duplicate video ids");
+  for (const v of videos) {
+    assert.match(v[0], /^[\w-]{11}$/, "bad id " + v[0]);
+    assert.ok(typeof v[1] === "string" && v[1].length, "empty title");
+    assert.ok(people[v[5]], "video points at a missing person");
+    assert.ok(v[6] >= 0 && v[6] < 9, "bad topic");
+  }
+  for (const p of posts) {
+    assert.ok(people[p.p] && people[p.p].x, "post from a person without an X account");
+    assert.match(p.id, /^\d+$/);
+  }
+});
+
+dataTest("the starter bundle and Shorts are consistent with the full catalog", () => {
+  const home = json("public/data/home.json");
+  const shorts = json("public/data/shorts.json").rows;
+  assert.ok(home.videos.length >= 500 && home.videos.length <= 1500, "starter bundle size " + home.videos.length);
+  for (const v of home.videos) assert.ok(ids.has(v[0]), "starter video missing from catalog " + v[0]);
+  assert.ok(fs.statSync(path.join(root, "public/data/home.json")).size < 450000, "starter bundle too big to paint fast");
+  assert.ok(shorts.length > 100, "only " + shorts.length + " shorts");
+  for (const s of shorts) { assert.match(s[0], /^[\w-]{11}$/); assert.ok(people[s[3]], "short from a missing person"); }
+});
+
+dataTest("politics and religion are filtered out of posts", () => {
+  const bad = /\b(trump|biden|democrats?|republicans?|maga|election|abortion|gaza|jesus|bible)\b/i;
+  const hits = posts.filter((p) => bad.test(p.t) || (p.qt && bad.test(p.qt.t)));
+  assert.deepEqual(hits.map((p) => p.id), []);
+});
+
+dataTest("every person resolves and has a reason to be here", () => {
+  const slugs = new Set();
+  for (const p of people) {
+    assert.ok(p.why && p.why.length > 10, p.name + " has no why");
+    assert.ok(p.yt || p.x, p.name + " has no source");
+    assert.ok(!slugs.has(p.slug), "duplicate slug " + p.slug); slugs.add(p.slug);
+  }
+});
+
+dataTest("learning tracks point at real videos, labs and quizzes", () => {
+  const labs = new Set(learn.labs.map((l) => l.slug));
+  for (const t of learn.tracks) {
+    assert.ok(t.steps.length >= 4, t.slug + " is too short");
+    for (const s of t.steps) {
+      if (s.kind === "video") assert.ok(ids.has(s.id) || (s.title && s.by), `${t.slug}: video ${s.id} is not in the catalog and has no title`);
+      if (s.kind === "lab") assert.ok(labs.has(s.slug), `${t.slug}: unknown lab ${s.slug}`);
+      if (s.kind === "read") assert.match(s.url, /^https:\/\//);
+    }
+    for (const q of t.quiz || []) assert.ok(q.answer >= 0 && q.answer < q.options.length && q.why, `${t.slug}: bad quiz item`);
+  }
+});
+
+test("books are official free editions with complete entries", () => {
+  const books = json("public/data/books.json");
+  assert.ok(books.length >= 20, "only " + books.length + " books");
+  const topics = new Set(["foundations", "local", "agents", "research", "math", "cs", "systems", "making", "labs"]);
+  for (const b of books) {
+    for (const k of ["title", "authors", "url", "license", "topic", "level", "why"]) assert.ok(b[k], `${b.title}: missing ${k}`);
+    assert.match(b.url, /^https?:\/\//);
+    assert.ok(topics.has(b.topic), `${b.title}: bad topic ${b.topic}`);
+  }
+});
+
+test("every lab module exists and follows the contract", () => {
+  for (const l of learn.labs) {
+    const src = read(`public/labs/${l.slug}.js`);
+    assert.match(src, /export\s+(const|let)\s+meta\b/, l.slug + " has no meta export");
+    assert.match(src, /export\s+(async\s+)?function\s+mount\b|export\s+const\s+mount\b/, l.slug + " has no mount export");
+  }
+});
+
+test("copy has no em or en dashes", () => {
+  const files = ["public/index.html", "public/data/learn.json", "public/data/books.json", "public/manifest.webmanifest",
+    ...jsUnder("public/js"), ...jsUnder("public/labs"), ...jsUnder("worker")];
+  const hits = files.filter((f) => /[–—]/.test(read(f)));
+  assert.deepEqual(hits, []);
+});
+
+test("all JavaScript parses", () => {
+  const files = [...jsUnder("public/js"), ...jsUnder("public/labs"), ...jsUnder("worker"), "public/sw.js"];
+  for (const f of files) execFileSync(process.execPath, ["--check", path.join(root, f)]);
+});
+
+test("the service worker never forwards the browser's navigation request", () => {
+  const sw = read("public/sw.js");
+  const line = sw.split("\n").find((l) => l.includes('req.mode === "navigate"'));
+  assert.ok(line && /new Request\(url\.pathname/.test(line), "navigations must be refetched as a plain GET");
+});
+
+test("page styles are scoped so they can't leak into the app shell", () => {
+  // Drop comments, keyframe bodies and at-rule preludes; what's left before each "{" is a selector list.
+  const css = read("public/css/pages.css").replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/@keyframes[^{]*\{(?:[^{}]*\{[^}]*\})*[^}]*\}/g, "").replace(/@[^{;]+\{/g, "{");
+  const bad = [];
+  for (const m of css.matchAll(/([^{}@;]+)\{/g)) {
+    const sel = m[1].trim();
+    if (!sel || /^(from|to|\d+%)/.test(sel) || sel.startsWith(":root")) continue;
+    for (const part of sel.split(",")) if (!/\.pg\b|\.pg-/.test(part)) bad.push(part.trim());
+  }
+  assert.deepEqual(bad.slice(0, 10), []);
+});
+
+test("the site refuses to be framed", () => {
+  assert.match(read("public/_headers"), /frame-ancestors 'none'/);
+});
+
+test("the service worker never stores signed-in API responses", () => {
+  const sw = read("public/sw.js");
+  assert.match(sw, /\["\/api\/fresh", "\/api\/pulse", "\/api\/stats", "\/api\/live", "\/api\/people\/extra"\]\.includes\(url\.pathname\) && !req\.headers\.get\("authorization"\)/);
+});
+
+test("signing out clears this device's synced data, and another account's data never merges", () => {
+  const a = read("public/js/account.js");
+  assert.match(a, /export async function signOut\(\)[^\n]*clearSynced\(\)/);
+  assert.match(a, /if \(owner && owner !== acct\.user\.id\)/);
+});
+
+test("people added by admins load on the site", () => {
+  assert.match(read("public/js/data.js"), /json\("\/api\/people\/extra"\)/);
+});
+
+test("no invisible or direction-changing characters in source (Trojan Source)", () => {
+  const files = [...jsUnder("public/js"), ...jsUnder("public/labs"), ...jsUnder("worker"), "public/sw.js", "public/index.html"];
+  const bad = files.filter((f) => /[\u200b-\u200f\u202a-\u202e\u2060-\u2069\ufeff]/.test(read(f)));
+  assert.deepEqual(bad, []);
+});
+
+test("install metadata is complete", () => {
+  const m = json("public/manifest.webmanifest");
+  assert.equal(m.display, "standalone");
+  for (const s of ["192x192", "512x512"]) assert.ok(m.icons.some((i) => i.sizes === s && i.purpose === "maskable"), "missing maskable " + s);
+  for (const i of m.icons) assert.ok(fs.existsSync(path.join(root, "public", i.src)), "missing " + i.src);
+  assert.ok(fs.existsSync(path.join(root, "public/icons/apple-touch-icon.png")));
+  assert.ok(fs.existsSync(path.join(root, "public/favicon.ico")));
+});

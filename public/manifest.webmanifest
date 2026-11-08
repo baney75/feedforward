@@ -1,0 +1,26 @@
+{
+  "id": "/",
+  "name": "Feedforward",
+  "short_name": "Feedforward",
+  "description": "Learn AI from the people building it. Hand-picked videos, posts and hands-on labs on AI, local AI, computer science and making.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#0e0e0c",
+  "theme_color": "#0e0e0c",
+  "categories": ["education", "technology"],
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "TV mode", "short_name": "TV", "url": "/tv", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Learn", "url": "/learn", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "The Wire", "short_name": "Wire", "url": "/wire", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

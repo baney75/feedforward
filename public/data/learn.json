@@ -1,0 +1,685 @@
+{
+  "labs": [
+    {
+      "slug": "tokenizer",
+      "title": "See how a model reads",
+      "blurb": "Type anything and watch it split into the tokens a real model sees.",
+      "minutes": 5,
+      "topic": "foundations"
+    },
+    {
+      "slug": "sampling",
+      "title": "Temperature and top-p",
+      "blurb": "Turn the dials a chatbot hides from you and watch the next word change.",
+      "minutes": 6,
+      "topic": "foundations"
+    },
+    {
+      "slug": "neural-net",
+      "title": "Train a tiny neural network",
+      "blurb": "Pick a dataset, press play, and watch a network learn to draw the line.",
+      "minutes": 8,
+      "topic": "foundations"
+    },
+    {
+      "slug": "will-it-run",
+      "title": "Will it run on my machine?",
+      "blurb": "Pick a model and your hardware. See the memory it needs and how fast it will go.",
+      "minutes": 6,
+      "topic": "local"
+    },
+    {
+      "slug": "local-llm",
+      "title": "Run a model in this tab, with tools",
+      "blurb": "Run a small open model on your own device, then give it a calculator and search and compare the answers.",
+      "minutes": 15,
+      "topic": "local"
+    },
+    {
+      "slug": "agent-loop",
+      "title": "What a harness actually does",
+      "blurb": "Step through a coding agent's run and watch its context window fill up.",
+      "minutes": 8,
+      "topic": "agents"
+    },
+    {
+      "slug": "slicer",
+      "title": "How a 3D printer builds a part",
+      "blurb": "Slice a part into layers and see what layer height, nozzle and overhang really change.",
+      "minutes": 8,
+      "topic": "making"
+    }
+  ],
+  "tracks": [
+    {
+      "slug": "start-here",
+      "title": "What an LLM actually is",
+      "level": "Start here",
+      "blurb": "From 7 minutes to a full afternoon: what a language model is, how it was trained, and how to use one well.",
+      "steps": [
+        {
+          "kind": "video",
+          "id": "LPZh9BOjkQs",
+          "note": "Seven minutes. The whole idea, with pictures."
+        },
+        {
+          "kind": "lab",
+          "slug": "tokenizer",
+          "note": "Models don't read letters or words. See what they read instead."
+        },
+        {
+          "kind": "video",
+          "id": "zjkBMFhNj_g",
+          "note": "Karpathy's one-hour map of the field: training, scaling, and where it's going."
+        },
+        {
+          "kind": "lab",
+          "slug": "sampling",
+          "note": "The model gives odds for every next token. You pick how adventurous the choice is."
+        },
+        {
+          "kind": "video",
+          "id": "7xTGNNLPyMI",
+          "note": "The full story: pretraining, post-training, reinforcement learning and hallucinations. Watch it in pieces."
+        },
+        {
+          "kind": "video",
+          "id": "EWvNQjAaOHw",
+          "note": "How someone who builds these actually uses them day to day."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "What does a language model produce at each step?",
+          "options": [
+            "A finished sentence",
+            "A probability for every possible next token",
+            "A web search result",
+            "A summary of your prompt"
+          ],
+          "answer": 1,
+          "why": "It scores every token in its vocabulary. A sampler picks one, appends it, and the loop runs again."
+        },
+        {
+          "q": "What does raising the temperature do?",
+          "options": [
+            "Makes the model smarter",
+            "Flattens the odds, so less likely tokens get picked more often",
+            "Uses more memory",
+            "Makes answers shorter"
+          ],
+          "answer": 1,
+          "why": "Temperature divides the scores before softmax. Above 1 the distribution flattens; near 0 the top token almost always wins."
+        },
+        {
+          "q": "Why can a model struggle to count the letters in a word?",
+          "options": [
+            "It never saw English",
+            "It sees tokens, often whole chunks of a word, not single letters",
+            "It has no memory at all",
+            "Letters are removed during training"
+          ],
+          "answer": 1,
+          "why": "A word like \"strawberry\" may be one or two tokens, so the individual letters are never directly in front of the model."
+        }
+      ]
+    },
+    {
+      "slug": "neural-nets",
+      "title": "Neural networks from zero",
+      "level": "Beginner",
+      "blurb": "What a neuron is, how a network learns from its mistakes, and then build one yourself in Python.",
+      "steps": [
+        {
+          "kind": "video",
+          "id": "aircAruvnKk",
+          "note": "The best first picture of a neural network ever made."
+        },
+        {
+          "kind": "video",
+          "id": "IHZwWFHWa-w",
+          "note": "Learning is walking downhill on a cost surface."
+        },
+        {
+          "kind": "lab",
+          "slug": "neural-net",
+          "note": "Now train one and watch the boundary bend."
+        },
+        {
+          "kind": "video",
+          "id": "Ilg3gGewQ5U",
+          "note": "Backpropagation: how each weight learns how much it was to blame."
+        },
+        {
+          "kind": "video",
+          "id": "tIeHLnjs5U8",
+          "note": "The same idea, with the calculus written out."
+        },
+        {
+          "kind": "video",
+          "id": "VMj-3S1tku0",
+          "note": "Build micrograd: autograd and a neural net in about 100 lines of Python."
+        },
+        {
+          "kind": "video",
+          "id": "PaCmpygFfXo",
+          "note": "Build makemore: your first language model, from counting to a neural net."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "What does backpropagation compute?",
+          "options": [
+            "The best network shape",
+            "The gradient of the loss with respect to every weight, using the chain rule",
+            "The training data",
+            "The final accuracy"
+          ],
+          "answer": 1,
+          "why": "It works backward from the loss, multiplying local derivatives, so every weight learns which direction lowers the loss."
+        },
+        {
+          "q": "Your loss jumps around and then shoots up. What's the likely cause?",
+          "options": [
+            "Learning rate too high",
+            "Too little data",
+            "The activation is ReLU",
+            "The network is too small"
+          ],
+          "answer": 0,
+          "why": "Steps that are too big overshoot the bottom of the valley and can bounce out of it entirely."
+        },
+        {
+          "q": "Why do networks need a nonlinear activation like tanh or ReLU?",
+          "options": [
+            "To run faster",
+            "Without one, stacked layers collapse into a single linear function",
+            "To save memory",
+            "To normalize inputs"
+          ],
+          "answer": 1,
+          "why": "A chain of linear maps is still a linear map. Nonlinearity is what lets a network bend its decision boundary."
+        }
+      ]
+    },
+    {
+      "slug": "transformers",
+      "title": "Transformers, by hand",
+      "level": "Intermediate",
+      "blurb": "Attention, explained visually, then built from an empty file all the way to GPT-2.",
+      "steps": [
+        {
+          "kind": "video",
+          "id": "wjZofJX0v4M",
+          "note": "Embeddings, attention and the shape of a transformer."
+        },
+        {
+          "kind": "video",
+          "id": "eMlx5fFNoYc",
+          "note": "Attention step by step: queries, keys and values."
+        },
+        {
+          "kind": "video",
+          "id": "kCc8FmEb1nY",
+          "note": "Build a GPT from scratch in PyTorch. The single best way to really get it."
+        },
+        {
+          "kind": "video",
+          "id": "zduSFxRajkE",
+          "note": "Build the byte pair encoding tokenizer GPT models use."
+        },
+        {
+          "kind": "video",
+          "id": "l8pRSuU81PU",
+          "note": "Reproduce GPT-2 (124M) end to end, with real training tricks."
+        },
+        {
+          "kind": "video",
+          "id": "SQ3fZ1sAqXI",
+          "note": "Stanford CS336, lecture 1: language modeling from scratch, the full course."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "In self-attention, what does each token do?",
+          "options": [
+            "Looks up its definition",
+            "Gathers information from other tokens, weighted by how relevant they are",
+            "Deletes unimportant tokens",
+            "Picks the next token"
+          ],
+          "answer": 1,
+          "why": "Each token's query is compared with every key; the scores become weights for mixing the values."
+        },
+        {
+          "q": "Why does a GPT-style model mask out future tokens?",
+          "options": [
+            "To save memory",
+            "So training matches generation, where the future isn't known yet",
+            "To make attention faster",
+            "To stop overfitting"
+          ],
+          "answer": 1,
+          "why": "With a causal mask, every position learns to predict the next token from only what came before."
+        },
+        {
+          "q": "GPT models are which kind of transformer?",
+          "options": [
+            "Encoder only",
+            "Decoder only",
+            "Encoder and decoder",
+            "Not a transformer"
+          ],
+          "answer": 1,
+          "why": "They are stacks of masked self-attention blocks that predict the next token."
+        }
+      ]
+    },
+    {
+      "slug": "local-ai",
+      "title": "Run AI on your own machine",
+      "level": "Beginner",
+      "blurb": "Pick a model that fits your hardware, understand quantization, and get one running today.",
+      "steps": [
+        {
+          "kind": "lab",
+          "slug": "will-it-run",
+          "note": "First, find out what your computer can actually hold."
+        },
+        {
+          "kind": "video",
+          "id": "61yRuOMSfMc",
+          "note": "The whole local stack in 24 minutes: hardware, runtimes, quantization and serving."
+        },
+        {
+          "kind": "video",
+          "id": "K75j8MkwgJ0",
+          "note": "Quantization: why a 4-bit model is a quarter of the size and still works."
+        },
+        {
+          "kind": "lab",
+          "slug": "local-llm",
+          "note": "Run a real model right here, in your browser."
+        },
+        {
+          "kind": "read",
+          "title": "Install Ollama",
+          "url": "https://ollama.com/download",
+          "site": "ollama.com",
+          "note": "The easiest way to run open models on Mac, Windows or Linux. Then try: ollama run qwen3."
+        },
+        {
+          "kind": "read",
+          "title": "llama.cpp",
+          "url": "https://github.com/ggml-org/llama.cpp",
+          "site": "GitHub",
+          "note": "The engine under most local AI. Read the quick start once you want full control."
+        },
+        {
+          "kind": "video",
+          "id": "ujs0_cpAnaw",
+          "note": "Local versus cloud on the same job, measured."
+        },
+        {
+          "kind": "video",
+          "id": "3XC8BA5UNBs",
+          "note": "A 24 GB home AI server on a $750 budget, benchmarked."
+        },
+        {
+          "kind": "video",
+          "id": "o1sN1lB76EA",
+          "note": "How far down it goes: a reasoning model on a Raspberry Pi."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "About how much memory do the weights of an 8B model take at Q4_K_M (about 4.85 bits per weight)?",
+          "options": [
+            "About 1 GB",
+            "About 5 GB",
+            "About 16 GB",
+            "About 32 GB"
+          ],
+          "answer": 1,
+          "why": "8 billion x 4.85 bits / 8 = about 4.85 GB, before the KV cache and overhead."
+        },
+        {
+          "q": "What usually limits how fast a local model writes tokens?",
+          "options": [
+            "CPU clock speed",
+            "Memory bandwidth, because every token reads all the active weights",
+            "Disk speed",
+            "Internet speed"
+          ],
+          "answer": 1,
+          "why": "Generating one token streams the weights through the chip, so bytes per second sets the ceiling."
+        },
+        {
+          "q": "What's the catch with a mixture-of-experts model like Qwen3-30B-A3B?",
+          "options": [
+            "It can't run locally",
+            "It's fast like a 3B model, but all 30B weights still need to fit in memory",
+            "It needs internet",
+            "It only does math"
+          ],
+          "answer": 1,
+          "why": "Only a few experts run per token, which helps speed, but any expert might be picked, so all of them stay loaded."
+        }
+      ]
+    },
+    {
+      "slug": "agents",
+      "title": "Agents and harnesses",
+      "level": "Intermediate",
+      "blurb": "What a coding agent really is: a model, a loop, some tools, and careful context management. Including Pi.",
+      "steps": [
+        {
+          "kind": "lab",
+          "slug": "agent-loop",
+          "note": "Watch one run, step by step, from the harness's point of view."
+        },
+        {
+          "kind": "video",
+          "id": "LCEmiRjPEtQ",
+          "title": "Andrej Karpathy: Software Is Changing (Again)",
+          "by": "Y Combinator",
+          "note": "Software 3.0: prompts as programs, and why partial autonomy wins."
+        },
+        {
+          "kind": "video",
+          "id": "D7_ipDqhtwk",
+          "note": "Anthropic on when to use an agent at all, and how to keep it simple."
+        },
+        {
+          "kind": "read",
+          "title": "Building effective agents",
+          "url": "https://www.anthropic.com/engineering/building-effective-agents",
+          "site": "anthropic.com",
+          "note": "The patterns: chains, routers, orchestrators, and when a loop is worth it."
+        },
+        {
+          "kind": "video",
+          "id": "RjfbvDXpFls",
+          "note": "Mario Zechner on Pi: a minimal, open coding agent you can read in an evening."
+        },
+        {
+          "kind": "video",
+          "id": "5kLL0xUC28Q",
+          "note": "0xSero's deep dive into Pi: how a minimal harness is put together and why it works."
+        },
+        {
+          "kind": "read",
+          "title": "Pi on GitHub",
+          "url": "https://github.com/earendil-works/pi",
+          "site": "GitHub",
+          "note": "Read a real harness. It's small on purpose."
+        },
+        {
+          "kind": "video",
+          "id": "IZAlq-V19U8",
+          "note": "Claude Code's design: prompts, harnesses and agents, from the inside."
+        },
+        {
+          "kind": "video",
+          "id": "CEvIs9y1uog",
+          "note": "Skills: packaging know-how so agents load it only when needed."
+        },
+        {
+          "kind": "video",
+          "id": "eo0As3rieA8",
+          "note": "A working tour of real harnesses, side by side, from someone who uses them daily."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "In a coding agent, what usually ends the loop?",
+          "options": [
+            "A timer",
+            "The model replies without asking for a tool",
+            "The user closes the window",
+            "The context fills up"
+          ],
+          "answer": 1,
+          "why": "Each turn, the harness runs any tool calls and sends the results back. When the model answers with plain text, the task is done."
+        },
+        {
+          "q": "What is context compaction?",
+          "options": [
+            "Zipping files",
+            "Replacing older messages with a shorter summary so the run fits the context window",
+            "Deleting the system prompt",
+            "Making the model smaller"
+          ],
+          "answer": 1,
+          "why": "Long runs pile up tool output. Summarizing old turns frees room while keeping what matters."
+        },
+        {
+          "q": "Which part actually edits files on your computer?",
+          "options": [
+            "The model",
+            "The harness, when it runs the tool call the model asked for",
+            "The GPU",
+            "The tokenizer"
+          ],
+          "answer": 1,
+          "why": "The model only writes text, such as a request to call edit with some arguments. The harness executes it."
+        }
+      ]
+    },
+    {
+      "slug": "making",
+      "title": "Design and print real parts",
+      "level": "Beginner",
+      "blurb": "Learn CAD, understand how slicing works, and print parts that fit and hold.",
+      "steps": [
+        {
+          "kind": "video",
+          "id": "T-Z3GmM20JM",
+          "note": "The whole process from box to first print."
+        },
+        {
+          "kind": "lab",
+          "slug": "slicer",
+          "note": "See what layer height, nozzle size and overhangs change."
+        },
+        {
+          "kind": "video",
+          "id": "d3qGQ2utl2A",
+          "note": "Day 1 of Fusion: sketches, constraints and your first solid."
+        },
+        {
+          "kind": "video",
+          "id": "ZPsLhvgU8kc",
+          "note": "Prefer free and open? FreeCAD in one hour, aimed at 3D printing."
+        },
+        {
+          "kind": "video",
+          "id": "TYuLVN3YHw8",
+          "note": "How accurate is your printer? Test it, then design with the right clearances."
+        },
+        {
+          "kind": "video",
+          "id": "fbSQvJJjw2Q",
+          "note": "Which layer height makes the strongest parts, measured."
+        },
+        {
+          "kind": "video",
+          "id": "7aJ4dDyyf20",
+          "note": "Why printing at 45 degrees can make parts stronger."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "The usual rule for printing overhangs without support is...",
+          "options": [
+            "Up to 10 degrees from vertical",
+            "Up to about 45 degrees from vertical",
+            "Any angle works",
+            "Only flat surfaces"
+          ],
+          "answer": 1,
+          "why": "Past about 45 degrees each new layer has too little of the layer below to sit on, so it droops."
+        },
+        {
+          "q": "Halving the layer height does what to print time, roughly?",
+          "options": [
+            "Nothing",
+            "About doubles it",
+            "Halves it",
+            "Quadruples it"
+          ],
+          "answer": 1,
+          "why": "Twice as many layers, each taking about as long, means about twice the time."
+        },
+        {
+          "q": "Why can't a 0.4 mm nozzle print a 0.1 mm wall?",
+          "options": [
+            "It can",
+            "A single extruded line is about as wide as the nozzle, so walls come in steps near that width",
+            "The plastic is too hot",
+            "The slicer forbids it"
+          ],
+          "answer": 1,
+          "why": "One line is roughly 0.4 to 0.45 mm wide. Thinner features get dropped or printed too thick."
+        }
+      ]
+    },
+    {
+      "slug": "math",
+      "title": "The math under AI",
+      "level": "Beginner",
+      "blurb": "Just enough linear algebra, calculus and probability to read any AI paper without fear.",
+      "steps": [
+        {
+          "kind": "video",
+          "id": "fNk_zzaMoSs",
+          "note": "Vectors: arrows, lists of numbers, and why both views matter."
+        },
+        {
+          "kind": "video",
+          "id": "XkY2DOUCWMU",
+          "note": "Matrix multiplication is doing one transformation after another. This is every layer of a network."
+        },
+        {
+          "kind": "video",
+          "id": "WUvTyaaNkzM",
+          "note": "Derivatives without the dread."
+        },
+        {
+          "kind": "video",
+          "id": "sDv4f4s2SB8",
+          "note": "Gradient descent, one small step at a time."
+        },
+        {
+          "kind": "video",
+          "id": "HZGCoVF3YvM",
+          "note": "Bayes' theorem as geometry: how evidence should change your beliefs."
+        },
+        {
+          "kind": "video",
+          "id": "gXbThCXjZFM",
+          "note": "SVD: the matrix factorization behind compression, PCA and LoRA."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "A neural network layer mostly does what to its input vector?",
+          "options": [
+            "Sorts it",
+            "Multiplies it by a matrix, adds a bias, then applies a nonlinearity",
+            "Rounds it",
+            "Reverses it"
+          ],
+          "answer": 1,
+          "why": "That's the core of a dense layer: a linear transformation followed by an activation."
+        },
+        {
+          "q": "The gradient of the loss points...",
+          "options": [
+            "Toward the minimum",
+            "In the direction the loss increases fastest",
+            "Nowhere in particular",
+            "Toward zero weights"
+          ],
+          "answer": 1,
+          "why": "So training steps the opposite way, downhill."
+        },
+        {
+          "q": "What does LoRA use that SVD also shows?",
+          "options": [
+            "Big matrices can often be approximated by products of much thinner ones",
+            "All matrices are square",
+            "Matrices can't be compressed",
+            "Only diagonal matrices matter"
+          ],
+          "answer": 0,
+          "why": "LoRA learns a low-rank update, two thin matrices, instead of changing the full weight matrix."
+        }
+      ]
+    },
+    {
+      "slug": "gpus",
+      "title": "How GPUs run AI",
+      "level": "Intermediate",
+      "blurb": "Why AI runs on GPUs, how the hardware works, and your first CUDA kernel.",
+      "steps": [
+        {
+          "kind": "video",
+          "id": "_cyVDoyI6NE",
+          "note": "CPU versus GPU in six minutes."
+        },
+        {
+          "kind": "video",
+          "id": "GuV-HyslPxk",
+          "note": "How one company's bet on parallel computing became the base of modern AI."
+        },
+        {
+          "kind": "video",
+          "id": "JG6JaJJ3324",
+          "note": "The author of Inference Engineering explains how serving models actually works."
+        },
+        {
+          "kind": "video",
+          "id": "4sgKnKbR-WE",
+          "note": "Jeremy Howard: CUDA for Python programmers, starting from zero."
+        },
+        {
+          "kind": "video",
+          "id": "LuhJEEJQgUM",
+          "note": "Profile kernels in PyTorch and find out where time really goes."
+        },
+        {
+          "kind": "read",
+          "title": "FlashAttention (paper)",
+          "url": "https://arxiv.org/abs/2205.14135",
+          "site": "arXiv",
+          "note": "The classic example of making attention fast by respecting the memory hierarchy."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "Why are GPUs good at neural networks?",
+          "options": [
+            "They have faster clocks",
+            "Thousands of simple cores do the same math on many numbers at once, which is what matrix multiplication needs",
+            "They have more storage",
+            "They run Python faster"
+          ],
+          "answer": 1,
+          "why": "Matrix multiplication is massively parallel, which is exactly the shape of GPU hardware."
+        },
+        {
+          "q": "What does FlashAttention avoid?",
+          "options": [
+            "Using the GPU",
+            "Writing the full attention matrix to slow GPU memory, by working in tiles in fast on-chip memory",
+            "Computing softmax",
+            "Using half precision"
+          ],
+          "answer": 1,
+          "why": "Attention is often limited by memory traffic, not math. Tiling keeps the work in fast SRAM."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "localtube",
+  "account_id": "f28b2a55054cbc8d998c5963ed34a0a7",
+  "main": "worker/redirect.js",
+  "compatibility_date": "2026-09-03",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "localtube.dbaney.com", "custom_domain": true }],
+  "triggers": { "crons": [] }
+}

@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Feedforward OG scene</title>
+<!--
+  Deterministic Open Graph scene for Feedforward. Everything on screen is a pure function of
+  render(t), t in seconds on [0, DURATION). No CSS transitions or animations, no clocks, no randomness.
+  render.mjs steps it frame by frame. Open this file in a browser and add #t=5.5 to preview one moment,
+  or #play to watch it loop in real time.
+-->
+<style>
+@font-face { font-family: "Plex"; src: url(../../public/fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
+@font-face { font-family: "Plex"; src: url(../../public/fonts/ibm-plex-sans-latin-500-normal.woff2) format("woff2"); font-weight: 500; }
+@font-face { font-family: "Plex"; src: url(../../public/fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2"); font-weight: 600; }
+@font-face { font-family: "Plex"; src: url(../../public/fonts/ibm-plex-sans-latin-700-normal.woff2) format("woff2"); font-weight: 700; }
+@font-face { font-family: "Plex Mono"; src: url(../../public/fonts/ibm-plex-mono-latin-400-normal.woff2) format("woff2"); font-weight: 400; }
+@font-face { font-family: "Plex Mono"; src: url(../../public/fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2"); font-weight: 500; }
+:root {
+  --bg: #0e0e0c; --bg-2: #171715; --bg-3: #22221f; --line: #2c2c28;
+  --fg: #f3f0e8; --fg-2: #aaa59b; --accent: #ffb224; --accent-ink: #1b1300; --accent-text: #ffc457;
+  --font: "Plex", ui-sans-serif, sans-serif; --mono: "Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1200px; height: 630px; overflow: hidden; background: var(--bg); }
+#stage { position: absolute; inset: 0; overflow: hidden; background: var(--bg); color: var(--fg); font-family: var(--font);
+  -webkit-font-smoothing: antialiased; }
+.abs { position: absolute; left: 0; top: 0; }
+
+/* 1. Thumbnail wall */
+#wallMask { position: absolute; inset: 0;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, transparent 52%, rgba(0,0,0,.5) 65%, #000 80%);
+          mask-image: linear-gradient(90deg, transparent 0, transparent 52%, rgba(0,0,0,.5) 65%, #000 80%); }
+#wall { position: absolute; left: 50%; top: 50%; width: 0; height: 0; }
+.col { position: absolute; top: 0; }
+.tile { position: absolute; left: 0; width: 248px; height: 140px; border-radius: 10px; overflow: hidden; background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.tile img { position: absolute; left: 0; top: -23.5px; width: 248px; height: 187px; filter: brightness(.62) saturate(.85); }
+.tile b { position: absolute; right: 7px; bottom: 7px; padding: 2px 5px; border-radius: 4px; background: rgba(0,0,0,.78);
+  color: #f3f0e8; font: 500 13px/1.2 var(--mono); }
+
+/* 2. ASCII network: every glyph is its own element so it can pop */
+.g { position: absolute; top: 0; left: 0; font: 400 46px/1 var(--mono); width: 27.6px; text-align: center; color: var(--fg-2); }
+#cap { font: 400 20px/1 var(--mono); color: var(--fg-2); letter-spacing: .02em; }
+
+/* 3. Logo + wordmark */
+#logo { width: 64px; height: 64px; z-index: 2; }   /* above the wordmark: letters slide out from behind it */
+#word { font: 600 104px/1 var(--font); letter-spacing: -0.025em; white-space: nowrap; transform-origin: 0 0; }
+#word span { display: inline-block; }
+
+/* 4. Headline, chip, stats band */
+#head { font: 600 76px/1.02 var(--font); letter-spacing: -0.03em; }
+#head .w { display: inline-block; margin-right: .22em; }
+#head .hot { color: var(--accent-text); }
+#chip { font: 500 20px/1 var(--mono); color: var(--fg); background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 999px; padding: 11px 16px 11px 14px; white-space: nowrap; }
+#chip i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); margin-right: 10px;
+  vertical-align: 1px; }
+#band { width: 1200px; height: 132px; background: var(--bg); border-top: 1px solid var(--line); }
+.cell { position: absolute; top: 0; height: 132px; padding: 25px 0 0 0; }
+.div { position: absolute; top: 30px; height: 74px; width: 1px; background: var(--line); }
+.num { font: 500 50px/1 var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; white-space: nowrap; }
+.lab { font: 500 25px/1 var(--font); color: var(--fg-2); margin-top: 11px; white-space: nowrap; }
+
+/* 5. Closing URL */
+#url { font: 500 62px/1 var(--mono); letter-spacing: -0.02em; white-space: pre; color: var(--fg); }
+#url .cur { color: var(--accent); }
+#tag { font: 500 32px/1 var(--font); color: var(--fg-2); white-space: nowrap; }
+#tag span { display: inline-block; margin-right: .28em; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="wallMask" class="abs" style="width:1200px;height:630px"><div id="wall"></div></div>
+  <div id="net"></div>
+  <div id="cap" class="abs"></div>
+  <svg id="logo" class="abs" viewBox="0 0 64 64" aria-hidden="true">
+    <defs><clipPath id="reveal"><circle id="revealC" cx="45" cy="32" r="0"/></clipPath></defs>
+    <g clip-path="url(#reveal)">
+      <rect width="64" height="64" rx="15" fill="#ffb224"/>
+      <path d="M17.5 17l15 15-15 15" fill="none" stroke="#1b1300" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="45" cy="32" r="6.5" fill="#1b1300"/>
+    </g>
+  </svg>
+  <div id="word" class="abs"></div>
+  <div id="head" class="abs"></div>
+  <div id="chip" class="abs"><i></i>feedforward.dbaney.com</div>
+  <div id="band" class="abs"></div>
+  <div id="url" class="abs"></div>
+  <div id="tag" class="abs"></div>
+</div>
+<script>
+"use strict";
+const FPS = 30, DURATION = 8;
+const W = 1200, H = 630;
+
+/* Data the render script injects; defaults keep the file previewable on its own. */
+const DATA = Object.assign({
+  stats: [[86, "people"], [16205, "videos"], [687, "Shorts"], [2660, "posts"], [33, "books"], [7, "labs"]],
+  thumbs: [],
+}, window.__OG_DATA || {});
+
+/* ---------- easing ---------- */
+const clamp01 = x => x < 0 ? 0 : x > 1 ? 1 : x;
+const prog = (t, a, b) => clamp01((t - a) / (b - a));
+const outExpo = x => x >= 1 ? 1 : 1 - Math.pow(2, -10 * x);
+const outCubic = x => 1 - Math.pow(1 - x, 3);
+const inCubic = x => x * x * x;
+const inOutCubic = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+// Damped spring, 0 -> 1 on p in [0,1], about 4% overshoot, exactly 1 at p >= 1.
+function spring(p) {
+  if (p <= 0) return 0; if (p >= 1) return 1;
+  const z = .72, w = 9.2, wd = w * Math.sqrt(1 - z * z);
+  const v = 1 - Math.exp(-z * w * p) * (Math.cos(wd * p) + (z * w / wd) * Math.sin(wd * p));
+  // Blend the last 15% to land exactly on 1 with no step.
+  return p > .85 ? v + (1 - v) * ((p - .85) / .15) ** 2 : v;
+}
+const lerp = (a, b, k) => a + (b - a) * k;
+const fmt = n => Math.round(n).toLocaleString("en-US");
+
+/* ---------- 1. ASCII network ---------- */
+const ROWS = 5, MID = 2, CW = 27.6, LH = 68;
+const NET_W = 19 * CW, NET_X = (W - 17 * CW) / 2, NET_Y = 116;
+const T_COL = [0.30, 0.58, 0.86, 1.14];  // when each layer fires (row 0)
+const ROW_LAG = 2 / FPS;                // stagger rows by 2 frames
+const T_OUT = 1.50;                     // output neuron fires
+const T_FIRE = 1.62;
+const T_NET_IN = 7.58;                  // unlit network fades back in to meet frame 0                    // after a short held beat, the logo blooms from it
+const glyphs = [];                      // {el, row, idx, kind, tOn}
+(function buildNet() {
+  const net = document.getElementById("net");
+  for (let r = 0; r < ROWS; r++) {
+    const lag = r * ROW_LAG;
+    const len = r === MID ? 19 : 13;
+    for (let i = 0; i < len; i++) {
+      let ch, kind, tOn;
+      if (i <= 12 && i % 4 === 0) { kind = "node"; ch = "o"; tOn = T_COL[i / 4] + lag; }
+      else if (i <= 12) {
+        kind = "edge"; ch = "-"; const k = Math.floor(i / 4), j = i % 4;
+        tOn = T_COL[k] + lag + (T_COL[k + 1] - T_COL[k]) * j / 4;
+      } else if (i <= 15) { kind = "edge"; ch = "-"; tOn = T_COL[3] + 4 * ROW_LAG + 0.07 * (i - 12); }
+      else if (i === 16) { kind = "head"; ch = ">"; tOn = T_COL[3] + 4 * ROW_LAG + 0.07 * 4; }
+      else if (i === 17) continue;
+      else { kind = "out"; ch = "o"; tOn = T_OUT; }
+      const el = document.createElement("div");
+      el.className = "g abs"; el.textContent = ch; net.appendChild(el);
+      glyphs.push({ el, row: r, idx: i, kind, tOn, x: NET_X + i * CW, y: NET_Y + r * LH });
+    }
+  }
+})();
+// Where the logo has to sit so its chevron lands on ">" and its dot on the output "@".
+const OUT_CX = NET_X + 18.5 * CW, OUT_CY = NET_Y + MID * LH + 24;
+const BLOOM_S = 3.15;                   // px per logo unit (64 units -> ~195px)
+const BLOOM = { x: OUT_CX - 45 * BLOOM_S, y: OUT_CY - 32 * BLOOM_S, s: BLOOM_S * 64 };
+
+/* ---------- 2. Wordmark and lockup ---------- */
+const wordEl = document.getElementById("word");
+const WORD = "Feedforward";
+const letters = [...WORD].map(c => { const s = document.createElement("span"); s.textContent = c; wordEl.appendChild(s); return s; });
+let LOCK, CORNER;                       // filled by layout() once fonts are ready
+function layout() {
+  const ww = wordEl.getBoundingClientRect().width;  // at scale 1
+  const L = 124, gap = 30, total = L + gap + ww;
+  const x = (W - total) / 2, y = 250;
+  LOCK = { logo: { x, y, s: L }, word: { x: x + L + gap, y: y + (L - 104) / 2 + 4, k: 1 } };
+  const k = 0.44, Lc = L * k;
+  CORNER = { logo: { x: 64, y: 50, s: Lc }, word: { x: 64 + Lc + gap * k, y: 50 + (Lc - 104 * k) / 2 + 2, k } };
+  // stats band: each cell as wide as its final number or label, spread edge to edge with dividers in the gaps
+  const ws = cells.map(c => { c.num.textContent = fmt(c.n); return Math.ceil(c.el.getBoundingClientRect().width); });
+  const span = W - 128, gapw = (span - ws.reduce((a, b) => a + b, 0)) / (ws.length - 1);
+  let cx = 64;
+  cells.forEach((c, i) => {
+    c.el.style.left = cx + "px"; c.el.style.width = ws[i] + "px";
+    if (i) { const d = document.createElement("div"); d.className = "div"; d.style.left = (cx - gapw / 2) + "px"; bandEl.appendChild(d); }
+    cx += ws[i] + gapw;
+  });
+  // chip sits top right, vertically centred on the corner logo
+  const chip = document.getElementById("chip");
+  CHIP = { x: W - 64 - chip.getBoundingClientRect().width, y: 50 + Lc / 2 - chip.getBoundingClientRect().height / 2 };
+}
+let CHIP;
+const T_MOVE1 = 1.98, T_MOVE1_END = 2.60;   // bloom position -> centred lockup
+const T_WORD = 2.10;                        // letters start
+const T_MOVE2 = 3.10, T_MOVE2_END = 3.78;   // lockup -> corner
+
+/* ---------- 3. Wall ---------- */
+const TW = 248, TH = 140, GAP = 14, COLS = 6, PER = 7;
+const wallEl = document.getElementById("wall");
+const cols = [];
+function buildWall() {
+  if (!DATA.thumbs.length) return;
+  for (let c = 0; c < COLS; c++) {
+    const col = document.createElement("div"); col.className = "col";
+    for (let r = 0; r < PER; r++) {
+      const tile = document.createElement("div"); tile.className = "tile"; tile.style.top = r * (TH + GAP) + "px";
+      tile.append(new Image(), document.createElement("b")); col.appendChild(tile);
+    }
+    wallEl.appendChild(col);
+    cols.push({ el: col, x: (c - COLS / 2) * (TW + GAP), dir: c % 2 ? -1 : 1, speed: 15 + (c % 3) * 6 });
+  }
+}
+// Thumbnails are listed by priority. Give the first ones the tiles nearest the headline's right edge at
+// the still's moment, so the AI talks sit where people look and the far corners take the rest.
+async function fillWall() {
+  if (!cols.length) return;
+  render(5.6);
+  const HERO = [900, 300];
+  const tiles = [...wallEl.querySelectorAll(".tile")].map(el => {
+    const r = el.getBoundingClientRect();
+    return { el, d: Math.hypot(r.x + r.width / 2 - HERO[0], r.y + r.height / 2 - HERO[1]) };
+  }).sort((a, b) => a.d - b.d);
+  tiles.forEach(({ el }, i) => {
+    const th = DATA.thumbs[i % DATA.thumbs.length];
+    el.firstChild.src = th.src; el.firstChild.alt = ""; el.lastChild.textContent = dur(th.dur);
+  });
+  await Promise.all([...wallEl.querySelectorAll("img")].map(im => im.decode().catch(() => {})));
+}
+function dur(s) { const m = Math.floor(s / 60), ss = s % 60; return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}:${String(ss).padStart(2, "0")}` : `${m}:${String(ss).padStart(2, "0")}`; }
+const T_WALL = 3.18, T_OUT_ALL = 7.36, OUT_DUR = 0.22;
+
+/* ---------- 4. Headline, chip, band ---------- */
+const headEl = document.getElementById("head");
+const HEAD = [["Learn", "AI", "from", "the"], ["people", "building", "it."]];
+const headWords = [];
+HEAD.forEach((line, li) => {
+  const row = document.createElement("div");
+  line.forEach(w => { const s = document.createElement("span"); s.className = "w" + (li === 1 && w !== "people" ? " hot" : ""); s.textContent = w; row.appendChild(s); headWords.push(s); });
+  headEl.appendChild(row);
+});
+const HEAD_X = 64, HEAD_Y = 172;
+const T_HEAD = 3.40, T_HEAD_OUT = 5.50;
+const bandEl = document.getElementById("band");
+const cells = DATA.stats.map(([n, label], i) => {
+  const c = document.createElement("div"); c.className = "cell";
+  c.innerHTML = `<div class="num"></div><div class="lab">${label}</div>`;
+  bandEl.appendChild(c); return { el: c, num: c.firstChild, n };
+});
+const BAND_Y = H - 132;
+const T_BAND = 3.55, T_COUNT = 3.70, COUNT_DUR = 1.25;
+
+/* ---------- 5. URL ---------- */
+const URL_TEXT = "feedforward.dbaney.com";
+const urlEl = document.getElementById("url"), tagEl = document.getElementById("tag");
+const TAG = ["Free.", "No", "ads.", "No", "politics."];
+const tagWords = TAG.map(w => { const s = document.createElement("span"); s.textContent = w; tagEl.appendChild(s); return s; });
+const T_TYPE = 5.92, TYPE_CPS = 54, T_TAG = 6.22;
+const URL_X = 64, URL_Y = 210;
+
+/* ---------- helpers ---------- */
+const capEl = document.getElementById("cap");
+const logoEl = document.getElementById("logo"), revealC = document.getElementById("revealC");
+const chipEl = document.getElementById("chip");
+function place(el, x, y, extra = "", op = 1) {
+  el.style.transform = `translate(${x}px, ${y}px) ${extra}`;
+  el.style.opacity = op;
+}
+// The whole layer stack fades away together at the end.
+function outAll(t) { return 1 - inCubic(prog(t, T_OUT_ALL, T_OUT_ALL + OUT_DUR)); }
+
+/* ---------- render ---------- */
+// t drives continuous motion; tf (the frame's own time) drives discrete state: counters, typing, the cursor,
+// o -> @ swaps and the caption dots. With motion blur the render script samples t around tf, and discrete
+// state must not smear into ghosted digits or half-typed letters.
+function render(t, tf = t) {
+  const wrap = x => ((x % DURATION) + DURATION) % DURATION;
+  t = wrap(t); tf = wrap(tf);
+
+  /* Network: lit glyphs pop, then the layer exits after the bloom, then fades back in for the loop. */
+  const netIn = outCubic(prog(t, T_NET_IN, 8.00));            // re-entrance at the end of the loop
+  const looping = t >= T_NET_IN;
+  for (const g of glyphs) {
+    const lit = tf < T_NET_IN && tf >= g.tOn;
+    let op, sc = 1, dx = 0, color;
+    if (g.kind === "node" || g.kind === "out") {
+      g.el.textContent = lit ? "@" : "o";
+      color = lit ? "var(--accent-text)" : "var(--fg-2)";
+      op = lit ? 1 : .62;
+      if (lit) { const p = prog(t, g.tOn, g.tOn + 0.30); sc = 1 + 0.42 * Math.sin(Math.PI * Math.min(1, p * 1.25)) * (1 - p * .6) * (p < 1 ? 1 : 0); }
+    } else {
+      color = lit ? "var(--accent)" : "var(--fg-2)";
+      op = lit ? .95 : .34;
+    }
+    // exit: layer by layer, left to right, faster than the entrance
+    const col = Math.min(4, Math.floor(g.idx / 4));
+    const e = inCubic(prog(t, T_FIRE + 0.06 + col * 0.045, T_FIRE + 0.30 + col * 0.045));
+    const keep = (g.kind === "head" || g.kind === "out") ? 1 - prog(t, T_FIRE + 0.05, T_FIRE + 0.16) : 1;
+    let o = op * (1 - e) * keep, ty = 0;
+    dx = -26 * e;
+    if (looping) { o = op * netIn; ty = 14 * (1 - netIn); sc = .985 + .015 * netIn; dx = 0; }
+    g.el.style.color = color;
+    place(g.el, g.x + dx, g.y + ty, `scale(${sc})`, o);
+  }
+  // caption, like the site's loader
+  {
+    const dots = ".".repeat(Math.floor(tf / 0.25) % 4);
+    capEl.textContent = "forward pass" + dots;
+    const e = inCubic(prog(t, T_FIRE, T_FIRE + 0.22));
+    const o = looping ? netIn : 1 - e;
+    place(capEl, NET_X, NET_Y + ROWS * LH + 4 + (looping ? 14 * (1 - netIn) : 0), "", o * .9);
+  }
+
+  /* Logo: circular reveal from the output neuron, then glide to the lockup, then the corner. */
+  const rev = outExpo(prog(t, T_FIRE, T_FIRE + 0.42));
+  revealC.setAttribute("r", (56 * rev).toFixed(3));
+  let L = { ...BLOOM };
+  const m1 = spring(prog(t, T_MOVE1, T_MOVE1_END)), m2 = spring(prog(t, T_MOVE2, T_MOVE2_END));
+  L = { x: lerp(L.x, LOCK.logo.x, m1), y: lerp(L.y, LOCK.logo.y, m1), s: lerp(L.s, LOCK.logo.s, m1) };
+  L = { x: lerp(L.x, CORNER.logo.x, m2), y: lerp(L.y, CORNER.logo.y, m2), s: lerp(L.s, CORNER.logo.s, m2) };
+  // the bloom lands with a small overshoot-and-settle on top of the reveal
+  const pop = 1 + 0.035 * Math.sin(Math.PI * prog(t, T_FIRE + 0.18, T_FIRE + 0.48));
+  const ox = L.x + L.s * (45 / 64) * (1 - pop), oy = L.y + L.s * .5 * (1 - pop);
+  const lo = outAll(t);
+  // sized, not scaled, so the SVG rasterizes fresh at its real size every frame
+  const ls = (L.s * pop).toFixed(3) + "px"; logoEl.style.width = ls; logoEl.style.height = ls;
+  place(logoEl, ox, oy - 18 * (1 - lo), "", t < T_FIRE ? 0 : lo);
+
+  /* Wordmark: letters slide out from behind the logo, one frame apart. */
+  {
+    const k = lerp(LOCK.word.k, CORNER.word.k, m2);
+    const wx = lerp(LOCK.word.x, CORNER.word.x, m2), wy = lerp(LOCK.word.y, CORNER.word.y, m2);
+    wordEl.style.fontSize = (104 * k).toFixed(3) + "px";   // real font size, not a scale transform
+    place(wordEl, wx, wy - 18 * (1 - lo), "", lo);
+    letters.forEach((s, i) => {
+      const p = outExpo(prog(t, T_WORD + i / FPS, T_WORD + i / FPS + 0.45));
+      s.style.opacity = p;
+      s.style.transform = `translateX(${(-34 * (1 - p)).toFixed(3)}px)`;
+      s.style.filter = p < 1 ? `blur(${(5 * (1 - p)).toFixed(2)}px)` : "none";
+    });
+  }
+
+  /* Wall: Ken Burns in, columns drift against each other, the whole field slides left. */
+  {
+    // dims under the closing URL so the type stays clean
+    const a = outCubic(prog(t, T_WALL, T_WALL + 0.80)) * outAll(t) * (1 - .72 * inOutCubic(prog(t, T_HEAD_OUT, T_HEAD_OUT + .5)));
+    const z = 1.10 - 0.06 * outExpo(prog(t, T_WALL, T_WALL + 1.2)) - 0.03 * prog(t, T_WALL, T_OUT_ALL + OUT_DUR);
+    const tt = Math.max(0, t - T_WALL);
+    wallEl.parentElement.style.opacity = a;
+    wallEl.style.transform = `translate(${130 - 7 * tt}px, -40px) rotate(-8deg) scale(${z})`;
+    for (const c of cols) c.el.style.transform = `translate(${c.x}px, ${-(PER * (TH + GAP)) / 2 + c.dir * (c.speed * tt - 40)}px)`;
+  }
+
+  /* Headline: words rise in two frames apart, leave one frame apart. */
+  headWords.forEach((s, i) => {
+    const p = outExpo(prog(t, T_HEAD + i * 2 / FPS, T_HEAD + i * 2 / FPS + 0.55));
+    const q = inCubic(prog(t, T_HEAD_OUT + i / FPS, T_HEAD_OUT + i / FPS + 0.22));
+    s.style.opacity = p * (1 - q);
+    s.style.transform = `translateY(${(30 * (1 - p) - 24 * q).toFixed(3)}px)`;
+    s.style.filter = p < 1 || q > 0 ? `blur(${(6 * (1 - p) + 4 * q).toFixed(2)}px)` : "none";
+  });
+  place(headEl, HEAD_X, HEAD_Y, "", 1);
+
+  /* Chip: in with the band, out as the big URL arrives. */
+  {
+    const p = outExpo(prog(t, T_BAND + .1, T_BAND + .6)), q = inCubic(prog(t, T_HEAD_OUT, T_HEAD_OUT + .25));
+    place(chipEl, CHIP.x + 16 * (1 - p), CHIP.y, "", p * (1 - q));
+  }
+
+  /* Stats band: slides up, numbers count with a decelerating curve, staggered 3 frames. */
+  {
+    const p = outExpo(prog(t, T_BAND, T_BAND + 0.6)), q = inCubic(prog(t, T_OUT_ALL, T_OUT_ALL + OUT_DUR));
+    place(bandEl, 0, BAND_Y + 40 * (1 - p) + 50 * q, "", p * (1 - q));
+    cells.forEach((c, i) => {
+      const a = T_COUNT + i * 3 / FPS;
+      const k = outExpo(prog(tf, a, a + COUNT_DUR));
+      c.num.textContent = fmt(c.n * k);
+      const ci = outExpo(prog(t, T_BAND + i * 3 / FPS, T_BAND + i * 3 / FPS + .5));
+      c.el.style.opacity = ci;
+      c.el.style.transform = `translateY(${(14 * (1 - ci)).toFixed(3)}px)`;
+    });
+  }
+
+  /* URL types in two characters a frame; the cursor blinks once typing is done. */
+  {
+    const typed = Math.max(0, Math.min(URL_TEXT.length, Math.floor((tf - T_TYPE) * TYPE_CPS)));
+    const done = T_TYPE + URL_TEXT.length / TYPE_CPS;
+    const curOn = tf < done || Math.floor((tf - done) / 0.5) % 2 === 0;
+    urlEl.innerHTML = URL_TEXT.slice(0, typed) + `<span class="cur" style="opacity:${curOn ? 1 : 0}">_</span>`;
+    const o = t >= T_TYPE - 0.04 ? outAll(t) : 0;
+    place(urlEl, URL_X, URL_Y - 18 * (1 - o), "", o);
+    tagWords.forEach((s, i) => {
+      const p = outExpo(prog(t, T_TAG + i * 2 / FPS, T_TAG + i * 2 / FPS + 0.5));
+      s.style.opacity = p; s.style.transform = `translateY(${(22 * (1 - p)).toFixed(3)}px)`;
+      s.style.filter = p < 1 ? `blur(${(5 * (1 - p)).toFixed(2)}px)` : "none";
+    });
+    place(tagEl, URL_X, URL_Y + 96 - 18 * (1 - o), "", o);
+  }
+}
+
+// Windows of fast motion: the render script takes more motion-blur subframes here so the blur is smooth, not stepped.
+const FAST = [[T_FIRE - 0.05, T_FIRE + 0.50], [T_MOVE1 - 0.05, T_MOVE1_END + 0.05], [T_MOVE2 - 0.05, T_MOVE2_END + 0.05]];
+window.__og = { FPS, DURATION, render, frames: FPS * DURATION, FAST };
+window.__ready = (async () => {
+  buildWall();
+  await document.fonts.ready;
+  layout();
+  await fillWall();
+  render(0);
+})();
+
+// Preview helpers for a normal browser: #t=4.2 freezes a moment, #play loops in real time.
+if (location.hash.startsWith("#t=")) window.__ready.then(() => render(parseFloat(location.hash.slice(3))));
+if (location.hash === "#play") window.__ready.then(() => { const t0 = performance.now(); (function f(){ render((performance.now() - t0) / 1000); requestAnimationFrame(f); })(); });
+</script>
+</body>
+</html>

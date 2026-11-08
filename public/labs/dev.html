@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lab preview</title>
+<link rel="stylesheet" href="/css/tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 400 16px/1.5 var(--font); }
+  main { max-width: 880px; margin: 0 auto; padding: var(--s4); }
+  h1 { font-size: var(--t-xl); margin: 0 0 var(--s4); }
+</style>
+</head>
+<body>
+<main><h1 id="t">Lab</h1><div id="root"></div></main>
+<script type="module">
+  const p = new URLSearchParams(location.search);
+  if (p.get("theme")) document.documentElement.dataset.theme = p.get("theme");
+  const slug = p.get("lab");
+  const mod = await import(`/labs/${slug}.js`);
+  document.getElementById("t").textContent = mod.meta.title;
+  document.title = mod.meta.title;
+  mod.mount(document.getElementById("root"), { markDone: () => console.log("markDone", slug) });
+</script>
+</body>
+</html>

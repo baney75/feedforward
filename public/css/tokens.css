@@ -1,0 +1,88 @@
+/* LocalTube design tokens. One family (IBM Plex Sans) plus Plex Mono for numbers and code.
+   Three radii: --r-s (6px), --r (10px), --r-pill. Spacing on a 4px grid. One accent: amber. */
+@font-face { font-family: "Plex"; src: url(/fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Plex"; src: url(/fonts/ibm-plex-sans-latin-500-normal.woff2) format("woff2"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Plex"; src: url(/fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Plex"; src: url(/fonts/ibm-plex-sans-latin-700-normal.woff2) format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "Plex Mono"; src: url(/fonts/ibm-plex-mono-latin-400-normal.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Plex Mono"; src: url(/fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2"); font-weight: 500; font-display: swap; }
+
+:root {
+  --font: "Plex", ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+  --r-s: 6px; --r: 10px; --r-pill: 999px;
+  --t-xs: 12px; --t-s: 14px; --t-m: 16px; --t-l: 20px; --t-xl: 24px; --t-2xl: 32px; --t-3xl: 44px;
+
+  /* Dark is the default. */
+  --bg: #0e0e0c;
+  --bg-2: #171715;
+  --bg-3: #22221f;
+  --line: #2c2c28;
+  --fg: #f3f0e8;
+  --fg-2: #aaa59b;
+  --accent: #ffb224;
+  --accent-ink: #1b1300;
+  --accent-text: #ffc457;
+  --ok: #4cc38a;
+  --bad: #ff6b6b;
+  --scrim: rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  --bg: #f8f6f0; --bg-2: #ffffff; --bg-3: #edeae1; --line: #dedad0;
+  --fg: #16150f; --fg-2: #5b574e; --accent: #ffb224; --accent-ink: #1b1300; --accent-text: #8f5600;
+  --ok: #1d7a4f; --bad: #c3332f; --scrim: rgba(0, 0, 0, .45);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f8f6f0; --bg-2: #ffffff; --bg-3: #edeae1; --line: #dedad0;
+    --fg: #16150f; --fg-2: #5b574e; --accent: #ffb224; --accent-ink: #1b1300; --accent-text: #8f5600;
+    --ok: #1d7a4f; --bad: #c3332f; --scrim: rgba(0, 0, 0, .45);
+    color-scheme: light;
+  }
+}
+
+/* Shared controls that labs may use. */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); min-height: 40px; padding: 0 var(--s4);
+  border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--bg-2); color: var(--fg);
+  font: 500 var(--t-s)/1 var(--font); cursor: pointer; text-decoration: none; }
+.btn:hover { background: var(--bg-3); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn svg { width: 18px; height: 18px; }
+.field { display: grid; gap: var(--s1); font-size: var(--t-s); color: var(--fg-2); }
+.field input, .field select, .field textarea, textarea.input, input.input {
+  font: 400 var(--t-m)/1.5 var(--font); color: var(--fg); background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: var(--r-s); padding: var(--s2) var(--s3); max-width: 100%; min-width: 0; }
+input[type="range"] { accent-color: var(--accent); width: 100%; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--fg-2); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Extra themes, picked by the viewer (data-theme on <html>) ---------- */
+:root[data-theme="terminal"] {
+  --bg: #050a06; --bg-2: #0b140d; --bg-3: #122116; --line: #1d3323; --fg: #c6f7d1; --fg-2: #74c28b;
+  --accent: #39ff88; --accent-ink: #00160a; --accent-text: #5dffa0; --ok: #39ff88; --bad: #ff6b6b; color-scheme: dark;
+  --font: "Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+:root[data-theme="amber"] {
+  --bg: #0c0800; --bg-2: #161002; --bg-3: #221905; --line: #33260a; --fg: #ffd89a; --fg-2: #c49a58;
+  --accent: #ffb000; --accent-ink: #1a1000; --accent-text: #ffc23d; --ok: #8bd17c; --bad: #ff7a59; color-scheme: dark;
+  --font: "Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+:root[data-theme="midnight"] {
+  --bg: #0a0f1e; --bg-2: #111830; --bg-3: #19223f; --line: #243058; --fg: #e8edff; --fg-2: #9ea9cc;
+  --accent: #7aa2ff; --accent-ink: #050b1f; --accent-text: #9db9ff; --ok: #5fd4a3; --bad: #ff7b8a; color-scheme: dark;
+}
+:root[data-theme="sepia"] {
+  --bg: #f4ecdd; --bg-2: #fbf6ec; --bg-3: #e8dcc6; --line: #d8c8ab; --fg: #2a2117; --fg-2: #66573f;
+  --accent: #c2622d; --accent-ink: #fff8ef; --accent-text: #9c4a1c; --ok: #3d7a3a; --bad: #b4302a; color-scheme: light;
+}
+:root[data-theme="contrast"] {
+  --bg: #000; --bg-2: #0d0d0d; --bg-3: #1f1f1f; --line: #6b6b6b; --fg: #fff; --fg-2: #d6d6d6;
+  --accent: #ffd400; --accent-ink: #000; --accent-text: #ffe14d; --ok: #3dff8a; --bad: #ff5c5c; color-scheme: dark;
+}

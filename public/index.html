@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Feedforward: learn AI from the people building it</title>
+<meta name="description" content="Hand-picked videos and posts from the best people in AI, local AI, computer science and 3D printing, plus hands-on labs that run in your browser. No account, no ads, no tracking.">
+<link rel="canonical" href="https://feedforward.dbaney.com/">
+<meta property="og:site_name" content="Feedforward">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Feedforward: learn AI from the people building it">
+<meta property="og:description" content="Videos, posts and hands-on labs from the best people in AI, local AI, computer science and making. No account, no ads, no tracking.">
+<meta property="og:url" content="https://feedforward.dbaney.com/">
+<meta property="og:image" content="https://feedforward.dbaney.com/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:video" content="https://feedforward.dbaney.com/og.mp4">
+<meta property="og:video:secure_url" content="https://feedforward.dbaney.com/og.mp4">
+<meta property="og:video:type" content="video/mp4">
+<meta property="og:video:width" content="1200">
+<meta property="og:video:height" content="630">
+<meta property="og:image:alt" content="Feedforward: an ASCII neural network fires, then the headline Learn AI from the people building it over a wall of video thumbnails.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://feedforward.dbaney.com/og.jpg">
+<meta name="theme-color" content="#0e0e0c" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f8f6f0" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Feedforward">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="preload" href="/fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/ibm-plex-sans-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/data/home.json" as="fetch" crossorigin="anonymous">
+<link rel="preconnect" href="https://i.ytimg.com">
+<link rel="preconnect" href="https://pbs.twimg.com">
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/pages.css">
+<script>
+  try { const t = localStorage.getItem("lt:theme"); if (/^(light|dark|terminal|amber|midnight|sepia|contrast)$/.test(t)) document.documentElement.dataset.theme = t; } catch {}
+</script>
+<link rel="modulepreload" href="/js/app.js">
+<link rel="modulepreload" href="/js/data.js">
+<link rel="modulepreload" href="/js/views.js">
+<link rel="modulepreload" href="/js/ui.js">
+<link rel="modulepreload" href="/js/tv.js">
+<link rel="modulepreload" href="/js/icons.js">
+<link rel="modulepreload" href="/js/store.js">
+<link rel="modulepreload" href="/js/account.js">
+<link rel="modulepreload" href="/js/social.js">
+<script type="module" src="/js/app.js"></script>
+</head>
+<body>
+<a class="skip" href="#view">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="Feedforward home">
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--accent)"/><path d="M17.5 17l15 15-15 15" fill="none" stroke="var(--accent-ink)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="45" cy="32" r="6.5" fill="var(--accent-ink)"/></svg>
+    <span>Feedforward</span>
+  </a>
+  <form class="search" role="search" action="/search">
+    <label class="sr-only" for="q">Search videos, posts and people</label>
+    <input id="q" name="q" type="search" placeholder="Search videos, posts, people" autocomplete="off" enterkeyhint="search">
+    <kbd class="slash" aria-hidden="true">/</kbd>
+  </form>
+  <div class="top-actions">
+    <button class="icon-btn only-phone" id="searchBtn" aria-label="Search"></button>
+    <button class="icon-btn" id="installBtn" aria-label="Install Feedforward" hidden></button>
+    <button class="icon-btn" id="themeBtn" aria-label="Choose a theme" aria-haspopup="dialog"></button>
+    <a class="icon-btn acct" id="acctBtn" href="/me" aria-label="Your profile"></a>
+  </div>
+</header>
+<nav class="rail" aria-label="Main"></nav>
+<main id="view" tabindex="-1"><div class="ascii" role="status" aria-label="Loading"></div></main>
+<script>
+/* ASCII forward pass: inputs light up layer by layer, then the output fires. Runs before any module loads. */
+(function () {
+  var caps = ["loading weights", "embedding tokens", "attending", "forward pass", "sampling your feed"];
+  var still = matchMedia("(prefers-reduced-motion: reduce)").matches, t = 0;
+  function frame(p) {
+    var rows = [];
+    for (var r = 0; r < 3; r++) {
+      var line = " ";
+      for (var k = 0; k < 4; k++) line += (k < p ? "<b>@</b>" : "o") + (k < 3 ? (k < p - 1 ? "<b>---</b>" : "---") : "");
+      if (r === 1) line += (p >= 5 ? "<b>---&gt; #</b>" : "---&gt;  ");
+      rows.push(line);
+    }
+    return rows.join("\n");
+  }
+  function tick() {
+    var els = document.querySelectorAll(".ascii");
+    if (!els.length || document.hidden) return;
+    var p = still ? 5 : t % 8, cap = caps[Math.floor(t / 8) % caps.length];
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (!el.firstChild) el.innerHTML = '<pre aria-hidden="true"></pre><span class="ascii-cap"></span>';
+      el.firstChild.innerHTML = frame(Math.min(p, 5));
+      el.lastChild.textContent = (el.dataset.label || cap) + (still ? "" : ".".repeat(t % 4));
+    }
+    t++;
+  }
+  tick(); setInterval(tick, 150);
+})();
+</script>
+<nav class="tabbar" aria-label="Main"></nav>
+<div id="tv" role="dialog" aria-modal="true" aria-label="TV mode" hidden></div>
+<dialog id="sheet"></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

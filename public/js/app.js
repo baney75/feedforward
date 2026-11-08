@@ -1,0 +1,241 @@
+import { load, D, sampler, applyStats } from "./data.js";
+import { icon } from "./icons.js";
+import { store } from "./store.js";
+import { toast } from "./ui.js";
+import * as V from "./views.js";
+import { openTV, closeTV, tvIsOpen } from "./tv.js";
+import { signedIn, user, refreshMe, sync, scheduleSync, rememberJoin, loadStats } from "./account.js";
+import { userAvatar } from "./ui.js";
+
+const view = document.getElementById("view");
+// Six main places. Everything else lives in a quiet Explore list (and on the Learn hub on phones).
+const NAV = [
+  ["/", "home", "Home"], ["/shorts", "shorts", "Shorts"], ["/wire", "wire", "The Wire"], ["/learn", "learn", "Learn"], ["/chat", "chat", "Chat"], ["/library", "library", "Library"],
+];
+const EXPLORE = [["/books", "Books"], ["/research", "Research"], ["/dictionary", "Dictionary"], ["/repos", "Repos"], ["/sessions", "Live sessions"], ["/skills", "Skills"], ["/agents", "Connect an agent"]];
+const TABS = ["/", "/shorts", "/wire", "/learn", "/library"];
+// Pages that live in their own lazily loaded module.
+const PAGES = { suggest: "suggest", oauth: "consent", teach: "teach", me: "me", link: "me", chat: "chat", sessions: "sessions", skills: "skills", agents: "agents", admin: "admin", u: "profile", research: "research", dictionary: "dictionary", repos: "repos" };
+
+function shell() {
+  const rail = document.querySelector(".rail");
+  rail.innerHTML = NAV.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("") +
+    `<hr><div class="rail-h">Explore</div><div class="explore">${EXPLORE.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</div>` +
+    `<div class="foot"><a href="/tv">TV mode</a> · <a href="/people">People</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="https://github.com/baney75/feedforward">GitHub</a> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
+  document.querySelector(".tabbar").innerHTML = NAV.filter(([h]) => TABS.includes(h)).map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l === "The Wire" ? "Wire" : l}</span></a>`).join("");
+  document.getElementById("searchBtn").innerHTML = icon("search");
+  document.getElementById("installBtn").innerHTML = icon("install");
+  themeIcon();
+}
+
+function markNav(path) {
+  const top = "/" + (path.split("/")[1] || "");
+  const map = { "/watch": "/", "/p": "/people", "/lab": "/learn", "/search": "/", "/book": "/books", "/u": "/me", "/link": "/me" };
+  const cur = map[top] && top !== "/" ? map[top] : top;
+  document.querySelectorAll(".rail a, .tabbar a, .explore a").forEach((a) => {
+    const h = a.getAttribute("href");
+    if (h === cur && !(top === "/watch" || top === "/search")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+}
+
+// ---------- Router ----------
+let cleanup = null, seq = 0;
+function stopView() { if (cleanup) { try { cleanup(); } catch {} cleanup = null; } }
+// Pages that can paint from the starter bundle; everything else waits for the full catalog.
+const FAST = new Set(["", "learn", "lab", "about", "people", "books", "shorts", ...Object.keys(PAGES), "join"]);
+async function route() {
+  const my = ++seq;
+  const url = new URL(location.href);
+  const path = url.pathname.replace(/\/+$/, "") || "/";
+  const qs = url.searchParams;
+  stopView();
+  view.onclick = null;
+  markNav(path);
+  if (path === "/tv") {
+    await D.ready; if (my !== seq) return;
+    if (!D.isFull) await D.full.catch(() => {});
+    if (my === seq && !tvIsOpen()) openTV((history.state && history.state.start) || null);
+    return;
+  }
+  if (tvIsOpen()) closeTV();
+  const parts = path.split("/").filter(Boolean);
+  const r = parts[0] || "";
+  try {
+    await D.ready;
+    if (!FAST.has(r) && !D.isFull) { view.innerHTML = skeleton(); await D.full; }
+  } catch (e) {
+    view.innerHTML = `<div class="empty"><p>Feedforward couldn't load its catalog. Check your connection and reload.</p></div>`; return;
+  }
+  if (my !== seq) return;
+  view.dataset.seq = my;
+  let out;
+  if (r === "") out = V.home(view, qs);
+  else if (r === "watch" && parts[1]) out = V.watch(view, qs, parts[1]);
+  else if (r === "p" && parts[1]) out = V.personPage(view, qs, parts[1]);
+  else if (r === "people") out = V.peoplePage(view);
+  else if (r === "wire") out = V.wirePage(view, qs);
+  else if (r === "learn" && parts[1]) out = V.trackPage(view, qs, parts[1]);
+  else if (r === "learn") out = V.learnPage(view);
+  else if (r === "lab" && parts[1]) out = V.labPage(view, qs, parts[1]);
+  else if (r === "search") out = V.searchPage(view, qs);
+  else if (r === "library") out = V.libraryPage(view, qs);
+  else if (r === "about") out = V.aboutPage(view);
+  else if (r === "shorts") out = V.shortsPage(view, qs, parts[1]);
+  else if (r === "join" && parts[1]) {
+    // Invite links are 9 characters, referral links 7. Either is remembered until the account is made.
+    rememberJoin(parts[1].length === 9 ? "invite" : "ref", parts[1]);
+    history.replaceState(null, "", "/me"); toast("Welcome! Get your free code to join."); return route();
+  }
+  else if (PAGES[r]) out = loadPage(PAGES[r], qs, parts);
+  else if (r === "books") out = V.booksPage(view, qs);
+  else out = V.notFound(view);
+  if (out instanceof Promise) out.then((c) => { if (my === seq) cleanup = c; else if (typeof c === "function") c(); });
+  else cleanup = out;
+  const st = history.state;
+  if (st && typeof st.y === "number") requestAnimationFrame(() => scrollTo(0, st.y)); else scrollTo(0, 0);
+}
+
+function nav(href, { replace = false, state = {} } = {}) {
+  try { history.replaceState({ ...(history.state || {}), y: scrollY }, ""); } catch {}
+  replace ? history.replaceState(state, "", href) : history.pushState(state, "", href);
+  route();
+}
+async function loadPage(name, qs, parts) {
+  const my = view.dataset.seq;
+  view.innerHTML = `<div class="ascii" role="status" aria-label="Loading"></div>`;
+  try {
+    const mod = await import(`/js/pages/${name}.js`);
+    if (view.dataset.seq !== my) return null;
+    view.innerHTML = "";
+    return await mod.render(view, qs, parts);
+  } catch (e) {
+    if (view.dataset.seq === my) view.innerHTML = `<div class="empty"><p>This page didn't load. Check your connection and try again.</p></div>`;
+    return null;
+  }
+}
+function goTV(start) { if (location.pathname !== "/tv") nav("/tv", { state: { tv: 1, start } }); }
+function skeleton() { return `<div class="ascii" role="status" aria-label="Loading"></div>`; }
+
+document.addEventListener("click", (e) => {
+  const more = e.target.closest("[data-more]");
+  if (more) { const t = more.previousElementSibling; t.classList.remove("clamp"); more.remove(); return; }
+  const sv = e.target.closest("[data-save]");
+  if (sv) {
+    const on = store.toggleSave(sv.dataset.save);
+    sv.setAttribute("aria-pressed", on); sv.innerHTML = icon(on ? "bookmarked" : "bookmark");
+    toast(on ? "Saved to your library" : "Removed from your library"); return;
+  }
+  const a = e.target.closest("a[href]");
+  if (!a || a.target || a.hasAttribute("download") || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+  const u = new URL(a.href, location.href);
+  if (u.origin !== location.origin || u.pathname.startsWith("/data/") || u.pathname.startsWith("/labs/")) return;
+  e.preventDefault();
+  if (u.pathname === "/tv") { goTV(); return; }
+  nav(u.pathname + u.search);
+});
+addEventListener("popstate", () => route());
+
+// ---------- Search ----------
+const form = document.querySelector(".search");
+const q = document.getElementById("q");
+form.addEventListener("submit", (e) => { e.preventDefault(); const v = q.value.trim(); if (v) { nav("/search?q=" + encodeURIComponent(v)); q.blur(); form.classList.remove("open"); } });
+let typeT;
+q.addEventListener("input", () => {
+  clearTimeout(typeT);
+  typeT = setTimeout(() => { const v = q.value.trim(); if (v.length >= 2) nav("/search?q=" + encodeURIComponent(v), { replace: location.pathname === "/search" }); }, 250);
+});
+q.addEventListener("blur", () => setTimeout(() => form.classList.remove("open"), 150));
+document.getElementById("searchBtn").addEventListener("click", () => { form.classList.add("open"); q.focus(); });
+
+// ---------- Keyboard ----------
+addEventListener("keydown", (e) => {
+  if (tvIsOpen() || e.metaKey || e.ctrlKey || e.altKey) return;
+  const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
+  if (e.key === "Escape" && typing) { document.activeElement.blur(); return; }
+  if (typing) return;
+  if (e.key === "/") { e.preventDefault(); if (innerWidth < 720) form.classList.add("open"); q.focus(); q.select(); }
+  else if (e.key === "t" || e.key === "T") { e.preventDefault(); const m = location.pathname.match(/^\/watch\/([\w-]{11})/); goTV(m && m[1]); }
+  else if (e.key === "N" && e.shiftKey) { const v = sampler()(); if (v) nav("/watch/" + v.id); }
+});
+
+// ---------- Theme ----------
+const THEMES = [
+  ["", "Match my device", "#0e0e0c", "#ffb224"], ["dark", "Ink", "#0e0e0c", "#ffb224"], ["light", "Paper", "#f8f6f0", "#ffb224"],
+  ["terminal", "Terminal", "#050a06", "#39ff88"], ["amber", "Amber CRT", "#0c0800", "#ffb000"], ["midnight", "Midnight", "#0a0f1e", "#7aa2ff"],
+  ["sepia", "Sepia", "#f4ecdd", "#c2622d"], ["contrast", "High contrast", "#000000", "#ffd400"],
+];
+const LIGHT = new Set(["light", "sepia"]);
+function effectiveDark() { const t = document.documentElement.dataset.theme; return t ? !LIGHT.has(t) : !matchMedia("(prefers-color-scheme: light)").matches; }
+function themeIcon() { document.getElementById("themeBtn").innerHTML = icon(effectiveDark() ? "moon" : "sun"); }
+function setTheme(t) {
+  if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  try { t ? localStorage.setItem("lt:theme", t) : localStorage.removeItem("lt:theme"); } catch {}
+  themeIcon();
+  const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim();
+  let m = document.querySelector('meta[name="theme-color"]:not([media])');
+  if (!m) { m = document.createElement("meta"); m.name = "theme-color"; document.head.appendChild(m); }
+  m.content = bg;
+}
+addEventListener("ff:theme", () => document.getElementById("themeBtn").click());
+// Any page can offer the theme picker with a button whose id is themePick.
+document.addEventListener("click", (e) => { if (e.target.closest("#themePick")) dispatchEvent(new Event("ff:theme")); });
+document.getElementById("themeBtn").addEventListener("click", () => {
+  const d = document.getElementById("sheet");
+  const cur = document.documentElement.dataset.theme || "";
+  d.innerHTML = `<h2>Theme</h2><div class="themes" role="radiogroup" aria-label="Theme">${THEMES.map(([k, l, bg, ac]) =>
+    `<button role="radio" aria-checked="${k === cur}" data-theme-pick="${k}"><span class="sw" style="background:${bg}"><i style="background:${ac}"></i></span>${l}</button>`).join("")}</div>
+    <div class="row"><button class="btn" id="sheetOk">Done</button></div>`;
+  d.querySelector(".themes").onclick = (e) => {
+    const b = e.target.closest("[data-theme-pick]"); if (!b) return;
+    setTheme(b.dataset.themePick);
+    d.querySelectorAll("[data-theme-pick]").forEach((x) => x.setAttribute("aria-checked", x === b));
+  };
+  d.querySelector("#sheetOk").onclick = () => d.close();
+  d.showModal();
+});
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", themeIcon);
+
+// ---------- Install ----------
+let deferred = null;
+const installBtn = document.getElementById("installBtn");
+const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferred = e; installBtn.hidden = false; });
+if (isIOS && !standalone) installBtn.hidden = false;
+async function install() {
+  if (deferred) { deferred.prompt(); const { outcome } = await deferred.userChoice; deferred = null; if (outcome === "accepted") installBtn.hidden = true; return; }
+  const d = document.getElementById("sheet");
+  const steps = isIOS
+    ? `<ol><li>Tap the <b>Share</b> button in Safari's toolbar.</li><li>Choose <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>. Feedforward opens like an app.</li></ol>`
+    : `<ol><li>Open your browser's menu, or look for the install icon at the right end of the address bar.</li><li>Choose <b>Install Feedforward</b> or <b>Add to Home screen</b>.</li></ol>`;
+  d.innerHTML = `<h2>Install Feedforward</h2><p class="muted">It runs full screen, starts fast, and keeps your saved videos and progress.</p>${steps}<div class="row"><button class="btn primary" id="sheetOk">Got it</button></div>`;
+  d.querySelector("#sheetOk").onclick = () => d.close();
+  d.showModal();
+}
+installBtn.addEventListener("click", install);
+addEventListener("lt:install", install);
+addEventListener("appinstalled", () => { installBtn.hidden = true; toast("Installed"); });
+
+// ---------- Misc ----------
+addEventListener("scroll", () => document.querySelector(".topbar").classList.toggle("scrolled", scrollY > 4), { passive: true });
+addEventListener("lt:fresh", (e) => toast(`${e.detail} new since the last update`));
+if ("serviceWorker" in navigator && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+  addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+}
+
+shell();
+function acctButton() {
+  const b = document.getElementById("acctBtn");
+  const u = user();
+  b.innerHTML = u ? userAvatar(u, "s") : icon("people");
+  b.setAttribute("aria-label", u ? `Your profile, ${u.name || "Learner"}` : "Get your free code");
+}
+acctButton();
+addEventListener("ff:account", acctButton);
+addEventListener("ff:changed", scheduleSync);
+if (signedIn()) refreshMe().then(sync).catch(() => {});
+loadStats().then(async (st) => { await D.ready; applyStats(st); dispatchEvent(new Event("ff:stats")); }).catch(() => {});
+load().then(() => {
+  // Rail stays quiet: no extra lists here.
+}).catch(() => {});
+route();

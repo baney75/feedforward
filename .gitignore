@@ -1,0 +1,16 @@
+node_modules/
+.wrangler/
+logs/
+.DS_Store
+# Generated or crawled data: rebuilt with the scripts, deployed from the build machine, backed up to R2 (see AGENTS.md).
+data/raw/
+data/cache/
+data/roster.resolved.json
+public/data/videos.json
+public/data/posts.json
+public/data/people.json
+public/data/meta.json
+public/data/home.json
+public/data/shorts.json
+.dev.vars
+scripts/og/thumbs/

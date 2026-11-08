@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "feedforward",
+  "account_id": "f28b2a55054cbc8d998c5963ed34a0a7",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-09-03",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/u/*", "/mcp", "/mcp/*", "/oauth/*", "/.well-known/*"]
+  },
+  "routes": [{ "pattern": "feedforward.dbaney.com", "custom_domain": true }],
+  "d1_databases": [{ "binding": "DB", "database_name": "feedforward", "database_id": "049d7620-d2e2-444c-bce7-cb028f1c03c9", "migrations_dir": "migrations" }],
+  "r2_buckets": [{ "binding": "AVATARS", "bucket_name": "feedforward-avatars" }],
+  "durable_objects": { "bindings": [{ "name": "CHAT", "class_name": "ChatRoom" }] },
+  "migrations": [{ "tag": "chat-v1", "new_sqlite_classes": ["ChatRoom"] }],
+  "kv_namespaces": [{ "binding": "FRESH", "id": "0841cb9b122a4b2b912fa3f75331a987" }],
+  "triggers": { "crons": ["*/10 * * * *"] },
+  "observability": { "enabled": true, "head_sampling_rate": 0.1 }
+}
