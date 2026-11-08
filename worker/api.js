@@ -309,6 +309,49 @@ on("POST", "/api/apply", async (req, env) => {
   return json({ code });
 });
 
+// ---------- Pairing: sign a TV or new device in from your phone ----------
+// The device asks for a short code (and keeps a secret it never shows). A signed-in member opens /pair on
+// their phone, sees what they're approving, and taps Approve; the device's next poll gets its own session.
+// Codes live 10 minutes in KV; an approved code is handed out once.
+const PAIR_ALPHA = "ACDEFGHJKMNPQRTUVWXY3479";
+const pairCode = () => [...crypto.getRandomValues(new Uint8Array(6))].map((x) => PAIR_ALPHA[x % PAIR_ALPHA.length]).join("");
+on("POST", "/api/pair/start", async (req, env) => {
+  if (!(await rate(env, "pair:" + ip(req), 20, 3600))) return err(429, "Too many codes from here. Wait a few minutes.");
+  const b = await body(req).catch(() => ({}));
+  const code = pairCode(), secret = rid(32);
+  const device = String(b.device || "TV").replace(/[^\w .()-]/g, "").slice(0, 30) || "TV";
+  await env.FRESH.put("pair:" + code, JSON.stringify({ s: await sha(secret), device, at: now(), state: "waiting" }), { expirationTtl: 600 });
+  return json({ code, secret, expires: 600 });
+});
+on("GET", "/api/pair/poll", async (req, env) => {
+  if (!(await rate(env, "pairpoll:" + ip(req), 400, 600))) return err(429, "Slow down.");
+  const url = new URL(req.url), code = String(url.searchParams.get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const p = code.length === 6 && (await env.FRESH.get("pair:" + code, "json"));
+  if (!p || p.s !== (await sha(String(url.searchParams.get("secret") || "")))) return json({ state: "gone" });
+  if (p.state !== "approved") return json({ state: p.state });
+  await env.FRESH.delete("pair:" + code);
+  const u = await env.DB.prepare("SELECT * FROM users WHERE id = ? AND banned = 0").bind(p.uid).first();
+  if (!u) return json({ state: "gone" });
+  return json({ state: "approved", token: p.token, user: me(u) }, 200, { "set-cookie": await gateCookie(env, u.id, await sha(p.token)) });
+});
+on("GET", "/api/pair/([A-Za-z0-9]{6})", async (req, env, u, [code]) => {
+  if (!u) return err(401, "Sign in first.");
+  const p = await env.FRESH.get("pair:" + code.toUpperCase(), "json");
+  if (!p || p.state !== "waiting") return err(404, "That code has expired. Show a new one on the other screen.");
+  return json({ device: p.device, at: p.at });
+});
+on("POST", "/api/pair/([A-Za-z0-9]{6})", async (req, env, u, [code]) => {
+  if (!u || u.banned) return err(401, "Sign in first.");
+  if (!(await rate(env, "pairok:" + u.id, 20, 3600))) return err(429, "Slow down.");
+  const key = "pair:" + code.toUpperCase();
+  const p = await env.FRESH.get(key, "json");
+  if (!p || p.state !== "waiting") return err(404, "That code has expired. Show a new one on the other screen.");
+  const token = await session(env, u.id, p.device);
+  await env.FRESH.put(key, JSON.stringify({ ...p, state: "approved", uid: u.id, token }), { expirationTtl: 120 });
+  await log(env, u.id, "pair", p.device);
+  return json({ ok: true, device: p.device });
+});
+
 on("GET", "/api/me", async (req, env, u) => {
   if (!u) return err(401, "Sign in first.");
   const [data, likes, dislikes, ratings, refs] = await Promise.all([

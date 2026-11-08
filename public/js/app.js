@@ -17,7 +17,7 @@ const EXPLORE = [["/books", "Books"], ["/research", "Research"], ["/dictionary",
 const TABS = ["/", "/shorts", "/wire", "/learn", "/library"];
 // Pages that live in their own lazily loaded module.
 // Feedforward is invite-only: signed out, every path shows the front door (gate.js) except /link, the QR sign-in.
-const PAGES = { gate: "gate", suggest: "suggest", oauth: "consent", teach: "teach", me: "me", link: "me", chat: "chat", sessions: "sessions", skills: "skills", agents: "agents", admin: "admin", u: "profile", research: "research", dictionary: "dictionary", repos: "repos" };
+const PAGES = { gate: "gate", pair: "pair", suggest: "suggest", oauth: "consent", teach: "teach", me: "me", link: "me", chat: "chat", sessions: "sessions", skills: "skills", agents: "agents", admin: "admin", u: "profile", research: "research", dictionary: "dictionary", repos: "repos" };
 
 function shell() {
   const rail = document.querySelector(".rail");
@@ -292,6 +292,8 @@ addEventListener("ff:account", () => {
   if (signedIn() === wasIn) return;
   wasIn = signedIn();
   if (!wasIn) started = null;
+  // A TV that just signed in goes straight to lean-back TV mode.
+  if (wasIn && /SMART-TV|SmartTV|Tizen|Web0S|webOS|NetCast|BRAVIA|AFT[A-Z]|CrKey|GoogleTV|Android TV|HbbTV|VIDAA|PhilipsTV|Roku/i.test(navigator.userAgent)) { document.body.classList.remove("door-tv"); history.replaceState(null, "", "/tv"); }
   route();
 });
 addEventListener("ff:changed", scheduleSync);

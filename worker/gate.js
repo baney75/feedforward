@@ -50,7 +50,7 @@ export async function liveSession(env, { uid, sid }) {
 
 // Paths anyone may call: the front door (join, sign in, apply, invite lookups), the landing page's live
 // counts, health and OAuth. Everything else under /api needs the gate.
-export const PUBLIC_API = /^\/api\/(account|login|logout|gate|pow|apply|invite\/[\w-]{1,40}|pulse|health|oauth\/[\w/]+)$/;
+export const PUBLIC_API = /^\/api\/(account|login|logout|gate|pow|apply|invite\/[\w-]{1,40}|pulse|health|pair\/start|pair\/poll|oauth\/[\w/]+)$/;
 export const gatedPath = (p) => (p.startsWith("/api/") && !PUBLIC_API.test(p)) || p.startsWith("/data/") || p.startsWith("/labs/");
 
 // ---------- Proof of work ----------

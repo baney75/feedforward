@@ -681,3 +681,46 @@ body.door main { padding: 0; }
 .install-card span { display: block; font-size: 13px; color: var(--fg-2); margin-top: 2px; line-height: 1.4; }
 .install-card .install-acts { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
 @media (prefers-reduced-motion: reduce) { .install-card { transition: none; } }
+
+/* Door: lessons inside, under the card. */
+.door-peek { width: 100%; max-width: 1040px; padding: 8px 16px 18px; }
+.door-peek h2 { margin: 0 0 12px; font: 600 13px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--fg-2); }
+.door-peek ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.door-peek li { display: grid; gap: 6px; padding: 10px; border-radius: 14px; background: color-mix(in srgb, var(--bg-2) 88%, transparent); border: 1px solid var(--line); backdrop-filter: blur(10px); }
+.door-peek img { width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 9px; display: block; }
+.door-peek b { font-size: 14px; line-height: 1.35; }
+.door-peek span { font-size: 13px; color: var(--fg-2); }
+@media (max-width: 719px) { .door-peek ul { grid-template-columns: 1fr 1fr; } .door-peek li:nth-child(n+3) { display: none; } }
+/* Home: one clear way to begin. */
+.start-here { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "tag btn" "title btn" "sub btn"; align-items: center; gap: 2px var(--s4); margin: 0 0 var(--s5);
+  padding: var(--s4) var(--s5); border-radius: var(--r); background: linear-gradient(120deg, color-mix(in srgb, var(--accent) 16%, var(--bg-2)), var(--bg-2)); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); color: var(--fg); text-decoration: none; }
+.start-here .topic-tag { grid-area: tag; } .start-here b { grid-area: title; font-size: 18px; } .start-here .muted { grid-area: sub; font-size: 14px; } .start-here .btn { grid-area: btn; }
+@media (max-width: 719px) { .start-here { grid-template-columns: 1fr; grid-template-areas: "tag" "title" "sub" "btn"; } .start-here .btn { margin-top: var(--s2); justify-self: start; } }
+/* Touch: chips are full-size targets. */
+@media (pointer: coarse), (max-width: 719px) { .chips .chip { min-height: 44px; padding: 0 16px; } }
+/* The Wire rail: short previews, with the full post a tap away. */
+.wire-rail .post-text { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.wire-rail .post-media, .wire-rail .qpost, .wire-rail .more { display: none; }
+
+/* Pairing: a big QR and code a TV can show across the room. */
+.door-pair { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: center; }
+.door-qr .qr { width: 100%; height: auto; border-radius: 14px; display: block; }
+.door-pair ol { margin: 8px 0 12px; padding-left: 20px; display: grid; gap: 4px; font-size: 15px; }
+.door-paircode { margin: 6px 0 10px; font-size: 34px; letter-spacing: .12em; color: var(--accent-text); }
+body.door-tv .door-hero { max-width: 960px; } body.door-tv .door-pair { grid-template-columns: 340px 1fr; } body.door-tv .door-paircode { font-size: 56px; }
+body.door-tv .door-signin, body.door-tv .door-peek { display: none; }
+@media (max-width: 719px) { .door-pair { grid-template-columns: 1fr; } .door-qr { max-width: 240px; } }
+.pg-pair .pair-in { font-size: 28px; letter-spacing: .12em; text-transform: uppercase; max-width: 260px; }
+
+/* Round 3: clearer door field, brighter guidance, calmer tablet top. */
+.door-row .door-span { grid-column: 1 / -1; }
+.door-row .door-span > span { color: var(--fg); font-size: 15px; font-weight: 600; }
+.door-field .input::placeholder { color: color-mix(in srgb, var(--fg) 58%, var(--bg)); }
+.door-hint.door-center { text-align: center; margin-top: 12px; }
+@media (min-width: 720px) and (max-width: 1100px) { .door-hero { padding-top: clamp(24px, 4vh, 56px); } }
+/* Home: show that the chip row scrolls; bigger tab labels; tablet titles get a third line. */
+@media (max-width: 1179px) {
+  .home .chips { -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); padding-right: 40px; }
+}
+.tabbar a span { font-size: 12px; font-weight: 600; }
+@media (min-width: 720px) and (max-width: 1179px) { .hero-side .vrow .vt { -webkit-line-clamp: 3; } }

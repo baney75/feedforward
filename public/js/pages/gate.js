@@ -7,15 +7,18 @@
 //   "Donovan invited you"                a person vouched for you, so you're expected
 //   the human check's progress           visible progress, so a wait feels like work being done for you
 //   your code, big, with "save it"       ownership: it's your key
-import { createAccount, signIn, apply, inviteInfo, prepare } from "../account.js";
+import { createAccount, signIn, apply, inviteInfo, prepare, adopt } from "../account.js";
 import { esc, toast, userAvatar, badges } from "../ui.js";
-import { $, setTitle, cssReady, copy } from "./_shared.js";
+import { $, setTitle, cssReady, copy, qrSvg, SITE } from "./_shared.js";
 import { haptic } from "../haptics.js";
 
 const TEACHERS = ["Andrej Karpathy", "3Blue1Brown", "Sebastian Lague", "Welch Labs", "Theo", "Tsoding", "Simon Willison", "StatQuest"];
 // A few lessons for the wall when the live list is short. YouTube thumbnails are public.
 const WALL = ["kCc8FmEb1nY", "zjkBMFhNj_g", "wjZofJX0v4M", "7xTGNNLPyMI", "eMlx5fFNoYc", "aircAruvnKk", "1DtMiRKg-cs", "VMj-3S1tku0", "l8pRSuU81PU", "9vM4p9NN0Ts", "LPZh9BOjkQs", "fNk_zzaMoSs"];
 const ROLE = { contributor: "Contributor", mod: "Moderator", admin: "Admin" };
+// What's behind the door: four lessons people know.
+const PEEK = [["kCc8FmEb1nY", "Let's build GPT: from scratch, in code", "Andrej Karpathy"], ["aircAruvnKk", "But what is a neural network?", "3Blue1Brown"],
+  ["wjZofJX0v4M", "Transformers, the tech behind LLMs", "3Blue1Brown"], ["zjkBMFhNj_g", "Intro to Large Language Models", "Andrej Karpathy"]];
 const store = { get: (k) => { try { return JSON.parse(localStorage.getItem("lt:" + k)); } catch { return null; } }, set: (k, v) => { try { v == null ? localStorage.removeItem("lt:" + k) : localStorage.setItem("lt:" + k, JSON.stringify(v)); } catch {} } };
 const fmt = (n) => (n >= 10000 ? (n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, "") + "K" : Number(n || 0).toLocaleString());
 
@@ -24,7 +27,9 @@ export async function render(el, qs, parts) {
   setTitle("");
   const joinCode = parts[0] === "join" && parts[1] ? parts[1] : "";
   const pending = store.get("application");
-  let tab = joinCode ? "invite" : pending ? "signin" : "invite";
+  // A TV gets the pairing screen: scan with your phone, approve, done.
+  let tab = isTV() ? "pair" : joinCode ? "invite" : pending ? "signin" : "invite";
+  if (tab === "pair") document.body.classList.add("door-tv");
 
   el.innerHTML = `<div class="door-pg">
     <div class="door-wall" aria-hidden="true"><div class="dw-cols"></div></div>
@@ -35,14 +40,18 @@ export async function render(el, qs, parts) {
       </a>
       <button class="btn door-signin" type="button" data-tab="signin">Sign in</button>
     </header>
-    <main class="door-hero">
-      <p class="door-eyebrow"><span class="door-live" aria-hidden="true"></span>Invite only<span class="door-sep" aria-hidden="true"></span><span id="doorCount">Members learning now</span></p>
+    <div class="door-hero">
+      <p class="door-eyebrow"><span class="door-live" aria-hidden="true"></span>Invite only<span class="door-sep" aria-hidden="true"></span>Free<span class="door-sep" aria-hidden="true"></span>No ads<span id="doorCount" hidden></span></p>
       <h1 class="door-h">Learn AI from the people <em>building it.</em></h1>
-      <p class="door-sub">Hand-picked lessons from ${TEACHERS.slice(0, 3).map(esc).join(", ")} and <span id="doorPeople">80+</span> more teachers, with labs, live sessions and a community of builders. Free. No ads.</p>
+      <p class="door-sub">Hand-picked lessons from ${TEACHERS.slice(0, 2).map(esc).join(", ")} and <span id="doorPeople">80+</span> more teachers. Labs, live sessions and a community of builders.</p>
       <section class="door-card" aria-label="Get in">
         <div class="door-pane" id="doorPane"></div>
       </section>
-    </main>
+    </div>
+    <section class="door-peek" aria-label="Lessons inside">
+      <h2>Lessons inside</h2>
+      <ul>${PEEK.map(([id, t, by]) => `<li><img src="https://i.ytimg.com/vi/${id}/mqdefault.jpg" alt="" width="320" height="180" loading="lazy"><b>${esc(t)}</b><span>${esc(by)}</span></li>`).join("")}</ul>
+    </section>
     <section class="door-how" aria-label="How it works">
       <ol>
         <li><b>Get an invite, or apply</b><span>A member's link gets you straight in. Applications are read by people, not bots.</span></li>
@@ -66,7 +75,8 @@ export async function render(el, qs, parts) {
   paintWall([]);
   fetch("/api/pulse").then((r) => r.json()).then((p) => {
     if (p.wall && p.wall.length) paintWall(p.wall);
-    if (p.learners) $("#doorCount", el).textContent = `${fmt(p.learners)} member${p.learners === 1 ? "" : "s"}`;
+    // A member count is social proof only once it's big; until then the eyebrow states facts.
+    if (p.learners >= 250) { const c = $("#doorCount", el); c.hidden = false; c.textContent = ` · ${fmt(p.learners)} members`; }
     if (p.people) $("#doorPeople", el).textContent = String(Math.max(0, p.people - 4));
   }).catch(() => {});
 
@@ -88,7 +98,45 @@ export async function render(el, qs, parts) {
 let goTab = () => {};
 
 // ---------- Panes ----------
-const PANES = { invite: invitePane, signin: signinPane, apply: applyPane };
+const PANES = { invite: invitePane, signin: signinPane, apply: applyPane, pair: pairPane };
+
+// Smart TVs and streaming sticks, by user agent (plus ?tv=1 for testing on anything).
+export const isTV = () => /SMART-TV|SmartTV|Tizen|Web0S|webOS|NetCast|BRAVIA|AFT[A-Z]|CrKey|GoogleTV|Android TV|HbbTV|VIDAA|PhilipsTV|Roku/i.test(navigator.userAgent) || new URLSearchParams(location.search).has("tv");
+
+// Sign this screen in from a phone. The screen shows a code and its QR; the phone approves at /pair.
+let pairTimer = 0;
+async function pairPane(pane) {
+  clearTimeout(pairTimer);
+  pane.innerHTML = `<div class="door-pair"><div class="door-loading">Getting a code...</div></div>`;
+  let d;
+  try {
+    const r = await fetch("/api/pair/start", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ device: isTV() ? "TV" : "Browser" }) });
+    d = await r.json(); if (!r.ok) throw new Error(d.error || "Couldn't get a code.");
+  } catch (e) { pane.innerHTML = `<p class="door-err" role="alert">${esc(e.message)}</p><button class="btn" type="button" data-tab="pair">Try again</button>`; return; }
+  const url = `${SITE}/pair#${d.code}`, pretty = d.code.slice(0, 3) + "-" + d.code.slice(3);
+  pane.innerHTML = `<div class="door-pair">
+    <div class="door-qr">${await qrSvg(url, "QR code: scan with your phone to sign this screen in")}</div>
+    <div class="door-pair-t">
+      <h2 class="door-title">Sign in with your phone</h2>
+      <ol><li>Point your phone's camera at the code.</li><li>Tap <b>Approve</b> on your phone.</li></ol>
+      <p class="door-hint">Or open <b>${esc(SITE.replace("https://", ""))}/pair</b> and enter</p>
+      <p class="door-paircode mono" aria-label="Pairing code ${esc(d.code.split("").join(" "))}">${esc(pretty)}</p>
+      <p class="door-hint" id="pairState">Waiting for your phone...</p>
+    </div></div>
+    ${isTV() ? "" : `<p class="door-back"><button class="textbtn" type="button" data-tab="signin">Type my code instead</button></p>`}`;
+  const started = Date.now();
+  const poll = async () => {
+    if (!pane.isConnected) return;
+    if (Date.now() - started > 570000) return pairPane(pane);   // codes live 10 minutes: get a fresh one
+    try {
+      const r = await (await fetch(`/api/pair/poll?code=${d.code}&secret=${encodeURIComponent(d.secret)}`)).json();
+      if (r.state === "approved") { haptic.success(); $("#pairState", pane).textContent = "Approved. Signing you in..."; await adopt(r.token, r.user); return; }
+      if (r.state === "gone") return pairPane(pane);
+    } catch {}
+    pairTimer = setTimeout(poll, 2000);
+  };
+  pairTimer = setTimeout(poll, 2000);
+}
 
 // The human check, shown as progress on the button that started it.
 async function withCheck(btn, label, fn) {
@@ -111,13 +159,14 @@ function codeOf(input) {
 function invitePane(pane, { code = "" } = {}) {
   if (!code) {
     pane.innerHTML = `<form class="door-form door-row" id="invForm">
-      <label class="door-field"><span class="sr-only">Invite link or code</span>
-        <input class="input" name="inv" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste your invite link or code" required></label>
+      <label class="door-field door-span"><span>Have an invite? Paste the link or code</span>
+        <input class="input" name="inv" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="feedforward.dbaney.com/join/..." required></label>
       <button class="btn primary door-go" type="submit">Continue</button>
     </form>
     <div class="door-msg" aria-live="polite"></div>
     <div class="door-or" role="separator"><span>No invite yet?</span></div>
-    <button class="btn door-apply" type="button" data-tab="apply">Apply for an invite</button>`;
+    <button class="btn door-apply" type="button" data-tab="apply">Apply for an invite</button>
+    <p class="door-hint door-center">A person reads every application. You get your code right away, and it lets you in the moment you're approved.</p>`;
     $("#invForm", pane).onsubmit = (e) => {
       e.preventDefault();
       const c = codeOf(e.currentTarget.inv.value);
@@ -189,6 +238,7 @@ function signinPane(pane) {
         <input class="input mono" name="code" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="otter-maple-rocket-acorn-42" value="${pending ? esc(pending.code) : ""}" required></label>
       <button class="btn primary door-go" type="submit">Sign in</button>
       ${canScan ? `<button class="btn door-scan" type="button" id="scan">Scan a QR code</button>` : ""}
+      <button class="btn door-scan" type="button" data-tab="pair">Sign in with my phone</button>
       <p class="door-hint">Signed in on another device? Open your profile there, show your QR code, and point this phone's camera at it.</p>
       <div class="door-msg" aria-live="polite"></div>
     </form>
