@@ -470,7 +470,7 @@ export function shortsPage(el, qs, startId) {
   $("#shortsOffBtn", el).onclick = () => { if (!confirm("Turn off Shorts on this device? You can turn them back on in Library.")) return; store.setShortsOff(true); location.assign("/"); };
   bindChips(el);
   const box = $(".shorts", el);
-  let shown = 40, active = null, paused = false;
+  let shown = 40, active = null, paused = false, tapT = 0, lastTap = 0;
   // Our own controls: YouTube's overlay stays off (controls=0) and a tap layer sits over the player.
   // Tap pauses or plays, double-tap likes, a thin line shows progress. Sound starts off (phones block
   // autoplay with sound) and stays on once you turn it on.
@@ -480,6 +480,8 @@ export function shortsPage(el, qs, startId) {
   const activate = (slide) => {
     if (active === slide) return;
     if (active) { const f = active.querySelector("iframe"); if (f) f.remove(); active.classList.remove("playing", "paused", "started"); }
+    // A tap waiting to become a pause belongs to the Short we're leaving.
+    clearTimeout(tapT); lastTap = 0;
     active = slide; paused = false;
     const id = slide.dataset.id;
     // Always start muted: phones only autoplay muted video. Sound comes on once it's really playing.
@@ -512,7 +514,8 @@ export function shortsPage(el, qs, startId) {
     if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); step(1); }
     if (e.key === "ArrowUp") { e.preventDefault(); step(-1); }
     // Space or K pauses and plays, like YouTube.
-    if ((e.key === " " || e.key === "k") && active) { e.preventDefault(); active.querySelector(".scatch").click(); }
+    // (Never steal Space from a focused button, link or chip: it activates them.)
+    if ((e.key === "k" || (e.key === " " && !document.activeElement?.closest("button, a, [role=button], summary"))) && active) { e.preventDefault(); active.querySelector(".scatch").click(); }
   };
   addEventListener("keydown", keys);
   el.querySelector(".snav").onclick = (e) => { const b = e.target.closest("[data-snav]"); if (b) step(+b.dataset.snav); };
@@ -534,7 +537,6 @@ export function shortsPage(el, qs, startId) {
     }
   };
   addEventListener("message", onMsg);
-  let tapT = 0, lastTap = 0;
   box.addEventListener("click", (e) => {
     const catcher = e.target.closest(".scatch");
     if (catcher) {

@@ -255,8 +255,10 @@ addEventListener("appinstalled", () => { installBtn.hidden = true; toast("Instal
     if (acc > 24) { bar.classList.add("away"); document.body.classList.add("bar-away"); }
     else if (acc < -12) { bar.classList.remove("away"); document.body.classList.remove("bar-away"); }
   }, { passive: true });
-  // Opening a page always brings it back.
-  addEventListener("popstate", () => { bar.classList.remove("away"); document.body.classList.remove("bar-away"); });
+  // Opening a page, or focusing anything in the bar (the / shortcut, Tab), always brings it back.
+  const back = () => { bar.classList.remove("away"); document.body.classList.remove("bar-away"); };
+  addEventListener("popstate", back);
+  bar.addEventListener("focusin", back);
 }
 addEventListener("lt:fresh", (e) => toast(`${e.detail} new since the last update`));
 if ("serviceWorker" in navigator && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
