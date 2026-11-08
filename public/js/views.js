@@ -399,8 +399,10 @@ export function libraryPage(el, qs) {
   const ss = saved.filter((k) => k.startsWith("s:")).map((k) => D.shorts.find((x) => x.id === k.slice(2))).filter(Boolean);
   const hist = store.history().map((id) => D.byId.get(id)).filter(Boolean);
   el.innerHTML = `<div class="page-h"><div><h1>Library</h1><p>Saved videos, Shorts and posts, and what you've watched. Sign in with your code to keep them on every device.</p></div><button class="btn" id="themePick" type="button">Theme</button></div>
+    <label class="toggle lib-pref"><input type="checkbox" id="shortsOff"${store.shortsOff() ? " checked" : ""}><span><b>Turn off Shorts</b><span class="muted">Hides Shorts everywhere on this device. Turn them back on any time.</span></span></label>
     <div class="tabs" role="group"><button data-tab="saved" aria-pressed="${tab === "saved"}">Saved</button><button data-tab="history" aria-pressed="${tab === "history"}">History</button></div>
     <div id="lib"></div>`;
+  $("#shortsOff", el).onchange = (e) => { store.setShortsOff(e.target.checked); toast(e.target.checked ? "Shorts are off on this device" : "Shorts are back"); };
   el.querySelector(".tabs").onclick = (e) => { const b = e.target.closest("[data-tab]"); if (!b) return; history.replaceState(null, "", "/library?tab=" + b.dataset.tab); dispatchEvent(new PopStateEvent("popstate")); };
   const lib = $("#lib", el);
   if (tab === "history") {
@@ -451,6 +453,12 @@ export function notFound(el) {
 // A vertical, snap-scrolling player. Only the short in view holds an iframe; the rest are posters.
 export function shortsPage(el, qs, startId) {
   setTitle("Shorts");
+  if (store.shortsOff()) {
+    el.innerHTML = `<div class="empty shorts-off"><h1>Shorts are off</h1><p>You turned them off on this device. Longer videos, tracks and labs are all still here.</p>
+      <div class="row"><a class="btn primary" href="/">Go home</a><button class="btn" type="button" id="shortsOn">Turn Shorts back on</button></div></div>`;
+    $("#shortsOn", el).onclick = () => { store.setShortsOff(false); dispatchEvent(new PopStateEvent("popstate")); };
+    return;
+  }
   const topic = topicFromQuery(qs);
   const tIdx = topic >= 0 ? topic : -1;
   // Shorts you disliked leave your Shorts feed.
@@ -469,9 +477,11 @@ export function shortsPage(el, qs, startId) {
   if (!list.length) { el.innerHTML = `<div class="page-h"><div><h1>Shorts</h1></div></div>${chips(topic)}<p class="empty">No shorts in this topic yet.</p>`; bindChips(el); return; }
   el.innerHTML = `<div class="shorts-page">${chips(topic)}<div class="shorts" tabindex="0" aria-label="Shorts. Use the up and down arrow keys to move between them.">${list.slice(0, 40).map(shortSlide).join("")}</div>
     <div class="snav"><button class="icon-btn" data-snav="-1" aria-label="Previous short">${icon("up")}</button><button class="icon-btn" data-snav="1" aria-label="Next short">${icon("down")}</button></div></div>`;
+  el.querySelector(".chips").insertAdjacentHTML("beforeend", `<button class="chip shorts-off-chip" type="button" id="shortsOffBtn">Turn off Shorts</button>`);
+  $("#shortsOffBtn", el).onclick = () => { if (!confirm("Turn off Shorts on this device? You can turn them back on in Library.")) return; store.setShortsOff(true); location.assign("/"); };
   bindChips(el);
   const box = $(".shorts", el);
-  let shown = 40, active = null, paused = false;
+  let shown = 40, active = null, paused = false, tapT = 0, lastTap = 0;
   // Our own controls: YouTube's overlay stays off (controls=0) and a tap layer sits over the player.
   // Tap pauses or plays, double-tap likes, a thin line shows progress. Sound starts off (phones block
   // autoplay with sound) and stays on once you turn it on.
@@ -481,19 +491,27 @@ export function shortsPage(el, qs, startId) {
   const activate = (slide) => {
     if (active === slide) return;
     if (active) { const f = active.querySelector("iframe"); if (f) f.remove(); active.classList.remove("playing", "paused", "started"); }
+    // A tap waiting to become a pause belongs to the Short we're leaving.
+    clearTimeout(tapT); lastTap = 0;
     active = slide; paused = false;
     const id = slide.dataset.id;
-    const params = new URLSearchParams({ autoplay: "1", mute: soundOn() ? "0" : "1", controls: "0", disablekb: "1", fs: "0", iv_load_policy: "3", playsinline: "1", rel: "0", loop: "1", playlist: id, enablejsapi: "1", origin: location.origin });
+    // Always start muted: phones only autoplay muted video. Sound comes on once it's really playing.
+    const params = new URLSearchParams({ autoplay: "1", mute: "1", controls: "0", disablekb: "1", fs: "0", iv_load_policy: "3", playsinline: "1", rel: "0", loop: "1", playlist: id, enablejsapi: "1", origin: location.origin });
     slide.querySelector(".sframe").insertAdjacentHTML("afterbegin", `<iframe src="${YT}/embed/${id}?${params}" allow="autoplay; encrypted-media; picture-in-picture" title="${esc(slide.dataset.title)}"></iframe>`);
     const f = slide.querySelector("iframe");
     // YouTube draws its mobile controls on small players and ignores controls=0 there. So the player is laid
     // out at 720x1280 and scaled down to the frame: YouTube sees a big player and keeps its controls hidden.
     const frame = slide.querySelector(".sframe");
-    const fit = () => frame.style.setProperty("--ys", (frame.clientWidth / 720).toFixed(4));
+    const fit = () => {
+      const s = Math.min(frame.clientWidth / 720, frame.clientHeight / 1280);
+      frame.style.setProperty("--ys", s.toFixed(4));
+      frame.style.setProperty("--yx", ((frame.clientWidth - 720 * s) / 2).toFixed(1) + "px");
+      frame.style.setProperty("--yy", ((frame.clientHeight - 1280 * s) / 2).toFixed(1) + "px");
+    };
     fit(); new ResizeObserver(fit).observe(frame);
     f.addEventListener("load", () => f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), YT));
-    slide.classList.add("playing");
-    slide.classList.toggle("muted", !soundOn());
+    slide.classList.add("playing", "muted");
+    delete slide.dataset.unmuted;
     store.watched(id);
     history.replaceState(history.state, "", `/shorts/${id}${location.search}`);
     const k = [...box.children].indexOf(slide);
@@ -505,7 +523,10 @@ export function shortsPage(el, qs, startId) {
   const keys = (e) => {
     if (/INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
     if (e.key === "ArrowDown" || e.key === "j") { e.preventDefault(); step(1); }
-    if (e.key === "ArrowUp" || e.key === "k") { e.preventDefault(); step(-1); }
+    if (e.key === "ArrowUp") { e.preventDefault(); step(-1); }
+    // Space or K pauses and plays, like YouTube.
+    // (Never steal Space from a focused button, link or chip: it activates them.)
+    if ((e.key === "k" || (e.key === " " && !document.activeElement?.closest("button, a, [role=button], summary"))) && active) { e.preventDefault(); active.querySelector(".scatch").click(); }
   };
   addEventListener("keydown", keys);
   el.querySelector(".snav").onclick = (e) => { const b = e.target.closest("[data-snav]"); if (b) step(+b.dataset.snav); };
@@ -516,10 +537,17 @@ export function shortsPage(el, qs, startId) {
     const info = d && d.info;
     if (info && info.currentTime != null && info.duration) active.style.setProperty("--prog", (100 * info.currentTime / info.duration).toFixed(2) + "%");
     // The thumbnail covers the player until it's really playing, so YouTube's start screen never shows.
-    if (info && info.playerState === 1) active.classList.add("started");
+    if (info && info.playerState === 1) {
+      active.classList.add("started");
+      // Playing muted: if this viewer turned sound on, ask for it now.
+      if (soundOn() && !active.dataset.unmuted) { active.dataset.unmuted = "1"; cmd(active, "unMute"); cmd(active, "setVolume", [100]); active.classList.remove("muted"); }
+    }
+    // Safari pauses a video that unmutes without a tap: go back to muted playback and offer sound again.
+    if (info && info.playerState === 2 && !paused && active.dataset.unmuted === "1") {
+      active.dataset.unmuted = "blocked"; cmd(active, "mute"); cmd(active, "playVideo"); active.classList.add("muted");
+    }
   };
   addEventListener("message", onMsg);
-  let tapT = 0, lastTap = 0;
   box.addEventListener("click", (e) => {
     const catcher = e.target.closest(".scatch");
     if (catcher) {
@@ -532,7 +560,7 @@ export function shortsPage(el, qs, startId) {
         setTimeout(() => catcher.querySelector(".burst")?.remove(), 800);
         haptic.success();
         const item = "s:" + slide.dataset.id;
-        if (signedIn() && !mine.likes.has(item)) likeItem(item, true).then(() => { const pill = slide.querySelector(".vote"); if (pill) pill.outerHTML = likeButton(item, { label: false }).replace('class="btn like"', 'class="like"'); }).catch(() => {});
+        if (signedIn() && !mine.likes.has(item)) likeItem(item, true).then(() => { const pill = slide.querySelector(".vote"); if (pill) pill.outerHTML = likeButton(item, { stacked: true }); }).catch(() => {});
         return;
       }
       lastTap = now;
@@ -566,7 +594,7 @@ function shortSlide(s) {
       <div class="sbar" aria-hidden="true"><i></i></div>
       <div class="sover"><a class="who" href="/p/${p.slug}">${avatar(p, "s")}<b>${esc(p.name)}</b></a><p>${esc(s.title)}</p><span class="topic-tag">${topicLabel(s.topic)} · ${num(s.views)} views</span></div></div>
     <div class="sacts">
-      ${likeButton("s:" + s.id, { label: false }).replace('class="btn like"', 'class="like"')}
+      ${likeButton("s:" + s.id, { stacked: true })}
       <button data-save="s:${s.id}" aria-pressed="${saved}" aria-label="Save">${icon(saved ? "bookmarked" : "bookmark")}<span>Save</span></button>
       <button data-share="${s.id}" aria-label="Share">${icon("share")}<span>Share</span></button>
       <a href="https://www.youtube.com/shorts/${s.id}" target="_blank" rel="noopener" aria-label="Open on YouTube">${icon("yt")}<span>YouTube</span></a>

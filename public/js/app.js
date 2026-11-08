@@ -21,10 +21,13 @@ const PAGES = { gate: "gate", pair: "pair", suggest: "suggest", oauth: "consent"
 
 function shell() {
   const rail = document.querySelector(".rail");
-  rail.innerHTML = NAV.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("") +
+  const noShorts = store.shortsOff(), nav = NAV.filter(([h]) => !(noShorts && h === "/shorts"));
+  rail.innerHTML = nav.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("") +
     `<hr><div class="rail-h">Explore</div><div class="explore">${EXPLORE.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</div>` +
     `<div class="foot"><a href="/tv">TV mode</a> · <a href="/people">People</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="mailto:support@dbaney.com">support@dbaney.com</a> · <a href="https://github.com/baney75/feedforward">GitHub</a><br><button class="textbtn" type="button" id="railInstall">Install app</button> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
-  document.querySelector(".tabbar").innerHTML = NAV.filter(([h]) => TABS.includes(h)).map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("");
+  const tabbar = document.querySelector(".tabbar"), tabs = nav.filter(([h]) => TABS.includes(h));
+  tabbar.style.setProperty("--tabs", tabs.length);
+  tabbar.innerHTML = tabs.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("");
   document.getElementById("searchBtn").innerHTML = icon("search");
   document.getElementById("installBtn").innerHTML = icon("install");
   themeIcon();
@@ -269,7 +272,24 @@ function askInstall() {
 }
 
 // ---------- Misc ----------
-addEventListener("scroll", () => document.querySelector(".topbar").classList.toggle("scrolled", scrollY > 4), { passive: true });
+// The top bar gets out of the way: scrolling down slides it off, any scroll up brings it back (like the YouTube
+// and X apps). It always shows near the top of the page, and small jitters don't move it.
+{
+  const bar = document.querySelector(".topbar");
+  let lastY = scrollY, acc = 0;
+  addEventListener("scroll", () => {
+    const y = scrollY, dy = y - lastY; lastY = y;
+    bar.classList.toggle("scrolled", y > 4);
+    if (y < 80) { acc = 0; bar.classList.remove("away"); document.body.classList.remove("bar-away"); return; }
+    acc = Math.sign(dy) === Math.sign(acc) ? acc + dy : dy;
+    if (acc > 24) { bar.classList.add("away"); document.body.classList.add("bar-away"); }
+    else if (acc < -12) { bar.classList.remove("away"); document.body.classList.remove("bar-away"); }
+  }, { passive: true });
+  // Opening a page, or focusing anything in the bar (the / shortcut, Tab), always brings it back.
+  const back = () => { bar.classList.remove("away"); document.body.classList.remove("bar-away"); };
+  addEventListener("popstate", back);
+  bar.addEventListener("focusin", back);
+}
 addEventListener("lt:fresh", (e) => toast(`${e.detail} new since the last update`));
 if ("serviceWorker" in navigator && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
   addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
@@ -297,5 +317,7 @@ addEventListener("ff:account", () => {
   route();
 });
 addEventListener("ff:changed", scheduleSync);
+// Turning Shorts off or on rebuilds the navigation at once.
+addEventListener("ff:prefs", () => { shell(); markNav(location.pathname.replace(/\/+$/, "") || "/"); });
 sessionStorage.removeItem("ff:hold");
 route();

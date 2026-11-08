@@ -581,12 +581,17 @@ async function tries(fn, n = 3) {
   for (let k = 0; k < n; k++) { try { return await fn(); } catch {} if (k < n - 1) await new Promise((res) => setTimeout(res, 250 * (k + 1))); }
   throw new Error("source failed");
 }
+// A member's own public repos: no forks or archives, most recently worked on first, six at most.
+export const feedRepos = (rows) => (Array.isArray(rows) ? rows : [])
+  .filter((r) => r && !r.fork && !r.archived && !r.private && /^https:\/\/github\.com\//.test(r.html_url || ""))
+  .slice(0, 6)
+  .map((r) => ({ name: String(r.name).slice(0, 100), desc: String(r.description || "").slice(0, 200), stars: r.stargazers_count || 0, lang: String(r.language || "").slice(0, 30), url: r.html_url, ts: Math.floor(Date.parse(r.pushed_at || 0) / 1000) || 0 }));
 on("GET", "/api/u/([\\w]+)/feed", async (req, env, _u, [id]) => {
   const u = await env.DB.prepare("SELECT id, verified, links FROM users WHERE id = ? AND banned = 0").bind(id).first();
   if (!u) return err(404, "No such learner.");
-  const links = linksOf(u), empty = { posts: [], videos: [] };
-  if (!u.verified || (!links.x && !links.youtube)) return json(empty, 200, { "cache-control": "public, max-age=300" });
-  const key = `uf:${u.id}:${links.x || ""}:${links.youtube || ""}`, goodKey = "ok:" + key;
+  const links = linksOf(u), empty = { posts: [], videos: [], repos: [] };
+  if (!u.verified || (!links.x && !links.youtube && !links.github)) return json(empty, 200, { "cache-control": "public, max-age=300" });
+  const key = `uf:${u.id}:${links.x || ""}:${links.youtube || ""}:${links.github || ""}`, goodKey = "ok:" + key;
   let out = env.FRESH && (await env.FRESH.get(key, "json")), failed = false;
   if (!out) {
     // When a source fails every try, show the last copy that worked (kept a week) instead of an empty section.
@@ -605,6 +610,11 @@ on("GET", "/api/u/([\\w]+)/feed", async (req, env, _u, [id]) => {
       if (!r.ok) throw 0;
       out.videos = feedVideos(await r.text());
     }).catch(() => { failed = true; out.videos = last.videos; }));
+    if (links.github) jobs.push(tries(async () => {
+      const r = await fetch(`https://api.github.com/users/${encodeURIComponent(links.github)}/repos?sort=pushed&per_page=30&type=owner`, { headers: { "user-agent": "Feedforward (+https://feedforward.dbaney.com)", accept: "application/vnd.github+json" } });
+      if (!r.ok) throw 0;
+      out.repos = feedRepos(await r.json());
+    }).catch(() => { failed = true; out.repos = last.repos || []; }));
     await Promise.all(jobs);
     if (env.FRESH) {
       // A miss is retried in 2 minutes instead of sticking for 30.

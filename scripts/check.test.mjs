@@ -180,7 +180,7 @@ test("icon and share-image URLs are versioned, so a new logo replaces cached cop
   const html = read("public/index.html"), mf = read("public/manifest.webmanifest"), sw = read("public/sw.js");
   const v = (html.match(/\/icons\/icon\.svg\?v=(\d+)/) || [])[1];
   assert.ok(v, "index.html must link /icons/icon.svg?v=<n>");
-  for (const ref of ["/favicon.ico", "/icons/apple-touch-icon.png", "/og.jpg", "/og.mp4"]) assert.ok(html.includes(`${ref}?v=${v}`), `index.html must use ${ref}?v=${v}`);
+  for (const ref of ["/favicon.ico", "/icons/apple-touch-icon.png", "/og.mp4"]) assert.ok(html.includes(`${ref}?v=${v}`), `index.html must use ${ref}?v=${v}`);
   for (const m of mf.matchAll(/"(\/icons\/[^"]+)"/g)) assert.ok(m[1].endsWith(`?v=${v}`), `manifest icon ${m[1]} must end with ?v=${v}`);
   assert.ok(sw.includes(`/icons/icon.svg?v=${v}`), "sw.js must precache the versioned icon");
 });
@@ -198,4 +198,16 @@ test("X videos play through the no-referrer frame, which only Feedforward may em
   assert.match(block, /frame-ancestors 'self'/);
   assert.match(block, /Referrer-Policy: no-referrer/);
   assert.match(h, /camera=\(self\)/, "the front door's QR scanner needs the camera");
+});
+
+
+test("share cards: centered, and every page points at one that exists", () => {
+  // X and iMessage trim the sides of a card and WhatsApp shows only the center square: cards are built centered
+  // (scripts/og/card.html) and the site and invite links must name them.
+  const html = read("public/index.html"), worker = read("worker/index.js"), card = read("scripts/og/card.html");
+  assert.match(html, /og:image" content="https:\/\/feedforward\.dbaney\.com\/og-card\.jpg\?v=\d+"/);
+  assert.match(html, /twitter:image" content="https:\/\/feedforward\.dbaney\.com\/og-card\.jpg\?v=\d+"/);
+  assert.match(worker, /\/og-invite\.jpg\?v=\d+/);
+  for (const f of ["public/og-card.jpg", "public/og-invite.jpg"]) assert.ok(fs.existsSync(path.join(root, f)), "missing " + f);
+  assert.match(card, /#mid \{ position: absolute; left: 50%; top: 50%; transform: translate\(-50%, -50%\); width: 600px;/, "the card's content stays in the center square");
 });

@@ -17,6 +17,9 @@ function markDay() {
 }
 
 export const store = {
+  // "Turn off Shorts": for people who know short video hooks them. Hides Shorts everywhere on this device.
+  shortsOff() { return read("noShorts", false) === true; },
+  setShortsOff(on) { write("noShorts", !!on); dispatchEvent(new Event("ff:prefs")); },
   // Consecutive days with at least one video, short, lab or step, ending today or yesterday.
   streak() {
     const days = new Set(read("days", []));

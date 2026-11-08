@@ -481,3 +481,10 @@ main:has(> .pg-chat) { padding-bottom: var(--s4); }
 .pg-admin .inv-acts { display: flex; gap: var(--s2); align-items: center; }
 .pg-admin .inv-uses { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
 .pg-admin .inv-uses .input { width: 76px; min-height: 36px; padding: 4px 8px; }
+
+.pg-profile .pf-repos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s3); }
+.pg-profile .pf-repos a { display: grid; gap: 6px; height: 100%; padding: var(--s4); border-radius: var(--r); border: 1px solid var(--line); background: var(--bg-2); color: inherit; text-decoration: none; min-width: 0; }
+.pg-profile .pf-repos a:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.pg-profile .pf-repos b { font-size: 15px; overflow-wrap: anywhere; }
+.pg-profile .pf-repos span { font-size: 14px; color: var(--fg-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pg-profile .pf-repos small { font-size: 13px; }

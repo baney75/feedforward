@@ -4,9 +4,11 @@ import { esc, ago, num, toast, badges, userAvatar } from "./ui.js";
 import { icon } from "./icons.js";
 import { haptic } from "./haptics.js";
 
-// Like and dislike, one pill. The like count shows; the dislike count never does.
-export function likeButton(item, { label = true } = {}) {
+// Like and dislike, one pill. The like count shows; the dislike count never does. stacked: the Shorts action
+// column, where they're round buttons with a label under each, like Save and Share.
+export function likeButton(item, { label = true, stacked = false } = {}) {
   const on = mine.likes.has(item), off = mine.dislikes.has(item), n = stats.likes[item] || 0;
+  if (stacked) return `<span class="vote stacked" data-vote="${esc(item)}" data-stacked="1"><button type="button" data-like="${esc(item)}" aria-pressed="${on}" aria-label="Like${n ? `, ${num(n)} likes` : ""}">${icon(on ? "thumbupfill" : "thumbup")}<span>${n ? num(n) : "Like"}</span></button><button type="button" data-dislike="${esc(item)}" aria-pressed="${off}" aria-label="Dislike. Only you see this.">${icon(off ? "thumbdownfill" : "thumbdown")}<span>Dislike</span></button></span>`;
   return `<span class="vote" data-vote="${esc(item)}"><button class="btn like" data-like="${esc(item)}" aria-pressed="${on}" aria-label="Like${n ? `, ${num(n)} likes` : ""}">${icon(on ? "thumbupfill" : "thumbup")}${label ? `<span>${n ? num(n) : "Like"}</span>` : n ? `<span>${num(n)}</span>` : ""}</button><button class="btn dislike" data-dislike="${esc(item)}" aria-pressed="${off}" aria-label="Dislike. Only you see this.">${icon(off ? "thumbdownfill" : "thumbdown")}</button></span>`;
 }
 
@@ -27,7 +29,7 @@ export function bindSocial(root) {
       const on = lb.getAttribute("aria-pressed") !== "true", pill = lb.closest(".vote");
       lb.setAttribute("aria-pressed", on);
       haptic.tick();
-      try { await like(item, on, kind); pill.outerHTML = likeButton(item); if (kind === "dislike" && on) toast("Got it. You'll see less like this."); }
+      try { await like(item, on, kind); pill.outerHTML = likeButton(item, { stacked: !!pill.dataset.stacked }); if (kind === "dislike" && on) toast("Got it. You'll see less like this."); }
       catch (err) { lb.setAttribute("aria-pressed", !on); toast(err.message); }
       return;
     }
