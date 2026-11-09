@@ -390,3 +390,11 @@ test("a track video counts when you finish it, not when you press play", async (
   assert.match(stage, /Math\.abs\(t - cur\.saved\) < 1/, "a paused player never re-reports a place it did not move to");
   delete globalThis.localStorage;
 });
+
+test("the topic row stays short: three topics, plus the one you are on", () => {
+  const src = read("public/js/ui.js");
+  assert.match(src, /chipTopics\(active\)\.map/, "the row is built from the short list");
+  assert.doesNotMatch(src, /\$\{TOPICS\.map\(\(t, i\) => `<button class="chip"/, "not from every topic");
+  assert.match(src, /MAIN_TOPICS = \[[^\]]*\]/);
+  assert.equal(src.match(/MAIN_TOPICS = \[([^\]]*)\]/)[1].split(",").length, 3);
+});
