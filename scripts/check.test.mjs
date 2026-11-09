@@ -432,3 +432,14 @@ test("the Shorts sound button sits with the actions, not on the video", () => {
   assert.ok(slide.slice(slide.indexOf('class="sacts"')).includes("data-sound"), "sound lives in the action column");
   assert.ok(!/\.ssound \{[^}]*position: absolute/.test(read("public/css/app.css")), "nothing pins it back over the video");
 });
+
+test("TV mode works from a remote and keeps the viewer's place", () => {
+  const tv = read("public/js/tv.js");
+  assert.ok(!/<select/.test(tv), "no dropdown a remote can't reach");
+  assert.match(tv, /chipTopics\(-1\)/, "the same short topic list as everywhere else");
+  for (const code of ["461", "10009"]) assert.ok(tv.includes(code + ': "GoBack"'), "Back on the remote leaves: " + code);
+  assert.match(tv, /openTV[\s\S]*mute: 1/, "starts muted so it can autoplay");
+  assert.match(tv, /store\.setPos/, "saves where you stopped");
+  assert.match(tv, /startSeconds: startAt/, "resumes where you stopped");
+  assert.match(read("public/css/app.css"), /#tv\.paused \.tvcover \{ opacity: 1/, "the poster hides YouTube's pause overlay");
+});

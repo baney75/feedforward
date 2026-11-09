@@ -278,24 +278,30 @@ main { padding: calc(var(--top) + var(--s3)) var(--s5) var(--s7) calc(var(--rail
 #tv .tvp, #tv .tvp > div, #tv .tvp iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 #tv .catch { position: absolute; inset: 0; cursor: none; }
 #tv.ui .catch { cursor: default; }
-#tv .osd { position: absolute; inset: auto 0 0 0; padding: 120px 48px 36px; background: linear-gradient(transparent, rgba(0,0,0,.85)); opacity: 0; transition: opacity .35s; pointer-events: none; }
-#tv .tvtop { position: absolute; top: 0; right: 0; display: flex; align-items: center; gap: var(--s2); padding: calc(16px + env(safe-area-inset-top)) 20px 16px; opacity: 0; transition: opacity .35s; }
-#tv .tvsel select { appearance: none; height: 40px; padding: 0 36px 0 16px; border-radius: var(--r-pill); border: 0; background: rgba(0,0,0,.6) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center / 16px; color: #fff; font: 600 14px var(--font); cursor: pointer; }
+#tv .osd { position: absolute; inset: auto 0 0 0; padding: 120px clamp(16px, 3.5vw, 64px) calc(clamp(20px, 3vw, 44px) + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(0,0,0,.88)); opacity: 0; transition: opacity .3s; pointer-events: none; }
+#tv .tvtop { position: absolute; top: 0; right: 0; padding: calc(16px + env(safe-area-inset-top)) clamp(12px, 3.5vw, 64px) 16px; opacity: 0; transition: opacity .3s; pointer-events: none; }
 #tv.ui .osd, #tv.ui .tvtop { opacity: 1; }
-#tv .tvtop .chips { margin: 0; padding: 0; flex-wrap: nowrap; }
-#tv .chip { background: rgba(255,255,255,.14); color: #fff; }
-#tv .chip[aria-pressed="true"] { background: #fff; color: #000; }
-#tv .x { background: rgba(0,0,0,.6); color: #fff; height: 40px; padding: 0 16px; border-radius: var(--r-pill); font-weight: 600; flex: none; }
+#tv.ui .tvtop > *, #tv.ui .tvrow, #tv.ui .bar { pointer-events: auto; }
+#tv .x { background: rgba(0,0,0,.6); color: #fff; min-height: 44px; padding: 0 20px; border-radius: var(--r-pill); font-size: clamp(15px, 1.2vw, 20px); font-weight: 600; }
+#tv .tvprog { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+#tv .bar { flex: 1; height: 5px; background: rgba(255,255,255,.28); border-radius: 3px; overflow: hidden; background-clip: content-box; padding: 10px 0; box-sizing: content-box; cursor: pointer; }
+#tv .tvtime { flex: none; font-size: clamp(13px, 1.1vw, 18px); opacity: .85; font-variant-numeric: tabular-nums; }
+#tv .tvrow { display: flex; flex-wrap: wrap; align-items: center; gap: 12px clamp(16px, 3vw, 40px); margin-top: 10px; }
+#tv .tvctl { display: flex; gap: clamp(8px, 1vw, 16px); }
+#tv .tvctl button { width: clamp(48px, 4.2vw, 76px); height: clamp(48px, 4.2vw, 76px); border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.16); color: #fff; }
+#tv .tvctl svg { width: 50%; height: 50%; }
+#tv .tvchips { display: flex; flex-wrap: wrap; gap: 8px; }
+#tv .chip { background: rgba(255,255,255,.16); color: #fff; min-height: 44px; padding: 0 clamp(14px, 1.3vw, 24px); font-size: clamp(14px, 1.15vw, 20px); }
+#tv .chip[aria-pressed="true"] { background: var(--accent); color: #17120a; }
+#tv [data-tvf]:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+#tv.paused .tvcover { opacity: 1; }
+#tv.paused .tvcover img { filter: brightness(.55); }
+@media (max-width: 719px) { #tv .osd { padding-top: 80px; } #tv .keys { display: none; } }
 #tv .ttl { font-size: clamp(20px, 2.6vw, 36px); font-weight: 700; line-height: 1.2; max-width: 1100px; }
 #tv .by { margin-top: 8px; opacity: .85; font-size: clamp(14px, 1.3vw, 18px); }
-#tv .bar { height: 4px; background: rgba(255,255,255,.25); border-radius: 2px; margin-top: 20px; overflow: hidden; }
 #tv .bar i { display: block; height: 100%; width: 0; background: var(--accent); }
 #tv .keys { margin-top: 14px; font-size: 13px; opacity: .7; }
 #tv .keys kbd { background: transparent; border-color: rgba(255,255,255,.4); color: #fff; }
-#tv .tvnav { position: absolute; top: 50%; transform: translateY(-50%); width: 56px; height: 56px; border-radius: 50%; background: rgba(0,0,0,.45); color: #fff; display: grid; place-items: center; opacity: 0; transition: opacity .35s; }
-#tv.ui .tvnav { opacity: 1; }
-#tv .tvnav.prev { left: 20px; } #tv .tvnav.next { right: 20px; }
-@media (max-width: 719px) { #tv .osd { padding: 80px 16px 24px; } #tv .tvtop { padding: calc(12px + env(safe-area-inset-top)) 12px 12px; } #tv .keys { display: none; } #tv .tvtop .chips { overflow-x: auto; } }
 
 /* ---------- Sheet + toast ---------- */
 dialog#sheet { border: 1px solid var(--line); border-radius: 14px; background: var(--bg-2); color: var(--fg); padding: var(--s5); width: min(440px, calc(100vw - 32px)); }
@@ -908,7 +914,6 @@ body.door-tv .door-pair ol, body.door-tv .door-hint { font-size: clamp(16px, 3vh
 body.door-tv .door-paircode { font-size: clamp(40px, 9vh, 80px); }
 @media (max-width: 719px) { body.door-tv .door-pair { grid-template-columns: 1fr; justify-items: center; } body.door-tv .door-qr { width: min(280px, 100%); } }
 /* TV: while the poster shows, say what's on and what you can do. */
-#tv.covered .osd, #tv.covered .tvtop { opacity: 1; }
 @media (orientation: portrait) { .tvcover img { object-fit: contain; } }
 /* Comments: no lit button until there's something to post. */
 .compose:has(textarea:placeholder-shown) .btn { opacity: .4; pointer-events: none; }
