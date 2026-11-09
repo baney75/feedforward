@@ -606,10 +606,10 @@ function shortSlide(s) {
   return `<section class="short" data-id="${s.id}" data-title="${esc(s.title)}">
     <div class="sframe"><img src="https://i.ytimg.com/vi/${s.id}/oar2.jpg" alt="" loading="lazy" width="720" height="1280" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/${s.id}/hqdefault.jpg'">
       <div class="scatch" aria-label="Tap to pause, double tap to like"><span class="spause" aria-hidden="true">${icon("play")}</span></div>
-      <button class="ssound" data-sound type="button" aria-label="Turn sound on or off"><span class="on">Tap for sound</span><span class="off" aria-hidden="true">${icon("volume")}</span></button>
       <div class="sbar" aria-hidden="true"><i></i></div>
       <div class="sover"><a class="who" href="/p/${p.slug}">${avatar(p, "s")}<b>${esc(p.name)}</b></a><p>${esc(s.title)}</p><span class="topic-tag">${topicLabel(s.topic)} · ${num(s.views)} views</span></div></div>
     <div class="sacts">
+      <button class="ssound" data-sound type="button" aria-label="Turn sound on or off">${icon("volumeOff")}${icon("volume")}<span>Muted</span><span>Sound</span></button>
       ${likeButton("s:" + s.id, { stacked: true })}
       <button data-save="s:${s.id}" aria-pressed="${saved}" aria-label="Save">${icon(saved ? "bookmarked" : "bookmark")}<span>Save</span></button>
       <button data-share="${s.id}" aria-label="Share">${icon("share")}<span>Share</span></button>

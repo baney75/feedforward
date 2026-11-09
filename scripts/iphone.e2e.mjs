@@ -20,7 +20,7 @@ const p = await ctx.newPage(); const errs = []; p.on("pageerror", (e) => { if (!
 await p.goto(BASE + "/shorts", { waitUntil: "load" });
 await p.waitForSelector(".short .sacts", { timeout: 20000 }); ok("Shorts load in WebKit (the catalog loads even without the gate cookie)");
 const look = await p.evaluate(() => {
-  const s = document.querySelector(".short"), icons = [...s.querySelectorAll(".sacts svg")].map((x) => { const r = x.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; });
+  const s = document.querySelector(".short"), icons = [...s.querySelectorAll(".sacts svg")].filter((x) => x.getClientRects().length).map((x) => { const r = x.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; });
   const vote = s.querySelector(".sacts .vote");
   return { icons, voteBg: vote ? getComputedStyle(vote).backgroundColor : "none", voteDisplay: vote ? getComputedStyle(vote).display : "none" };
 });

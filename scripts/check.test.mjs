@@ -424,3 +424,11 @@ test("sign-in codes: fixing a typo keeps the auto dashes, and a phone's long das
   const { normCode } = await import("../worker/api.js");
   assert.equal(normCode(" Otter\u2014River--cedar acorn_42\n"), "otter-river-cedar-acorn-42", "the server reads every spelling the same way");
 });
+
+test("the Shorts sound button sits with the actions, not on the video", () => {
+  const slide = read("public/js/views.js").match(/function shortSlide[\s\S]*?<\/section>`;/)[0];
+  const frame = slide.slice(slide.indexOf('class="sframe"'), slide.indexOf('class="sacts"'));
+  assert.ok(!frame.includes("data-sound"), "no sound control over the video");
+  assert.ok(slide.slice(slide.indexOf('class="sacts"')).includes("data-sound"), "sound lives in the action column");
+  assert.ok(!/\.ssound \{[^}]*position: absolute/.test(read("public/css/app.css")), "nothing pins it back over the video");
+});
