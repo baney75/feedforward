@@ -355,7 +355,7 @@ function trackBanner(t, id) {
   return `<div class="why" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:200px"><span class="muted">Track: <a class="link" href="/learn/${t.slug}">${esc(t.title)}</a></span><br>Step ${k + 1} of ${t.steps.length}</div><a class="btn primary" id="nextStep" href="${href}">${nextStep ? "Next step" : "Back to track"}${icon("right")}</a></div>`;
 }
 function bindTrackBanner(el, t, id) {
-  const b = $("#nextStep", el); if (b) b.addEventListener("click", () => { store.watched(id); store.done("v:" + id); });
+  const b = $("#nextStep", el); if (b) b.addEventListener("click", () => { store.watched(id); store.done(`step:${t.slug}:${t.steps.findIndex((s) => s.id === id)}`); });
 }
 
 export async function labPage(el, qs, slug) {

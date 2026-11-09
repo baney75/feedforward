@@ -16,7 +16,10 @@ const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 function savePos(paused) {
   if (!cur || (!paused && !cur.player.playing())) return;
   const t = cur.player.time();
-  if (paused && !(t >= 1)) return; // A player that hasn't started reads 0: don't erase the place to resume from.
+  // A paused player only reports a place it actually moved to. A player that hasn't started reads 0, and one left
+  // paused here must not overwrite the further point you reached on another device.
+  if (paused && (!(t >= 1) || Math.abs(t - cur.saved) < 1)) return;
+  cur.saved = t;
   store.setPos(cur.id, t, cur.player.duration()); paintPP();
 }
 // Up to the account about once a minute while playing, and right away when you pause, leave or switch apps.
@@ -76,7 +79,7 @@ export function openStage({ id, title: t, slotEl, cover, on }) {
   video.innerHTML = `<div class="stage-yt"></div>${cover}`;
   const p = store.pos(id);
   const start = p && p[0] > 10 && p[0] < p[1] - 20 ? Math.floor(p[0]) : 0;
-  const me = { id, title: t, on, player: null };
+  const me = { id, title: t, on, player: null, saved: start };
   cur = me;
   const call = (k, ...a) => me.on && me.on[k] && me.on[k](...a);
   me.player = mountPlayer(video.querySelector(".stage-yt"), id, {

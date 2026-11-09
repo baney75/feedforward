@@ -18,6 +18,18 @@ function markDay() {
 
 export const FINISHED = 0.9;
 function posAll() { try { return JSON.parse(localStorage.getItem("lt:pos")) || {}; } catch { return {}; } }
+// Once per device: positions saved before they carried a time get one, and anything that already counted as watched
+// keeps its credit (history with no position, or a position at 90% or more), so nothing earned is lost.
+function migratePos() {
+  if (read("posStamped", false)) return;
+  const all = posAll(), now = Date.now(), done = read("progress", {});
+  for (const id of read("history", [])) { const p = all[id]; if ((!p || (p.length < 3 && p[0] / p[1] >= FINISHED)) && !(done["v:" + id] > 0)) done["v:" + id] = now; }
+  for (const id of Object.keys(all)) if (all[id].length < 3) all[id] = [all[id][0], all[id][1], now];
+  try { localStorage.setItem("lt:pos", JSON.stringify(all)); } catch {}
+  write("progress", done); write("posStamped", true);
+}
+migratePos();
+
 export const store = {
   // "Turn off Shorts": for people who know short video hooks them. Hides Shorts everywhere on this device.
   shortsOff() { return read("noShorts", false) === true; },
@@ -67,7 +79,12 @@ export const store = {
   touchPos() { dispatchEvent(new CustomEvent("ff:changed", { detail: "pos" })); },
   isFinished(id) { if (this.isDone("v:" + id)) return true; const p = this.pos(id); return !!p && p[0] / p[1] >= FINISHED; },
   history() { return read("history", []); },
-  clearHistory() { write("historyReset", Date.now()); write("history", []); try { localStorage.removeItem("lt:pos"); } catch {} },
+  clearHistory() {
+    const now = Date.now(), done = read("progress", {});
+    for (const k of Object.keys(done)) if (k.startsWith("v:") && done[k] > 0) done[k] = -now;
+    write("progress", done);
+    write("historyReset", now); write("history", []); try { localStorage.removeItem("lt:pos"); } catch {}
+  },
   hasWatched(id) { return read("history", []).includes(id); },
   // Learning progress: {"lab:<slug>": ts, "step:<track>:<n>": ts, "quiz:<track>:<n>": ts}
   done(key) { const d = read("progress", {}); if (!(d[key] > 0)) d[key] = Date.now(); write("progress", d); markDay(); },
