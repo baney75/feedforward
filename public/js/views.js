@@ -53,7 +53,7 @@ export function home(el, qs) {
   // Members are already in: no pitch, no stats. Topics on top, then where you left off, then today's picks.
   el.innerHTML = `<div class="home"><div class="home-main">
       <div class="chips-wrap">${chipBar}</div>
-      ${topic === -1 ? keepGoing() || startHere() : ""}
+      ${topic === -1 ? keepGoing() : ""}
       ${newest ? "" : hero}
       ${topic === -1 ? `<div class="sec-h"><h2>Start learning</h2><a href="/learn">All tracks and labs</a></div><div class="shelf">${tracks}</div>` : ""}
       <div class="sec-h"><h2>${newest ? "Newest uploads" : topic >= 0 ? TOPICS[topic].label : "For you"}</h2><div style="display:flex;gap:8px"><a class="btn" href="/tv">${icon("tv")}TV mode</a><button class="btn" id="reshuffle">${icon("shuffle")}Shuffle</button></div></div>
@@ -88,13 +88,6 @@ export function home(el, qs) {
   $("#reshuffle", el).onclick = () => dispatchEvent(new PopStateEvent("popstate"));
   const stopFeed = infinite($("#more", el), add);
   return () => { stopFeed(); };
-}
-
-// For someone who hasn't started a track: one clear way to begin, above the videos.
-function startHere() {
-  const t = (D.learn.tracks || [])[0];
-  if (!t) return "";
-  return `<a class="start-here" href="/learn/${t.slug}"><span class="topic-tag">Start here</span><b>${esc(t.title)}</b><span class="muted">${t.steps.length} steps, from the first idea to the code.</span><span class="btn primary">Begin${icon("right")}</span></a>`;
 }
 
 // "Keep going": the next step in the track you started, plus what you watched recently.
