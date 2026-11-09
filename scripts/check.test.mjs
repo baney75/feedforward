@@ -443,3 +443,74 @@ test("TV mode works from a remote and keeps the viewer's place", () => {
   assert.match(tv, /startSeconds: startAt/, "resumes where you stopped");
   assert.match(read("public/css/app.css"), /#tv\.paused \.tvcover \{ opacity: 1/, "the poster hides YouTube's pause overlay");
 });
+
+test("the feeds learn, stay varied and don't repeat (measured on the catalog)", async () => {
+  const { rankShorts, videoSampler, buildTaste, take } = { ...(await import("../public/js/rank.js")), take: (n, k) => Array.from({ length: k }, n) };
+  const seedRng = (s) => () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  // The catalog is built, not committed. Without it (CI), a seeded stand-in with the same lopsided creators.
+  const standIn = (n, people, seed) => { const r = seedRng(seed); return Array.from({ length: n }, (_, i) => ({ id: "x" + seed + i, ts: i, person: Math.floor(people * r() ** 2.2), topic: Math.floor(9 * r() ** 1.5), q: r() < 0.35 ? 1 : r() < 0.85 ? 2 : 3, score: Math.round(45 + 45 * r()) })); };
+  const real = fs.existsSync(path.join(root, "public/data/shorts.json")) && !process.env.FF_STANDIN;
+  const rows = (f) => JSON.parse(read("public/data/" + f)).rows;
+  const shorts = real ? rows("shorts.json").map((r) => ({ id: r[0], person: r[3], topic: r[4], q: r[5], score: r[6] })) : standIn(690, 35, 11).map((s) => ({ ...s, q: Math.max(2, s.q) }));
+  const videos = real ? rows("videos.json").map((r) => ({ id: r[0], ts: r[4], person: r[5], topic: r[6], q: r[7], score: r[8] })) : standIn(6000, 53, 29);
+  const N = 60, mean = (f) => { let t = 0; for (let i = 0; i < N; i++) t += f(seedRng(i * 7919 + 1)); return t / N; };
+  const share = (l, p) => l.filter(p).length / l.length;
+  const noRepeatNear = (l) => l.every((x, i) => !l.slice(Math.max(0, i - 3), i).some((y) => y.person === x.person));
+
+  // A viewer who likes one creator and dislikes another.
+  const byCount = Object.entries(shorts.reduce((c, s) => (c[s.person] = (c[s.person] || 0) + 1, c), {})).sort((x, y) => y[1] - x[1]).map(([p]) => +p);
+  const hated = byCount[0], liked = byCount[1], ex = (p) => shorts.filter((s) => s.person === p).slice(0, 4);
+  const taste = buildTaste([...ex(liked).map((s) => ["like", s]), ...ex(hated).map((s) => ["dislike", s])]);
+  const first40 = (rng, o = {}) => rankShorts(shorts, { rng, ...o }).slice(0, 40);
+
+  const repeat = mean((rng) => { const a = first40(rng), seen = new Map(a.map((s) => [s.id, [Date.now(), 20000]])); const set = new Set(a.map((s) => s.id)); return share(first40(rng, { seen }), (s) => set.has(s.id)); });
+  assert.ok(repeat <= 0.02, "a second session is new Shorts (was 0.38): " + repeat);
+  assert.equal(mean((rng) => (noRepeatNear(first40(rng)) ? 0 : 1)), 0, "no creator within 3 slots (was every session)");
+  const blank = mean((rng) => share(first40(rng), (s) => s.person === liked));
+  const learned = mean((rng) => share(first40(rng, { taste }), (s) => s.person === liked));
+  assert.ok(blank > 0, "the liked creator is in the catalog");
+  assert.ok(learned >= blank * 1.5, `a liked creator rises: ${blank} -> ${learned}`);
+  assert.ok(learned <= 0.25, "and still can't take over: " + learned);
+  assert.ok(mean((rng) => share(first40(rng, { taste }), (s) => s.person === hated)) <= 0.03, "a disliked creator nearly disappears");
+  assert.ok(mean((rng) => new Set(first40(rng, { taste }).map((s) => s.person)).size) >= 12, "still broad");
+
+  // One topic chip: the topic rule can't apply, so the creator rules must still hold.
+  const bigTopic = Object.entries(shorts.reduce((c, s) => ((c[s.topic] = c[s.topic] || new Set()).add(s.person), c), {})).sort((x, y) => y[1].size - x[1].size)[0][0];
+  const oneTopic = shorts.filter((s) => s.topic === +bigTopic);
+  assert.equal(mean((rng) => (noRepeatNear(rankShorts(oneTopic, { rng }).slice(0, 12)) ? 0 : 1)), 0, "creator gap holds inside one topic");
+  // Discovery slots ignore a strong topic taste.
+  const tTopic = buildTaste(Array.from({ length: 8 }, () => ["like", { person: -1, topic: +bigTopic }]));
+  const slots = (l) => l.filter((_, i) => (i + 1) % 6 === 0);
+  const openSlots = mean((rng) => share(slots(first40(rng, { taste: tTopic })), (s) => s.topic === +bigTopic));
+  const others = mean((rng) => share(first40(rng, { taste: tTopic }).filter((_, i) => (i + 1) % 6), (s) => s.topic === +bigTopic));
+  assert.ok(openSlots < others, `discovery slots stay open: ${openSlots} vs ${others}`);
+
+  // Every signal reaches taste. Old history teaches nothing.
+  const { collectSignals, shortSignal, SKIP_MS } = await import("../public/js/rank.js");
+  const it = (person, topic) => ({ person, topic });
+  const lookup = { a: it(1, 1), b: it(2, 2), c: it(3, 3), d: it(4, 4), e: it(5, 5), f: it(6, 6) };
+  const kinds = collectSignals({ likes: ["v:a"], dislikes: ["s:b"], saved: ["v:c"], ratings: { "v:d": 5, "v:e": 1 }, progress: { "v:f": 5 },
+    positions: { a: [10, 600, 0], c: [590, 600, 0] }, seen: new Map([["a", [1, 20000]], ["b", [1, 2000]], ["c", [1, 500]]]), video: (x) => lookup[x], short: (x) => lookup[x], now: 1e10 }).map((x) => x[0]).sort();
+  assert.deepEqual(kinds, ["abandon", "dislike", "dislike", "dwell", "finish", "finish", "like", "save", "save", "skip"]);
+  assert.equal(shortSignal(SKIP_MS), null, "backfilled history is no taste signal");
+  assert.match(read("public/js/views.js"), /backfillSeen\([^\n]*SKIP_MS\)/);
+  assert.equal(rankShorts([{ id: "w", person: 1, topic: 1, q: 1, score: 90 }, { id: "g", person: 2, topic: 2, q: 3, score: 70 }], { rng: () => 0 })[0].id, "g", "weak Shorts rank behind good ones");
+
+  const feed = (rng, o = {}) => take(videoSampler(videos, { rng, ...o }), 48);
+  assert.equal(mean((rng) => share(feed(rng), (v) => v.q < 2)), 0, "weak videos stay out of the main feed");
+  assert.equal(mean((rng) => (noRepeatNear(feed(rng)) ? 0 : 1)), 0, "feed: no creator within 3 slots");
+  const vLike = videos.find((v) => v.q >= 3).person, vT = buildTaste(Array.from({ length: 4 }, () => ["like", { person: vLike, topic: -9 }]));
+  const a = mean((rng) => share(feed(rng), (v) => v.person === vLike)), b = mean((rng) => share(feed(rng, { taste: vT }), (v) => v.person === vLike));
+  assert.ok(b >= a * 1.3, `feed leans toward a liked creator: ${a} -> ${b}`);
+  assert.ok(mean((rng) => new Set(feed(rng, { taste: vT }).map((v) => v.person)).size) >= 15, "feed stays broad");
+  // Few creators: the cap of three in sixteen holds. Weak videos backfill once the good ones are watched.
+  const few = Array.from({ length: 600 }, (_, i) => ({ id: "f" + i, ts: i, person: i % 8, topic: 1, q: 3, score: 70 }));
+  const capped = (l) => l.every((x, i) => l.slice(Math.max(0, i - 15), i + 1).filter((y) => y.person === x.person).length <= 3);
+  assert.equal(mean((rng) => (capped(take(videoSampler(few, { rng, topic: 1, taste: buildTaste(Array.from({ length: 5 }, () => ["like", { person: 0, topic: 1 }])) }), 16)) ? 0 : 1)), 0, "three in sixteen");
+  const mixed = [...Array.from({ length: 70 }, (_, i) => ({ id: "g" + i, ts: i, person: i % 9, topic: 2, q: 3, score: 80 })), ...Array.from({ length: 100 }, (_, i) => ({ id: "w" + i, ts: i, person: i % 9, topic: 2, q: 1, score: 40 }))];
+  const watched = new Set(Array.from({ length: 50 }, (_, i) => "g" + i));
+  const backfill = take(videoSampler(mixed, { rng: seedRng(3), topic: 2, watched }), 60);
+  assert.ok(backfill.every(Boolean), "the feed keeps going");
+  assert.ok(backfill.slice(0, 20).every((v) => v.q >= 2), "good videos come first");
+  assert.match(read("public/js/store.js"), /clearHistory\(\)[\s\S]*?write\("sseen", \[\]\)/, "clearing history forgets Shorts too");
+});
