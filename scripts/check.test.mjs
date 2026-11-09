@@ -398,3 +398,21 @@ test("the topic row stays short: three topics, plus the one you are on", () => {
   assert.match(src, /MAIN_TOPICS = \[[^\]]*\]/);
   assert.equal(src.match(/MAIN_TOPICS = \[([^\]]*)\]/)[1].split(",").length, 3);
 });
+
+test("sign-in codes: fixing a typo keeps the auto dashes, and a phone's long dash still counts", async () => {
+  const { stepCode, formatCode } = await import("../public/js/code.js");
+  const st = {}; let v = "";
+  const key = (c) => { v = stepCode(st, v + c, { inputType: "insertText", data: c }); };
+  const del = () => { v = stepCode(st, v.slice(0, -1), { inputType: "deleteContentBackward" }); };
+  for (const c of "otter") key(c);
+  assert.equal(v, "otter-");
+  del(); del();
+  assert.equal(st.manual, false, "deleting past the dash is a typo fix");
+  key("r");
+  assert.equal(v, "otter-", "the dash comes back");
+  for (const c of "river") key(c);
+  assert.equal(v, "otter-river-");
+  assert.equal(formatCode("otter\u2014river"), "otter-river-");
+  const { normCode } = await import("../worker/api.js");
+  assert.equal(normCode(" Otter\u2014River--cedar acorn_42\n"), "otter-river-cedar-acorn-42", "the server reads every spelling the same way");
+});

@@ -23,7 +23,7 @@ export function newCode() {
   // Four words and two digits: about 47 bits. (The first codes had three words; they still sign in.)
   return `${WORDS[r[0] % WORDS.length]}-${WORDS[r[1] % WORDS.length]}-${WORDS[r[2] % WORDS.length]}-${WORDS[r[3] % WORDS.length]}-${String(r[4] % 100).padStart(2, "0")}`;
 }
-export const normCode = (c) => String(c || "").toLowerCase().trim().replace(/[\s_]+/g, "-").replace(/[^a-z0-9-]/g, "");
+export const normCode = (c) => String(c || "").toLowerCase().trim().replace(/[\s_\u2010-\u2015]+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-|-$/g, "");
 
 export const json = (d, status = 200, headers = {}) => new Response(JSON.stringify(d), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers } });
 const err = (status, error) => json({ error }, status);
@@ -407,11 +407,12 @@ on("POST", "/api/me/code", async (req, env, u) => {
   if (!u) return err(401, "Sign in first.");
   if (!(await rate(env, "rotate:" + u.id, 5, 86400))) return err(429, "Try again tomorrow.");
   const code = newCode();
-  await env.DB.prepare("UPDATE users SET code_hash = ? WHERE id = ?").bind(await sha(env.PEPPER + code), u.id).run();
-  // A new code signs out every other device and revokes every agent and connector token.
+  // A new code signs out every other device and revokes every agent and connector token, all or nothing.
   await env.DB.batch([
+    env.DB.prepare("UPDATE users SET code_hash = ? WHERE id = ?").bind(await sha(env.PEPPER + code), u.id),
     env.DB.prepare("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?").bind(u.id, await sha((req.headers.get("authorization") || "").slice(7))),
     env.DB.prepare("DELETE FROM api_tokens WHERE user_id = ?").bind(u.id),
+    env.DB.prepare("DELETE FROM oauth_codes WHERE user_id = ?").bind(u.id),
   ]);
   return json({ code });
 });
