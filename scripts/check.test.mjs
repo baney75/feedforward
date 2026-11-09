@@ -444,12 +444,15 @@ test("TV mode works from a remote and keeps the viewer's place", () => {
   assert.match(read("public/css/app.css"), /#tv\.paused \.tvcover \{ opacity: 1/, "the poster hides YouTube's pause overlay");
 });
 
-test("the feeds learn, stay varied and don't repeat (measured on the real catalog)", async () => {
+test("the feeds learn, stay varied and don't repeat (measured on the catalog)", async () => {
   const { rankShorts, videoSampler, buildTaste, take } = { ...(await import("../public/js/rank.js")), take: (n, k) => Array.from({ length: k }, n) };
-  const rows = (f) => JSON.parse(read("public/data/" + f)).rows;
-  const shorts = rows("shorts.json").map((r) => ({ id: r[0], person: r[3], topic: r[4], q: r[5], score: r[6] }));
-  const videos = rows("videos.json").map((r) => ({ id: r[0], ts: r[4], person: r[5], topic: r[6], q: r[7], score: r[8] }));
   const seedRng = (s) => () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  // The catalog is built, not committed. Without it (CI), a seeded stand-in with the same lopsided creators.
+  const standIn = (n, people, seed) => { const r = seedRng(seed); return Array.from({ length: n }, (_, i) => ({ id: "x" + seed + i, ts: i, person: Math.floor(people * r() ** 2.2), topic: Math.floor(9 * r() ** 1.5), q: r() < 0.35 ? 1 : r() < 0.85 ? 2 : 3, score: Math.round(45 + 45 * r()) })); };
+  const real = fs.existsSync(path.join(root, "public/data/shorts.json")) && !process.env.FF_STANDIN;
+  const rows = (f) => JSON.parse(read("public/data/" + f)).rows;
+  const shorts = real ? rows("shorts.json").map((r) => ({ id: r[0], person: r[3], topic: r[4], q: r[5], score: r[6] })) : standIn(690, 35, 11).map((s) => ({ ...s, q: Math.max(2, s.q) }));
+  const videos = real ? rows("videos.json").map((r) => ({ id: r[0], ts: r[4], person: r[5], topic: r[6], q: r[7], score: r[8] })) : standIn(6000, 53, 29);
   const N = 60, mean = (f) => { let t = 0; for (let i = 0; i < N; i++) t += f(seedRng(i * 7919 + 1)); return t / N; };
   const share = (l, p) => l.filter(p).length / l.length;
   const noRepeatNear = (l) => l.every((x, i) => !l.slice(Math.max(0, i - 3), i).some((y) => y.person === x.person));
