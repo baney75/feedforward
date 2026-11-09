@@ -403,7 +403,7 @@ export function libraryPage(el, qs) {
     const c = $("#clear", el); if (c) c.onclick = () => { store.clearHistory(); dispatchEvent(new PopStateEvent("popstate")); };
   } else {
     lib.innerHTML = (sv.length ? `<div class="grid">${sv.map((v) => libItem("v:" + v.id, videoCard(v), v.title)).join("")}</div>` : "") +
-      (ss.length ? `<div class="sec-h"><h2>Shorts</h2></div><div class="shelf">${ss.map((x) => libItem("s:" + x.id, `<a class="vcard" href="/shorts/${x.id}"><div class="thumb" style="aspect-ratio:9/16"><img src="https://i.ytimg.com/vi/${x.id}/oardefault.jpg" alt="" loading="lazy"></div><div class="vtext" style="margin-top:8px"><h3 class="vt">${esc(x.title)}</h3></div></a>`, x.title)).join("")}</div>` : "") + (sp.length ? `<div class="sec-h"><h2>Posts</h2></div><div class="narrow">${sp.map(postCard).join("")}</div>` : "") || `${emptyState("bookmark", "Save it for later", "Tap Save on any video, or the bookmark on any post, and it waits here.", `<a class="btn primary" href="/">Browse Home</a>`)}`;
+      (ss.length ? `<div class="sec-h"><h2>Shorts</h2></div><div class="shelf">${ss.map((x) => libItem("s:" + x.id, `<a class="vcard" href="/shorts/${x.id}"><div class="thumb" style="aspect-ratio:9/16"><img src="https://i.ytimg.com/vi/${x.id}/oar2.jpg" alt="" loading="lazy"></div><div class="vtext" style="margin-top:8px"><h3 class="vt">${esc(x.title)}</h3></div></a>`, x.title)).join("")}</div>` : "") + (sp.length ? `<div class="sec-h"><h2>Posts</h2></div><div class="narrow">${sp.map(postCard).join("")}</div>` : "") || `${emptyState("bookmark", "Save it for later", "Tap Save on any video, or the bookmark on any post, and it waits here.", `<a class="btn primary" href="/">Browse Home</a>`)}`;
     bindLibrary(lib);
   }
 }
@@ -604,7 +604,7 @@ function shortSlide(s) {
   const p = D.people[s.person];
   const saved = store.isSaved("s:" + s.id);
   return `<section class="short" data-id="${s.id}" data-title="${esc(s.title)}">
-    <div class="sframe"><img src="https://i.ytimg.com/vi/${s.id}/oardefault.jpg" alt="" loading="lazy" width="720" height="1280" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/${s.id}/hqdefault.jpg'">
+    <div class="sframe"><img src="https://i.ytimg.com/vi/${s.id}/oar2.jpg" alt="" loading="lazy" width="720" height="1280" onerror="this.onerror=null;this.src='https://i.ytimg.com/vi/${s.id}/hqdefault.jpg'">
       <div class="scatch" aria-label="Tap to pause, double tap to like"><span class="spause" aria-hidden="true">${icon("play")}</span></div>
       <button class="ssound" data-sound type="button" aria-label="Turn sound on or off"><span class="on">Tap for sound</span><span class="off" aria-hidden="true">${icon("volume")}</span></button>
       <div class="sbar" aria-hidden="true"><i></i></div>
