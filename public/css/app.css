@@ -659,11 +659,6 @@ body.door main { padding: 0; }
   background: rgba(0, 0, 0, .45); color: #fff; opacity: 0; transform: scale(.8); transition: opacity .18s, transform .18s; pointer-events: none; }
 .spause svg { width: 34px; height: 34px; margin-left: 4px; }
 .short.paused .spause { opacity: 1; transform: scale(1); }
-.ssound { position: absolute; z-index: 5; top: 14px; right: 14px; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
-  border-radius: var(--r-pill); background: rgba(0, 0, 0, .55); color: #fff; font: 600 14px/1 var(--font); backdrop-filter: blur(6px); }
-.ssound .off { display: none; } .ssound .off svg { width: 20px; height: 20px; }
-.short:not(.muted) .ssound { padding: 0 10px; } .short:not(.muted) .ssound .on { display: none; } .short:not(.muted) .ssound .off { display: inline-flex; }
-.short:not(.playing) .ssound { display: none; }
 .sbar { position: absolute; z-index: 4; inset: auto 0 0 0; height: 3px; background: rgba(255, 255, 255, .22); }
 .sbar i { display: block; height: 100%; width: var(--prog, 0%); background: var(--accent); transition: width .25s linear; }
 .burst { position: absolute; width: 96px; height: 96px; margin: -48px 0 0 -48px; color: #ff3b5c; pointer-events: none; animation: burst .8s cubic-bezier(.2, 1.4, .4, 1) forwards; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .4)); }
@@ -780,11 +775,6 @@ body.door-tv .door-signin, body.door-tv .door-peek { display: none; }
   background: rgba(0, 0, 0, .45); color: #fff; opacity: 0; transform: scale(.8); transition: opacity .18s, transform .18s; pointer-events: none; }
 .spause svg { width: 34px; height: 34px; margin-left: 4px; }
 .short.paused .spause { opacity: 1; transform: scale(1); }
-.ssound { position: absolute; z-index: 5; top: 14px; right: 14px; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
-  border-radius: var(--r-pill); background: rgba(0, 0, 0, .55); color: #fff; font: 600 14px/1 var(--font); backdrop-filter: blur(6px); }
-.ssound .off { display: none; } .ssound .off svg { width: 20px; height: 20px; }
-.short:not(.muted) .ssound { padding: 0 10px; } .short:not(.muted) .ssound .on { display: none; } .short:not(.muted) .ssound .off { display: inline-flex; }
-.short:not(.playing) .ssound { display: none; }
 .sbar { position: absolute; z-index: 4; inset: auto 0 0 0; height: 3px; background: rgba(255, 255, 255, .22); }
 .sbar i { display: block; height: 100%; width: var(--prog, 0%); background: var(--accent); transition: width .25s linear; }
 .burst { position: absolute; width: 96px; height: 96px; margin: -48px 0 0 -48px; color: #ff3b5c; pointer-events: none; animation: burst .8s cubic-bezier(.2, 1.4, .4, 1) forwards; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .4)); }
@@ -817,6 +807,8 @@ body.door-tv .door-signin, body.door-tv .door-peek { display: none; }
 .sacts span { color: inherit; }
 /* Brand marks carry an inline 18px size; in the Shorts column they match the other actions. */
 .sacts svg.mark { width: 24px !important; height: 24px !important; }
+.short:not(.muted) .ssound > :first-of-type, .short.muted .ssound > :last-of-type { display: none; }
+.short:not(.playing) .ssound { visibility: hidden; }
 
 /* Turn off Shorts. */
 .lib-pref { display: flex; gap: var(--s3); align-items: flex-start; margin: 0 0 var(--s5); padding: var(--s4); border-radius: var(--r); background: var(--bg-2); border: 1px solid var(--line); }
