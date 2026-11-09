@@ -9,7 +9,7 @@ const hasLonger = (w) => WORDS.some((x) => x.length > w.length && x.startsWith(w
 // Tidy a code as it is typed: lowercase, spaces become dashes, and a dash appears the moment a word can't go on.
 // Words that begin longer words ("art", "artist") wait for the next letter. Old codes with other words keep their typed dashes.
 export function formatCode(raw) {
-  const s = String(raw).toLowerCase().replace(/[\s_]+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const s = String(raw).toLowerCase().replace(/[\s_\u2010-\u2015]+/g, "-").replace(/[^a-z0-9-]/g, ""); // Phones turn "--" into a long dash.
   if (isCode(s)) return s.replace(/-+/g, "-"); // A whole code, pasted or typed with its dashes, is left as it is.
   const parts = []; let w = "", digits = "";
   const close = () => { if (w) { parts.push(w); w = ""; } };
@@ -30,14 +30,16 @@ export function formatCode(raw) {
 
 // One keystroke. Typing your own dash or space, or deleting a dash, means you know better than the auto dashes,
 // so they stay off until the field is empty. Old codes with words outside the list need that ("maple" begins with "map").
-const tidy = (v) => String(v).toLowerCase().replace(/[\s_]+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-/, "");
+const tidy = (v) => String(v).toLowerCase().replace(/[\s_\u2010-\u2015]+/g, "-").replace(/[^a-z0-9-]/g, "").replace(/-+/g, "-").replace(/^-/, "");
 export function stepCode(st, value, e = {}) {
-  if (!value) st.manual = false;
+  if (!value) st.manual = st.held = false;
   if (e.inputType?.startsWith("delete")) {
-    if (st.last?.endsWith("-") && value === st.last.slice(0, -1)) st.manual = true;
+    // Deleting a dash and then a letter is fixing a typo, so the auto dashes come back. Deleting a dash and typing on is an old code.
+    if (st.last?.endsWith("-") && value === st.last.slice(0, -1)) { st.manual = true; st.held = true; }
+    else if (st.held) st.manual = st.held = false;
     return (st.last = value);
   }
-  if (e.data?.length === 1 && /[-\s_]/.test(e.data)) st.manual = true;
+  if (e.data?.length === 1 && /[-\s_]/.test(e.data)) { st.manual = true; st.held = false; }
   return (st.last = st.manual ? tidy(value) : formatCode(value));
 }
 

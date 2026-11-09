@@ -406,3 +406,21 @@ test("a Short with no tall thumbnail falls back instead of showing YouTube's gre
   const m = ui.match(/const m = (\/.*?\/)\.exec\(img\.currentSrc/)[1];
   assert.ok(new RegExp(m.slice(1, -1)).test("https://i.ytimg.com/vi/VjGeZRvcMOo/oar2.jpg"), "the placeholder check covers Shorts");
 });
+
+test("sign-in codes: fixing a typo keeps the auto dashes, and a phone's long dash still counts", async () => {
+  const { stepCode, formatCode } = await import("../public/js/code.js");
+  const st = {}; let v = "";
+  const key = (c) => { v = stepCode(st, v + c, { inputType: "insertText", data: c }); };
+  const del = () => { v = stepCode(st, v.slice(0, -1), { inputType: "deleteContentBackward" }); };
+  for (const c of "otter") key(c);
+  assert.equal(v, "otter-");
+  del(); del();
+  assert.equal(st.manual, false, "deleting past the dash is a typo fix");
+  key("r");
+  assert.equal(v, "otter-", "the dash comes back");
+  for (const c of "river") key(c);
+  assert.equal(v, "otter-river-");
+  assert.equal(formatCode("otter\u2014river"), "otter-river-");
+  const { normCode } = await import("../worker/api.js");
+  assert.equal(normCode(" Otter\u2014River--cedar acorn_42\n"), "otter-river-cedar-acorn-42", "the server reads every spelling the same way");
+});
