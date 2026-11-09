@@ -1,5 +1,7 @@
 // Loads the catalog, merges fresh items from the Worker, and ranks, samples and searches it.
 import { store } from "./store.js";
+import { mine } from "./account.js";
+import { videoSampler, buildTaste, shortSignal } from "./rank.js";
 
 export const TOPICS = [
   { code: "foundations", label: "How models work" },
@@ -122,33 +124,31 @@ async function mergeFresh() {
 
 export const person = (i) => D.people[i];
 
-// Weighted pick: each person gets an equal share, then the better of a few random draws from their videos.
-export function sampler({ topic = -1, exclude = new Set(), newest = false } = {}) {
-  const pool = new Map();
-  for (const v of D.videos) {
-    if (topic >= 0 && v.topic !== topic) continue;
-    if (exclude.has(v.id)) continue;
-    if (!pool.has(v.person)) pool.set(v.person, []);
-    pool.get(v.person).push(v);
+// Everything this viewer has done that says what they want more or less of. Quick enough to rebuild per feed.
+export function myTaste() {
+  const shorts = new Map(D.shorts.map((x) => [x.id, x]));
+  const item = (key) => key.startsWith("v:") ? D.byId.get(key.slice(2)) : key.startsWith("s:") ? shorts.get(key.slice(2)) : null;
+  const sig = [];
+  for (const k of mine.likes) sig.push(["like", item(k)]);
+  for (const k of mine.dislikes) sig.push(["dislike", item(k)]);
+  for (const k of store.saved()) sig.push(["save", item(k)]);
+  for (const [k, stars] of Object.entries(mine.ratings)) sig.push([stars >= 4 ? "save" : stars <= 2 ? "dislike" : "", item(k)]);
+  const day = Date.now() - 864e5;
+  for (const [id, p] of Object.entries(store.allPos())) {
+    const v = D.byId.get(id);
+    if (!v) continue;
+    if (store.isFinished(id)) sig.push(["finish", v]);
+    else if (p[1] > 120 && p[0] / p[1] < 0.15 && p[2] < day) sig.push(["abandon", v]);
   }
-  const people = [...pool.keys()];
-  const used = new Set(exclude);
-  const watched = new Set(store.history());
-  return function next() {
-    for (let tries = 0; tries < 60 && people.length; tries++) {
-      const p = people[Math.floor(Math.random() * people.length)];
-      const list = pool.get(p);
-      let best = null;
-      for (let k = 0; k < 3; k++) {
-        const v = list[Math.floor(Math.random() * list.length)];
-        if (used.has(v.id) || watched.has(v.id)) continue;
-        const key = newest ? v.ts + v.score * 1e5 : v.score + (v.fresh ? 25 : 0) + Math.random() * 10;
-        if (!best || key > best.key) best = { v, key };
-      }
-      if (best) { used.add(best.v.id); return best.v; }
-    }
-    return null;
-  };
+  for (const [id, e] of store.shortsSeen()) { const k = shortSignal(e[1]); if (k) sig.push([k, shorts.get(id)]); }
+  return buildTaste(sig);
+}
+
+// Fair across creators, leaning toward this viewer. Dislikes never come back.
+export function sampler({ topic = -1, exclude = new Set(), newest = false } = {}) {
+  const out = new Set(exclude);
+  for (const k of mine.dislikes) if (k.startsWith("v:")) out.add(k.slice(2));
+  return videoSampler(D.videos, { topic, exclude: out, newest, watched: new Set(store.history()), taste: myTaste() });
 }
 
 export function take(next, n) { const out = []; for (let i = 0; i < n; i++) { const v = next(); if (!v) break; out.push(v); } return out; }

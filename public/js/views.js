@@ -1,4 +1,5 @@
-import { D, TOPICS, topicIndex, sampler, take, todaysPicks, topPosts, related, search } from "./data.js";
+import { D, TOPICS, topicIndex, sampler, take, todaysPicks, topPosts, related, search, myTaste } from "./data.js";
+import { rankShorts, GLANCE_MS, DWELL_MS } from "./rank.js";
 import { esc, num, ago, dur, thumb, avatar, finished, videoCard, postCard, personCard, chips, toast, infinite, topicLabel } from "./ui.js";
 import { icon } from "./icons.js";
 import { store } from "./store.js";
@@ -479,17 +480,10 @@ export function shortsPage(el, qs, startId) {
   const tIdx = topic >= 0 ? topic : -1;
   // Shorts you disliked leave your Shorts feed.
   const pool = D.shorts.filter((s) => (tIdx < 0 || s.topic === tIdx) && !mine.dislikes.has("s:" + s.id));
-  // Best-first with some randomness, and never the same person twice in a row.
-  const ranked = pool.map((s) => [s, s.score + Math.random() * 30]).sort((a, b) => b[1] - a[1]).map((x) => x[0]);
-  const list = [];
-  const rest = [...ranked];
-  if (startId) { const k = rest.findIndex((s) => s.id === startId); if (k >= 0) list.push(...rest.splice(k, 1)); }
-  while (rest.length) {
-    const last = list[list.length - 1];
-    let k = rest.findIndex((s) => !last || s.person !== last.person);
-    if (k < 0) k = 0;
-    list.push(...rest.splice(k, 1));
-  }
+  // Shorts already in history from before dwell was recorded count as seen a week ago.
+  const seen = store.shortsSeen(), week = Date.now() - 7 * 864e5;
+  for (const id of store.history()) if (!seen.has(id)) seen.set(id, [week, DWELL_MS]);
+  const list = rankShorts(pool, { taste: myTaste(), seen, startId });
   if (!list.length) { el.innerHTML = `<div class="page-h"><div><h1>Shorts</h1></div></div>${chips(topic)}<p class="empty">No shorts in this topic yet.</p>`; bindChips(el); return; }
   el.innerHTML = `<div class="shorts-page">${chips(topic)}<div class="shorts" tabindex="0" aria-label="Shorts. Use the up and down arrow keys to move between them.">${list.slice(0, 40).map(shortSlide).join("")}</div>
     <div class="snav"><button class="icon-btn" data-snav="-1" aria-label="Previous short">${icon("up")}</button><button class="icon-btn" data-snav="1" aria-label="Next short">${icon("down")}</button></div></div>`;
@@ -503,12 +497,17 @@ export function shortsPage(el, qs, startId) {
   const YT = "https://www.youtube-nocookie.com";
   const cmd = (slide, func, args = []) => { const f = slide && slide.querySelector("iframe"); if (f && f.contentWindow) f.contentWindow.postMessage(JSON.stringify({ event: "command", func, args }), YT); };
   const soundOn = () => sessionStorage.getItem("ff:sound") === "1";
+  let shownAt = 0;
+  // A Short flicked past in under a moment doesn't count as seen.
+  const noteDwell = () => { if (active && shownAt) { const ms = Date.now() - shownAt; if (ms >= GLANCE_MS) store.sawShort(active.dataset.id, ms); } shownAt = 0; };
   const activate = (slide) => {
     if (active === slide) return;
+    noteDwell();
     if (active) { const f = active.querySelector("iframe"); if (f) f.remove(); active.classList.remove("playing", "paused", "started"); }
     // A tap waiting to become a pause belongs to the Short we're leaving.
     clearTimeout(tapT); lastTap = 0;
     active = slide; paused = false;
+    shownAt = Date.now();
     const id = slide.dataset.id;
     // Always start muted: phones only autoplay muted video. Sound comes on once it's really playing.
     const params = new URLSearchParams({ autoplay: "1", mute: "1", controls: "0", disablekb: "1", fs: "0", iv_load_policy: "3", playsinline: "1", rel: "0", loop: "1", playlist: id, enablejsapi: "1", origin: location.origin });
@@ -598,7 +597,7 @@ export function shortsPage(el, qs, startId) {
   });
   document.body.classList.add("on-shorts");
   const unbind = bindSocial(el);
-  return () => { unbind(); io.disconnect(); removeEventListener("keydown", keys); removeEventListener("message", onMsg); document.body.classList.remove("on-shorts"); };
+  return () => { noteDwell(); unbind(); io.disconnect(); removeEventListener("keydown", keys); removeEventListener("message", onMsg); document.body.classList.remove("on-shorts"); };
 }
 function shortSlide(s) {
   const p = D.people[s.person];

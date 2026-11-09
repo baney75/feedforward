@@ -79,6 +79,13 @@ export const store = {
   touchPos() { dispatchEvent(new CustomEvent("ff:changed", { detail: "pos" })); },
   isFinished(id) { if (this.isDone("v:" + id)) return true; const p = this.pos(id); return !!p && p[0] / p[1] >= FINISHED; },
   history() { return read("history", []); },
+  // Shorts this device has shown, with how long each stayed on screen: id -> [when, ms]. Newest last.
+  shortsSeen() { return new Map(read("sseen", [])); },
+  sawShort(id, ms) {
+    const m = this.shortsSeen(); const old = m.get(id); m.delete(id);
+    m.set(id, [Date.now(), Math.max(ms, old ? old[1] : 0)]);
+    write("sseen", [...m].slice(-900));
+  },
   clearHistory() {
     const now = Date.now(), done = read("progress", {});
     for (const k of Object.keys(done)) if (k.startsWith("v:") && done[k] > 0) done[k] = -now;

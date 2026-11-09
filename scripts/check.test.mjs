@@ -443,3 +443,37 @@ test("TV mode works from a remote and keeps the viewer's place", () => {
   assert.match(tv, /startSeconds: startAt/, "resumes where you stopped");
   assert.match(read("public/css/app.css"), /#tv\.paused \.tvcover \{ opacity: 1/, "the poster hides YouTube's pause overlay");
 });
+
+test("the feeds learn, stay varied and don't repeat (measured on the real catalog)", async () => {
+  const { rankShorts, videoSampler, buildTaste, take } = { ...(await import("../public/js/rank.js")), take: (n, k) => Array.from({ length: k }, n) };
+  const rows = (f) => JSON.parse(read("public/data/" + f)).rows;
+  const shorts = rows("shorts.json").map((r) => ({ id: r[0], person: r[3], topic: r[4], q: r[5], score: r[6] }));
+  const videos = rows("videos.json").map((r) => ({ id: r[0], ts: r[4], person: r[5], topic: r[6], q: r[7], score: r[8] }));
+  const seedRng = (s) => () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const N = 60, mean = (f) => { let t = 0; for (let i = 0; i < N; i++) t += f(seedRng(i * 7919 + 1)); return t / N; };
+  const share = (l, p) => l.filter(p).length / l.length;
+  const noRepeatNear = (l) => l.every((x, i) => !l.slice(Math.max(0, i - 3), i).some((y) => y.person === x.person));
+
+  // A viewer who likes one creator and dislikes another.
+  const liked = 17, hated = 14, ex = (p) => shorts.filter((s) => s.person === p).slice(0, 4);
+  const taste = buildTaste([...ex(liked).map((s) => ["like", s]), ...ex(hated).map((s) => ["dislike", s])]);
+  const first40 = (rng, o = {}) => rankShorts(shorts, { rng, ...o }).slice(0, 40);
+
+  const repeat = mean((rng) => { const a = first40(rng), seen = new Map(a.map((s) => [s.id, [Date.now(), 20000]])); const set = new Set(a.map((s) => s.id)); return share(first40(rng, { seen }), (s) => set.has(s.id)); });
+  assert.ok(repeat <= 0.02, "a second session is new Shorts (was 0.38): " + repeat);
+  assert.equal(mean((rng) => (noRepeatNear(first40(rng)) ? 0 : 1)), 0, "no creator within 3 slots (was every session)");
+  const blank = mean((rng) => share(first40(rng), (s) => s.person === liked));
+  const learned = mean((rng) => share(first40(rng, { taste }), (s) => s.person === liked));
+  assert.ok(learned >= blank * 1.5, `a liked creator rises: ${blank} -> ${learned}`);
+  assert.ok(learned <= 0.25, "and still can't take over: " + learned);
+  assert.ok(mean((rng) => share(first40(rng, { taste }), (s) => s.person === hated)) <= 0.03, "a disliked creator nearly disappears");
+  assert.ok(mean((rng) => new Set(first40(rng, { taste }).map((s) => s.person)).size) >= 12, "still broad");
+
+  const feed = (rng, o = {}) => take(videoSampler(videos, { rng, ...o }), 48);
+  assert.equal(mean((rng) => share(feed(rng), (v) => v.q < 2)), 0, "weak videos stay out of the main feed");
+  assert.equal(mean((rng) => (noRepeatNear(feed(rng)) ? 0 : 1)), 0, "feed: no creator within 3 slots");
+  const vLike = videos.find((v) => v.q >= 3).person, vT = buildTaste(Array.from({ length: 4 }, () => ["like", { person: vLike, topic: -9 }]));
+  const a = mean((rng) => share(feed(rng), (v) => v.person === vLike)), b = mean((rng) => share(feed(rng, { taste: vT }), (v) => v.person === vLike));
+  assert.ok(b >= a * 1.3, `feed leans toward a liked creator: ${a} -> ${b}`);
+  assert.ok(mean((rng) => new Set(feed(rng, { taste: vT }).map((v) => v.person)).size) >= 15, "feed stays broad");
+});
