@@ -152,7 +152,7 @@ export function personCard(p) {
 
 // A short row: three main topics. A topic opened from a link takes the last spot, so the row always shows where you are.
 const MAIN_TOPICS = ["How models work", "Local AI", "Agents & harnesses"];
-function chipTopics(active) {
+export function chipTopics(active) {
   const main = MAIN_TOPICS.map((l) => TOPICS.findIndex((t) => t.label === l)).filter((i) => i >= 0);
   if (active >= 0 && !main.includes(active)) main[main.length - 1] = active;
   return main;
