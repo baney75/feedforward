@@ -18,8 +18,9 @@ function api() {
   return apiReady;
 }
 
+const embedSrc = (id, autoplay = 1) => `https://www.youtube-nocookie.com/embed/${id}?autoplay=${autoplay}&rel=0&playsinline=1&iv_load_policy=3&color=white`;
 function fallbackIframe(host, id, autoplay = 1) {
-  host.outerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=${autoplay}&rel=0&playsinline=1&iv_load_policy=3&color=white" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="Video player"></iframe>`;
+  host.outerHTML = `<iframe src="${embedSrc(id, autoplay)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="Video player"></iframe>`;
 }
 
 export function mountPlayer(host, id, { start = 0, onPlay, onPlaying, onPause, onEnd, onError } = {}) {
@@ -104,7 +105,7 @@ function renderShell() {
   }; });
   el.querySelector(".bar").onclick = (e) => {
     const r = e.currentTarget.getBoundingClientRect(), d = call("getDuration");
-    if (d) call("seekTo", (d * (e.clientX - r.left)) / r.width, true);
+    if (d) { tv.unmutedAt = 0; call("seekTo", (d * (e.clientX - r.left)) / r.width, true); }
     showUI();
   };
   el.querySelector(".catch").onclick = () => { if (!el.classList.contains("ui")) return showUI(); togglePlay(); showUI(); };
@@ -155,6 +156,9 @@ function load(v) {
   im.onerror = () => { im.onerror = null; im.src = `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`; }; im.src = `https://i.ytimg.com/vi/${v.id}/maxresdefault.jpg`;
   el.classList.add("covered"); el.classList.remove("paused");
   if (tv.ready) call("loadVideoById", { videoId: v.id, startSeconds: startAt(v) });
+  // No YouTube API on this device: point the plain player at the new video instead.
+  const plain = !tv.player && el.querySelector(".tvp iframe");
+  if (plain) { plain.src = embedSrc(v.id); el.classList.remove("covered"); }
   showUI();
 }
 
@@ -257,7 +261,7 @@ const REMOTE = { 461: "GoBack", 10009: "GoBack", 415: "MediaPlay", 19: "MediaPau
 function tvKeys(e) {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = REMOTE[e.keyCode] || e.key;
-  const seek = (s) => { const t = call("getCurrentTime"); if (t >= 0) call("seekTo", Math.max(0, t + s), true); };
+  const seek = (s) => { const t = call("getCurrentTime"); if (t >= 0) { tv.unmutedAt = 0; call("seekTo", Math.max(0, t + s), true); } };
   const handled = () => { e.preventDefault(); e.stopPropagation(); showUI(); };
   const el = $tv(), a = document.activeElement, inRow = a && el.contains(a) && a.matches("[data-tvf]");
   if (["Escape", "GoBack", "BrowserBack", "Backspace"].includes(k)) { handled(); if (inRow) a.blur(); else closeTV(); return; }
@@ -276,9 +280,11 @@ function tvKeys(e) {
   else if (k === "ArrowUp") { handled(); el.querySelector("#tvplay").focus(); }
   else if (k === "ArrowDown" || k === "n" || k === "N" || k === "MediaTrackNext") { handled(); go(1); }
   else if (k === "p" || k === "P" || k === "MediaTrackPrevious") { handled(); go(-1); }
-  else if (k === " " || k === "Enter" || k === "MediaPlayPause" || k === "MediaPlay" || k === "MediaPause") { handled(); togglePlay(); }
+  else if (k === " " || k === "Enter" || k === "MediaPlayPause") { handled(); togglePlay(); }
+  else if (k === "MediaPlay") { handled(); call("playVideo"); }
+  else if (k === "MediaPause") { handled(); tv.unmutedAt = 0; call("pauseVideo"); }
   else if (k === "ArrowRight" || k === "MediaFastForward") { handled(); seek(10); }
   else if (k === "ArrowLeft" || k === "MediaRewind") { handled(); seek(-10); }
   else if (k === "m" || k === "M") { handled(); toggleSound(); }
-  else if (/^[0-9]$/.test(k)) { handled(); const d = call("getDuration"); if (d) call("seekTo", (d * +k) / 10, true); }
+  else if (/^[0-9]$/.test(k)) { handled(); const d = call("getDuration"); if (d) { tv.unmutedAt = 0; call("seekTo", (d * +k) / 10, true); } }
 }
