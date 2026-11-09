@@ -1,5 +1,5 @@
 import { D, TOPICS, topicIndex, sampler, take, todaysPicks, topPosts, related, search, myTaste } from "./data.js";
-import { rankShorts, GLANCE_MS, DWELL_MS } from "./rank.js";
+import { rankShorts, GLANCE_MS, SKIP_MS } from "./rank.js";
 import { esc, num, ago, dur, thumb, avatar, finished, videoCard, postCard, personCard, chips, toast, infinite, topicLabel } from "./ui.js";
 import { icon } from "./icons.js";
 import { store } from "./store.js";
@@ -481,7 +481,8 @@ export function shortsPage(el, qs, startId) {
   // Shorts you disliked leave your Shorts feed.
   const pool = D.shorts.filter((s) => (tIdx < 0 || s.topic === tIdx) && !mine.dislikes.has("s:" + s.id));
   const shortIds = new Set(D.shorts.map((s) => s.id));
-  store.backfillSeen(store.history().filter((id) => shortIds.has(id)), DWELL_MS);
+  // Old history can't say how long something played, so it counts as seen but teaches nothing about taste.
+  store.backfillSeen(store.history().filter((id) => shortIds.has(id)), SKIP_MS);
   const list = rankShorts(pool, { taste: myTaste(), seen: store.shortsSeen(), startId });
   if (!list.length) { el.innerHTML = `<div class="page-h"><div><h1>Shorts</h1></div></div>${chips(topic)}<p class="empty">No shorts in this topic yet.</p>`; bindChips(el); return; }
   el.innerHTML = `<div class="shorts-page">${chips(topic)}<div class="shorts" tabindex="0" aria-label="Shorts. Use the up and down arrow keys to move between them.">${list.slice(0, 40).map(shortSlide).join("")}</div>
@@ -496,9 +497,9 @@ export function shortsPage(el, qs, startId) {
   const YT = "https://www.youtube-nocookie.com";
   const cmd = (slide, func, args = []) => { const f = slide && slide.querySelector("iframe"); if (f && f.contentWindow) f.contentWindow.postMessage(JSON.stringify({ event: "command", func, args }), YT); };
   const soundOn = () => sessionStorage.getItem("ff:sound") === "1";
-  let shownAt = 0;
+  let shownAt = 0, playedMs = 0;
   // A Short flicked past in under a moment doesn't count as seen.
-  const noteDwell = () => { if (active && shownAt) { const ms = Date.now() - shownAt; if (ms >= GLANCE_MS) { store.sawShort(active.dataset.id, ms); store.watched(active.dataset.id); } } shownAt = 0; };
+  const noteDwell = () => { if (active && shownAt) { playedMs += Date.now() - shownAt; if (playedMs >= GLANCE_MS) { store.sawShort(active.dataset.id, playedMs); store.watched(active.dataset.id); } } shownAt = 0; };
   // Time only counts while the Short is on screen and playing, and closing the app still records it.
   const onVisible = () => { if (document.hidden) noteDwell(); else if (active && !paused) shownAt = Date.now(); };
   addEventListener("pagehide", noteDwell); document.addEventListener("visibilitychange", onVisible);
@@ -509,7 +510,7 @@ export function shortsPage(el, qs, startId) {
     // A tap waiting to become a pause belongs to the Short we're leaving.
     clearTimeout(tapT); lastTap = 0;
     active = slide; paused = false;
-    shownAt = Date.now();
+    shownAt = 0; playedMs = 0;
     const id = slide.dataset.id;
     // Always start muted: phones only autoplay muted video. Sound comes on once it's really playing.
     const params = new URLSearchParams({ autoplay: "1", mute: "1", controls: "0", disablekb: "1", fs: "0", iv_load_policy: "3", playsinline: "1", rel: "0", loop: "1", playlist: id, enablejsapi: "1", origin: location.origin });
@@ -554,6 +555,7 @@ export function shortsPage(el, qs, startId) {
     if (info && info.currentTime != null && info.duration) active.style.setProperty("--prog", (100 * info.currentTime / info.duration).toFixed(2) + "%");
     // The thumbnail covers the player until it's really playing, so YouTube's start screen never shows.
     if (info && info.playerState === 1) {
+      if (!shownAt && !paused) shownAt = Date.now();
       active.classList.add("started");
       // Playing muted: if this viewer turned sound on, ask for it now.
       if (soundOn() && !active.dataset.unmuted) { active.dataset.unmuted = "1"; cmd(active, "unMute"); cmd(active, "setVolume", [100]); active.classList.remove("muted"); }

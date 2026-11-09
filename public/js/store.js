@@ -80,7 +80,7 @@ export const store = {
   isFinished(id) { if (this.isDone("v:" + id)) return true; const p = this.pos(id); return !!p && p[0] / p[1] >= FINISHED; },
   history() { return read("history", []); },
   // Shorts this device has shown, with how long each stayed on screen: id -> [when, ms]. Newest last.
-  shortsSeen() { return new Map(read("sseen", [])); },
+  shortsSeen() { const reset = read("historyReset", 0); return new Map(read("sseen", []).filter(([, e]) => e[0] >= reset)); },
   sawShort(id, ms) {
     const m = this.shortsSeen(); const old = m.get(id); m.delete(id);
     m.set(id, [Date.now(), Math.max(ms, old ? old[1] : 0)]);
@@ -89,7 +89,7 @@ export const store = {
   // Shorts in history that this device has no record of (older history, or synced from another device) count once,
   // as seen a week ago. The time is stored, so they age out like the rest.
   backfillSeen(ids, ms) {
-    const m = this.shortsSeen(), when = Date.now() - 7 * 864e5;
+    const m = this.shortsSeen(), when = Math.max(Date.now() - 7 * 864e5, read("historyReset", 0));
     let changed = false;
     for (const id of ids) if (!m.has(id)) { m.set(id, [when, ms]); changed = true; }
     if (changed) write("sseen", [...m].slice(-900));

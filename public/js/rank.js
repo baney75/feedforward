@@ -79,7 +79,7 @@ export function videoSampler(videos, { topic = -1, exclude = new Set(), watched 
 export function rankShorts(pool, { taste = NO_TASTE, seen = new Map(), now = Date.now(), rng = Math.random, startId = null } = {}) {
   const plain = new Map(pool.map((s) => [s.id, s.score + rng() * 12]));
   const value = (s) => {
-    let n = plain.get(s.id) + leaning(taste, s);
+    let n = plain.get(s.id) + leaning(taste, s) - (s.q < 2 ? 40 : 0);
     const e = seen.get(s.id);
     if (e) { const fade = Math.max(0, 1 - (now - e[0]) / SEEN_FADE); n -= SEEN_COST * fade + (e[1] < SKIP_MS ? SKIP_COST * fade : 0); }
     return n;
@@ -106,6 +106,25 @@ export function rankShorts(pool, { taste = NO_TASTE, seen = new Map(), now = Dat
     out.push(...rest.splice(k, 1));
   }
   return out;
+}
+
+// Everything a viewer did, as signals for buildTaste. Lookups turn a saved key or id into its video or Short.
+export function collectSignals({ likes = [], dislikes = [], saved = [], ratings = {}, progress = {}, positions = {}, seen = new Map(), video, short, finishedAt = 0.9, now = Date.now() }) {
+  const item = (key) => key.startsWith("v:") ? video(key.slice(2)) : key.startsWith("s:") ? short(key.slice(2)) : null;
+  const sig = [];
+  for (const k of likes) sig.push(["like", item(k)]);
+  for (const k of dislikes) sig.push(["dislike", item(k)]);
+  for (const k of saved) sig.push(["save", item(k)]);
+  for (const [k, stars] of Object.entries(ratings)) sig.push([stars >= 4 ? "save" : stars <= 2 ? "dislike" : "", item(k)]);
+  const finished = new Set();
+  for (const [k, when] of Object.entries(progress)) if (when > 0 && k.startsWith("v:")) finished.add(k.slice(2));
+  for (const [id, p] of Object.entries(positions)) {
+    if (p[0] / p[1] >= finishedAt) finished.add(id);
+    else if (!finished.has(id) && p[1] > 120 && p[0] / p[1] < 0.15 && p[2] < now - 864e5) sig.push(["abandon", video(id)]);
+  }
+  for (const id of finished) sig.push(["finish", video(id)]);
+  for (const [id, e] of seen) { const k = shortSignal(e[1]); if (k) sig.push([k, short(id)]); }
+  return sig;
 }
 
 // How a Short was watched, as a taste signal. A flick past tells us nothing.

@@ -1,7 +1,7 @@
 // Loads the catalog, merges fresh items from the Worker, and ranks, samples and searches it.
 import { store, FINISHED } from "./store.js";
 import { mine } from "./account.js";
-import { videoSampler, buildTaste, shortSignal } from "./rank.js";
+import { videoSampler, buildTaste, collectSignals } from "./rank.js";
 
 export const TOPICS = [
   { code: "foundations", label: "How models work" },
@@ -127,21 +127,11 @@ export const person = (i) => D.people[i];
 // Everything this viewer has done that says what they want more or less of. Quick enough to rebuild per feed.
 export function myTaste() {
   const shorts = new Map(D.shorts.map((x) => [x.id, x]));
-  const item = (key) => key.startsWith("v:") ? D.byId.get(key.slice(2)) : key.startsWith("s:") ? shorts.get(key.slice(2)) : null;
-  const sig = [];
-  for (const k of mine.likes) sig.push(["like", item(k)]);
-  for (const k of mine.dislikes) sig.push(["dislike", item(k)]);
-  for (const k of store.saved()) sig.push(["save", item(k)]);
-  for (const [k, stars] of Object.entries(mine.ratings)) sig.push([stars >= 4 ? "save" : stars <= 2 ? "dislike" : "", item(k)]);
-  const day = Date.now() - 864e5, positions = store.allPos(), finished = new Set();
-  for (const [k, when] of Object.entries(store.get("progress", {}))) if (when > 0 && k.startsWith("v:")) finished.add(k.slice(2));
-  for (const [id, p] of Object.entries(positions)) {
-    if (p[0] / p[1] >= FINISHED) finished.add(id);
-    else if (!finished.has(id) && p[1] > 120 && p[0] / p[1] < 0.15 && p[2] < day) sig.push(["abandon", D.byId.get(id)]);
-  }
-  for (const id of finished) sig.push(["finish", D.byId.get(id)]);
-  for (const [id, e] of store.shortsSeen()) { const k = shortSignal(e[1]); if (k) sig.push([k, shorts.get(id)]); }
-  return buildTaste(sig);
+  return buildTaste(collectSignals({
+    likes: mine.likes, dislikes: mine.dislikes, saved: store.saved(), ratings: mine.ratings,
+    progress: store.get("progress", {}), positions: store.allPos(), seen: store.shortsSeen(),
+    video: (id) => D.byId.get(id), short: (id) => shorts.get(id), finishedAt: FINISHED,
+  }));
 }
 
 // Fair across creators, leaning toward this viewer. Dislikes never come back.

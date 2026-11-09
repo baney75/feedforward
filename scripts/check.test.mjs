@@ -482,6 +482,17 @@ test("the feeds learn, stay varied and don't repeat (measured on the real catalo
   const others = mean((rng) => share(first40(rng, { taste: tTopic }).filter((_, i) => (i + 1) % 6), (s) => s.topic === +bigTopic));
   assert.ok(openSlots < others, `discovery slots stay open: ${openSlots} vs ${others}`);
 
+  // Every signal reaches taste. Old history teaches nothing.
+  const { collectSignals, shortSignal, SKIP_MS } = await import("../public/js/rank.js");
+  const it = (person, topic) => ({ person, topic });
+  const lookup = { a: it(1, 1), b: it(2, 2), c: it(3, 3), d: it(4, 4), e: it(5, 5), f: it(6, 6) };
+  const kinds = collectSignals({ likes: ["v:a"], dislikes: ["s:b"], saved: ["v:c"], ratings: { "v:d": 5, "v:e": 1 }, progress: { "v:f": 5 },
+    positions: { a: [10, 600, 0], c: [590, 600, 0] }, seen: new Map([["a", [1, 20000]], ["b", [1, 2000]], ["c", [1, 500]]]), video: (x) => lookup[x], short: (x) => lookup[x], now: 1e10 }).map((x) => x[0]).sort();
+  assert.deepEqual(kinds, ["abandon", "dislike", "dislike", "dwell", "finish", "finish", "like", "save", "save", "skip"]);
+  assert.equal(shortSignal(SKIP_MS), null, "backfilled history is no taste signal");
+  assert.match(read("public/js/views.js"), /backfillSeen\([^\n]*SKIP_MS\)/);
+  assert.equal(rankShorts([{ id: "w", person: 1, topic: 1, q: 1, score: 90 }, { id: "g", person: 2, topic: 2, q: 3, score: 70 }], { rng: () => 0 })[0].id, "g", "weak Shorts rank behind good ones");
+
   const feed = (rng, o = {}) => take(videoSampler(videos, { rng, ...o }), 48);
   assert.equal(mean((rng) => share(feed(rng), (v) => v.q < 2)), 0, "weak videos stay out of the main feed");
   assert.equal(mean((rng) => (noRepeatNear(feed(rng)) ? 0 : 1)), 0, "feed: no creator within 3 slots");
