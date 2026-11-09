@@ -57,7 +57,7 @@ function signedOutView(el) {
       <h2 id="haveH">I have a code</h2>
       <div class="inline">
         <label class="sr-only" for="codeIn">Your code</label>
-        <input class="input mono" id="codeIn" name="code" required autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="otter-maple-rocket-42" maxlength="60">
+        <input class="input mono" id="codeIn" name="code" data-code enterkeyhint="go" required autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="otter-river-cedar-acorn-42" maxlength="60">
         <button class="btn" type="submit">Sign in</button>
       </div>
     </form>
@@ -179,7 +179,7 @@ async function signedInView(el) {
 
     <section class="set" aria-labelledby="setH"><h2 class="set-h" id="setH">Settings</h2>
       <ul class="rows prefs">
-        <li><span><b>Theme</b><span class="muted">Ink, Paper, Terminal and more</span></span><button class="btn sm" id="themePick" type="button">Change</button></li>
+        <li><span><b>Theme</b><span class="muted">Dark, light or high contrast</span></span><button class="btn sm" id="themePick" type="button">Change</button></li>
         <li><label class="switch-row"><span><b>Turn off Shorts</b><span class="muted">Hide Shorts everywhere on this device</span></span><input type="checkbox" role="switch" id="prefShorts"${store.shortsOff() ? " checked" : ""}></label></li>
         <li><label class="switch-row"><span><b>Haptics</b><span class="muted">A light tap when you like, save or swipe (phones)</span></span><input type="checkbox" role="switch" id="prefHaptics"${hapticsOn() ? " checked" : ""}></label></li>
       </ul>

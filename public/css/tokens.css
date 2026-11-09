@@ -66,24 +66,6 @@ input[type="range"] { accent-color: var(--accent); width: 100%; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---------- Extra themes, picked by the viewer (data-theme on <html>) ---------- */
-:root[data-theme="terminal"] {
-  --bg: #050a06; --bg-2: #0b140d; --bg-3: #122116; --line: #1d3323; --fg: #c6f7d1; --fg-2: #74c28b;
-  --accent: #39ff88; --accent-ink: #00160a; --accent-text: #5dffa0; --ok: #39ff88; --bad: #ff6b6b; color-scheme: dark;
-  --font: "Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-:root[data-theme="amber"] {
-  --bg: #0c0800; --bg-2: #161002; --bg-3: #221905; --line: #33260a; --fg: #ffd89a; --fg-2: #c49a58;
-  --accent: #ffb000; --accent-ink: #1a1000; --accent-text: #ffc23d; --ok: #8bd17c; --bad: #ff7a59; color-scheme: dark;
-  --font: "Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-:root[data-theme="midnight"] {
-  --bg: #0a0f1e; --bg-2: #111830; --bg-3: #19223f; --line: #243058; --fg: #e8edff; --fg-2: #9ea9cc;
-  --accent: #7aa2ff; --accent-ink: #050b1f; --accent-text: #9db9ff; --ok: #5fd4a3; --bad: #ff7b8a; color-scheme: dark;
-}
-:root[data-theme="sepia"] {
-  --bg: #f4ecdd; --bg-2: #fbf6ec; --bg-3: #e8dcc6; --line: #d8c8ab; --fg: #2a2117; --fg-2: #66573f;
-  --accent: #c2622d; --accent-ink: #fff8ef; --accent-text: #9c4a1c; --ok: #3d7a3a; --bad: #b4302a; color-scheme: light;
-}
 :root[data-theme="contrast"] {
   --bg: #000; --bg-2: #0d0d0d; --bg-3: #1f1f1f; --line: #6b6b6b; --fg: #fff; --fg-2: #d6d6d6;
   --accent: #ffd400; --accent-ink: #000; --accent-text: #ffe14d; --ok: #3dff8a; --bad: #ff5c5c; color-scheme: dark;

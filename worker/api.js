@@ -1,6 +1,6 @@
 // Feedforward API: device-code accounts, sync, likes, ratings, comments, referrals, invites, roles and moderation.
 // Codes and tokens are only ever stored hashed. Every write is rate limited. Staff actions go to the mod log.
-import { WORDS } from "./words.js";
+import { WORDS } from "../public/js/words.js";
 import { gateCookie, clearGate, powChallenge, checkPow } from "./gate.js";
 
 export const RANK = { user: 1, contributor: 2, mod: 3, admin: 4, owner: 5 };
@@ -445,7 +445,7 @@ on("POST", "/api/sync", async (req, env, u) => {
     const o = { ...(b2 || {}) };
     for (const [k, v] of Object.entries(a || {})) if (typeof k === "string" && k.length < 90 && typeof v === "number" && Number.isFinite(v)) { if (Math.abs(v) > Math.abs(o[k] || 0)) o[k] = v; }
     const month = (Date.now() - 30 * 864e5);
-    return Object.fromEntries(Object.entries(o).filter(([, v]) => v > 0 || -v > month).slice(0, 2000));
+    return Object.fromEntries(Object.entries(o).filter(([, v]) => v > 0 || -v > month).sort((x, y) => Math.abs(y[1]) - Math.abs(x[1])).slice(0, 2000));
   };
   // Clearing history on one device wins over older history from the others.
   const reset = Math.max(Number(b.historyReset) || 0, (cur.meta && cur.meta.historyReset) || 0);
@@ -455,6 +455,7 @@ on("POST", "/api/sync", async (req, env, u) => {
   out.days = list(b.days, cur.days, 400).sort().reverse();
   out.saved = obj(b.saved, cur.saved);
   out.progress = obj(b.progress, cur.progress);
+  out.notifCleared = obj(b.notifCleared, cur.notifCleared);
   const stmt = env.DB.prepare("INSERT OR REPLACE INTO userdata (user_id, kind, json, updated) VALUES (?, ?, ?, ?)");
   await env.DB.batch(Object.entries(out).map(([k, v]) => stmt.bind(u.id, k, JSON.stringify(v), now())));
   return json({ data: { ...out, historyReset: reset } });

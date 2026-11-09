@@ -1,13 +1,17 @@
 import { load, D, sampler, applyStats } from "./data.js";
 import { icon } from "./icons.js";
 import { store } from "./store.js";
-import { toast, watchChipRails, watchThumbs } from "./ui.js";
+import { toast, watchChipRails, watchThumbs, watchPreviews } from "./ui.js";
 import { closeStage, stageEl } from "./stage.js";
 import * as V from "./views.js";
 import { openTV, closeTV, tvIsOpen } from "./tv.js";
 import { signedIn, user, refreshMe, sync, scheduleSync, loadStats, refreshGate } from "./account.js";
 import { userAvatar } from "./ui.js";
 import { haptic } from "./haptics.js";
+import { initPalette, togglePalette, toggleKeys, paletteOpen } from "./palette.js";
+import { watchTerms } from "./terms.js";
+import { initGestures } from "./gestures.js";
+import "./code.js";
 
 const view = document.getElementById("view");
 // Six main places. Everything else lives in a quiet Explore list (and on the Learn hub on phones).
@@ -26,7 +30,7 @@ function shell() {
   const noShorts = store.shortsOff(), nav = NAV.filter(([h]) => !(noShorts && h === "/shorts"));
   rail.innerHTML = nav.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("") +
     `<hr><div class="rail-h">Explore</div><div class="explore">${EXPLORE.map(([h, l]) => `<a href="${h}">${l}</a>`).join("")}</div>` +
-    `<div class="foot"><a href="/tv">TV mode</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="mailto:support@dbaney.com">support@dbaney.com</a> · <a href="https://github.com/baney75/feedforward">GitHub</a><br><button class="textbtn" type="button" id="railInstall">Install app</button> · <button class="textbtn" type="button" id="railTheme">Theme</button> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
+    `<div class="foot"><a href="/tv">TV mode</a> · <a href="/suggest">Suggest</a> · <a href="/about">About</a><br><a href="mailto:support@dbaney.com">support@dbaney.com</a> · <a href="https://github.com/baney75/feedforward">GitHub</a><br><button class="textbtn" type="button" id="railInstall">Install app</button> · <button class="textbtn" type="button" id="railTheme">Theme</button> · <button class="textbtn kbd-only" type="button" id="railKeys">Shortcuts</button> · <a href="https://dbaney.com/">dbaney.com</a></div>`;
   const tabbar = document.querySelector(".tabbar"), tabs = nav.filter(([h]) => TABS.includes(h));
   tabbar.style.setProperty("--tabs", tabs.length);
   tabbar.innerHTML = tabs.map(([h, i, l]) => `<a href="${h}">${icon(i)}<span>${l}</span></a>`).join("");
@@ -196,7 +200,7 @@ document.addEventListener("click", (e) => {
   if (u.origin !== location.origin || u.pathname.startsWith("/data/") || u.pathname.startsWith("/labs/")) return;
   e.preventDefault();
   if (u.pathname === "/tv") { goTV(); return; }
-  nav(u.pathname + u.search, { morph: u.pathname.startsWith("/watch/") ? a.querySelector(".thumb") : null });
+  nav(u.pathname + u.search + u.hash, { morph: u.pathname.startsWith("/watch/") ? a.querySelector(".thumb") : null });
 });
 addEventListener("popstate", () => route());
 
@@ -214,10 +218,15 @@ document.getElementById("searchBtn").addEventListener("click", () => { form.clas
 
 // ---------- Keyboard ----------
 addEventListener("keydown", (e) => {
-  if (tvIsOpen() || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (document.body.classList.contains("door")) return;
+  if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "k" && !tvIsOpen()) { e.preventDefault(); togglePalette(); return; }
+  if (tvIsOpen() || e.metaKey || e.ctrlKey || e.altKey || paletteOpen()) return;
   const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
   if (e.key === "Escape" && typing) { document.activeElement.blur(); return; }
   if (typing) return;
+  if (e.key === "Escape" && document.body.classList.contains("focus")) { document.getElementById("focusX")?.click(); return; }
+  if (e.key === "?") { e.preventDefault(); toggleKeys(); return; }
+  if ((e.key === "z" || e.key === "Z") && !e.shiftKey) { document.getElementById("focus")?.click(); return; }
   if (e.key === "/") { e.preventDefault(); if (innerWidth < 720) form.classList.add("open"); q.focus(); q.select(); }
   else if (e.key === "t" || e.key === "T") { e.preventDefault(); const m = location.pathname.match(/^\/watch\/([\w-]{11})/); goTV(m && m[1]); }
   else if (e.key === "N" && e.shiftKey) { const v = sampler()(); if (v) nav("/watch/" + v.id); }
@@ -225,11 +234,9 @@ addEventListener("keydown", (e) => {
 
 // ---------- Theme ----------
 const THEMES = [
-  ["", "Match my device", "#0e0e0c", "#ffb224"], ["dark", "Ink", "#0e0e0c", "#ffb224"], ["light", "Paper", "#f8f6f0", "#ffb224"],
-  ["terminal", "Terminal", "#050a06", "#39ff88"], ["amber", "Amber CRT", "#0c0800", "#ffb000"], ["midnight", "Midnight", "#0a0f1e", "#7aa2ff"],
-  ["sepia", "Sepia", "#f4ecdd", "#c2622d"], ["contrast", "High contrast", "#000000", "#ffd400"],
+  ["", "Match my device", "#0e0e0c", "#ffb224"], ["dark", "Dark", "#0e0e0c", "#ffb224"], ["light", "Light", "#f8f6f0", "#ffb224"], ["contrast", "High contrast", "#000000", "#ffd400"],
 ];
-const LIGHT = new Set(["light", "sepia"]);
+const LIGHT = new Set(["light"]);
 function effectiveDark() { const t = document.documentElement.dataset.theme; return t ? !LIGHT.has(t) : !matchMedia("(prefers-color-scheme: light)").matches; }
 function themeIcon() { document.getElementById("themeBtn").innerHTML = icon(effectiveDark() ? "moon" : "sun"); }
 function setTheme(t) {
@@ -356,3 +363,10 @@ watchChipRails(document.getElementById("view"));
 addEventListener("ff:prefs", () => { shell(); markNav(location.pathname.replace(/\/+$/, "") || "/"); });
 sessionStorage.removeItem("ff:hold");
 route();
+
+// ---------- Go anywhere, terms, gestures ----------
+initPalette((href) => nav(href), [...NAV.map(([h, i, l]) => ({ href: h, label: l, ico: i })), ...EXPLORE.map(([h, l]) => ({ href: h, label: l, ico: "topic" }))]);
+document.addEventListener("click", (e) => { if (e.target.closest?.("#railKeys")) toggleKeys(); });
+watchPreviews();
+watchTerms(view);
+initGestures({ nav: (h) => nav(h), standalone, stageEl, closeStage });

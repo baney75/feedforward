@@ -256,6 +256,93 @@ test("Library: a swipe inside a sideways shelf scrolls it and never removes an i
   assert.match(read("public/js/views.js"), /it\.closest\("\.shelf"\)\) it = null/);
 });
 
+test("watch page: one next step, no recommendation wall until asked", () => {
+  const src = read("public/js/views.js");
+  assert.doesNotMatch(src, /class="side"|upnext-inline/);
+  assert.match(src, /id="moreNext"/);
+  assert.match(src, /upNext\.find\(\(x\) => !finished\(x\.id\)\)/);
+});
+
+test("clickable terms skip ordinary English words", () => {
+  const src = read("public/js/terms.js");
+  const safe = src.match(/const SAFE = new Set\((\[[^\]]*\])/)[1];
+  for (const w of ["agent", "attention", "temperature", "token", "thread", "vector", "matrix"]) assert.ok(!JSON.parse(safe).includes(w), w);
+});
+
+test("in-app links keep their hash, so dictionary links land on the term", () => {
+  assert.match(read("public/js/app.js"), /nav\(u\.pathname \+ u\.search \+ u\.hash/);
+});
+
+test("every new shell module is cached for offline", () => {
+  const sw = read("public/sw.js");
+  for (const f of ["palette", "terms", "gestures", "stage"]) assert.ok(sw.includes(`"/js/${f}.js"`), f);
+});
+
+test("a typed code gets its dashes, whatever word it holds", async () => {
+  const { formatCode, isCode, stepCode } = await import(path.join(root, "public/js/code.js"));
+  const { WORDS } = await import(path.join(root, "public/js/words.js"));
+  const type = (s) => [...s].reduce((v, c) => formatCode(v + c), "");
+  for (let i = 0; i + 3 < WORDS.length; i += 3) {
+    const code = `${WORDS[i]}-${WORDS[i + 1]}-${WORDS[i + 2]}-${WORDS[i + 3]}-07`;
+    assert.equal(type(code.replaceAll("-", "")), code);
+    assert.ok(isCode(code));
+  }
+  assert.equal(formatCode("Otter River cedar_ACORN 42"), "otter-river-cedar-acorn-42");
+  assert.equal(formatCode("otter-maple-rocket-42"), "otter-maple-rocket-42", "a whole pasted code is never re-split");
+  assert.equal(formatCode("zzzq-qqq-zzz-42"), "zzzq-qqq-zzz-42", "old three-word codes keep working");
+  const keys = (text) => { const st = {}; let v = ""; for (const c of text) v = stepCode(st, v + c, { inputType: "insertText", data: c }); return v; };
+  assert.equal(keys("otter-maple-rocket-42"), "otter-maple-rocket-42", "an old code typed with its dashes is not split");
+  assert.equal(keys("otter maple rocket 42"), "otter-maple-rocket-42", "spaces work the same way");
+  assert.equal(keys("otterrivercedaracorn42"), "otter-river-cedar-acorn-42", "no dashes typed still gets auto dashes");
+  { const st = {}; let v = "";
+    for (const c of "ottermap") v = stepCode(st, v + c, { inputType: "insertText", data: c });
+    assert.equal(v, "otter-map-");
+    v = stepCode(st, v.slice(0, -1), { inputType: "deleteContentBackward" });
+    for (const c of "le") v = stepCode(st, v + c, { inputType: "insertText", data: c });
+    assert.equal(v, "otter-maple", "deleting an auto dash keeps it deleted"); }
+});
+
+test("iPhone haptics: buttons carry a real switch label, and scripted flips only follow a real tap", () => {
+  const src = read("public/js/haptics.js");
+  assert.match(src, /setAttribute\("switch", ""\)/);
+  assert.match(src, /b\.append\(label\("inset:0"\)\)/);
+  assert.match(src, /Date\.now\(\) - lastTap < GRANT\) setTimeout\(flip/);
+  assert.match(src, /if \(!e\.isTrusted/);
+});
+
+test("notifications: cleared stays cleared, undo restores, a grown queue returns", async () => {
+  const { isCleared, clearItems, unclearItems, settleCleared } = await import("../public/js/notify-state.js");
+  const a = { id: "c:1", kind: "comment", ts: 5 }, q = (n) => ({ id: "apps", kind: "applications", n, ts: 9 });
+  let c = clearItems([a, q(2)], {}, 100);
+  assert.ok(isCleared(a, c) && isCleared(q(2), c));
+  assert.equal(isCleared({ id: "c:2", kind: "comment", ts: 1 }, c), false, "an older item that was never cleared still shows");
+  assert.equal(isCleared(q(3), c), false, "a new application brings the queue back");
+  c = unclearItems([a], c, 200);
+  assert.equal(isCleared(a, c), false);
+  c = settleCleared([q(1)], c, 300);
+  assert.equal(isCleared(q(1), c), true, "a cleared queue that only shrank stays cleared");
+  assert.equal(isCleared(q(2), c), false, "shrank to 1, then grew to 2: that is news");
+  assert.equal(settleCleared([q(1)], c, 400), c, "settled state does not rewrite itself");
+});
+
+test("YouTube's end wall is replaced and annotations stay off; Twitch names the page as parent", () => {
+  const views = read("public/js/views.js");
+  assert.match(views, /!next \|\| track\) \{ endCard\(\); return; \}/);
+  assert.match(read("public/js/tv.js"), /iv_load_policy: 3/);
+  assert.match(views, /player\.twitch\.tv\/\?channel=\$\{p\.twitch\}&parent=\$\{location\.hostname\}/);
+});
+
+test("the theme picker stays short, and a removed theme falls back to the device", () => {
+  const list = read("public/js/app.js").match(/const THEMES = \[([\s\S]*?)\n\];/)[1];
+  assert.equal((list.match(/\["[a-z]*", "/g) || []).length, 4);
+  assert.doesNotMatch(read("public/index.html"), /terminal|sepia/);
+});
+
+test("go-anywhere: Enter opens the highlighted row, and private notes leave with the account", () => {
+  assert.match(read("public/js/palette.js"), /if \(typeT\) \{ clearTimeout\(typeT\); typeT = 0; paint\(\); \} pick\(active\)/);
+  assert.match(read("public/js/account.js"), /SYNCED_KEYS = \[[^\]]*"notes", "recentQ"\]/);
+});
+
 test("member home has no animated counters (reported twice: they looked glitchy)", () => {
   const src = read("public/js/views.js");
   assert.doesNotMatch(src, /data-count|liveCounters/, "the count-up stats row must stay gone");

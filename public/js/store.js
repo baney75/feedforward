@@ -3,7 +3,7 @@ const mem = {};
 function read(k, d) {
   try { const v = localStorage.getItem("lt:" + k); return v == null ? d : JSON.parse(v); } catch { return k in mem ? mem[k] : d; }
 }
-const SYNCED = new Set(["history", "saved", "progress", "days"]);
+const SYNCED = new Set(["history", "saved", "progress", "days", "notifCleared"]);
 function write(k, v) {
   mem[k] = v;
   try { localStorage.setItem("lt:" + k, JSON.stringify(v)); } catch {}

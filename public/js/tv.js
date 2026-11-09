@@ -19,7 +19,7 @@ function api() {
 }
 
 function fallbackIframe(host, id, autoplay = 1) {
-  host.outerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=${autoplay}&rel=0&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="Video player"></iframe>`;
+  host.outerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=${autoplay}&rel=0&playsinline=1&iv_load_policy=3&color=white" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen title="Video player"></iframe>`;
 }
 
 export function mountPlayer(host, id, { start = 0, onPlay, onPlaying, onPause, onEnd, onError } = {}) {
@@ -28,7 +28,7 @@ export function mountPlayer(host, id, { start = 0, onPlay, onPlaying, onPause, o
     if (dead) return;
     player = new YT.Player(host, {
       host: "https://www.youtube-nocookie.com", videoId: id,
-      playerVars: { autoplay: 1, rel: 0, playsinline: 1, modestbranding: 1, ...(start ? { start } : {}) },
+      playerVars: { autoplay: 1, rel: 0, playsinline: 1, modestbranding: 1, iv_load_policy: 3, color: "white", ...(start ? { start } : {}) },
       events: {
         onStateChange: (e) => {
           if (e.data === 2) onPause && onPause();

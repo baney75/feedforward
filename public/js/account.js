@@ -65,7 +65,7 @@ export async function refreshGate() {
 }
 // What this device has synced belongs to the account that synced it. Signing out leaves a clean device,
 // so the next person to sign in never uploads someone else's history into their account.
-const SYNCED_KEYS = ["history", "saved", "progress", "days", "historyReset", "notifSeen", "notifQueues"];
+const SYNCED_KEYS = ["history", "saved", "progress", "days", "historyReset", "notifSeen", "notifQueues", "notifCleared", "notes", "recentQ"];
 function clearSynced() {
   try { localStorage.removeItem("lt:dislikes"); } catch {}
   mine.dislikes = new Set();
@@ -124,10 +124,10 @@ export async function sync() {
   if (owner && owner !== acct.user.id) { try { for (const k of SYNCED_KEYS) localStorage.removeItem("lt:" + k); } catch {} }
   store.set("owner", acct.user.id);
   try {
-    const d = await api("/api/sync", { method: "POST", body: { history: store.get("history", []), historyReset: store.get("historyReset", 0), saved: store.get("saved", {}), progress: store.get("progress", {}), days: store.get("days", []) } });
+    const d = await api("/api/sync", { method: "POST", body: { history: store.get("history", []), historyReset: store.get("historyReset", 0), saved: store.get("saved", {}), progress: store.get("progress", {}), days: store.get("days", []), notifCleared: store.get("notifCleared", {}) } });
     // Writing the merged result back must not schedule another sync.
     applying = true;
-    try { store.set("history", d.data.history); store.set("saved", d.data.saved); store.set("progress", d.data.progress); store.set("days", d.data.days); store.set("historyReset", d.data.historyReset || 0); }
+    try { store.set("history", d.data.history); store.set("saved", d.data.saved); store.set("progress", d.data.progress); store.set("days", d.data.days); store.set("notifCleared", d.data.notifCleared || {}); store.set("historyReset", d.data.historyReset || 0); }
     finally { applying = false; }
   } catch (e) { if (e.status === 429) syncTimer = setTimeout(sync, 120000); }
 }
