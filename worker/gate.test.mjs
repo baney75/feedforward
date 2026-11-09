@@ -288,6 +288,17 @@ test("clearing a notification reaches the member's other devices, and undo wins 
   assert.equal((await post({ notifCleared: { "c:1": -later } })).d.data.notifCleared["c:1"], -later);
 });
 
+test("video positions follow the member across devices, latest wins, clearing history clears them", async () => {
+  const { env, owner } = await setup();
+  const post = (b) => call(env, "/api/sync", { method: "POST", token: owner, body: b });
+  const t = Date.now();
+  await post({ pos: { aaaaaaaaaaa: [100, 600, t] } });
+  assert.deepEqual((await post({})).d.data.pos.aaaaaaaaaaa, [100, 600, t], "another device gets it");
+  assert.equal((await post({ pos: { aaaaaaaaaaa: [5, 600, t - 1000] } })).d.data.pos.aaaaaaaaaaa[0], 100, "an older report loses");
+  assert.equal((await post({ pos: { aaaaaaaaaaa: [200, 600, t + 1000] } })).d.data.pos.aaaaaaaaaaa[0], 200);
+  assert.deepEqual((await post({ historyReset: t + 2000 })).d.data.pos, {}, "cleared");
+});
+
 test("notifications: discussion comments, invites and staff queues reach the right member only", async () => {
   const { env, owner } = await setup();
   const t = Math.floor(Date.now() / 1000), db = env.DB.raw;

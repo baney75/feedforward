@@ -461,6 +461,15 @@ on("POST", "/api/sync", async (req, env, u) => {
   out.saved = obj(b.saved, cur.saved);
   out.progress = obj(b.progress, cur.progress);
   out.notifCleared = obj(b.notifCleared, cur.notifCleared);
+  // Where you stopped in each video: the most recent report wins, and clearing history clears these too.
+  const pos = {};
+  for (const src of [cur.pos, b.pos]) for (const [k, v] of Object.entries(src && typeof src === "object" ? src : {})) {
+    if (k.length >= 90 || !Array.isArray(v) || !(v[1] > 0) || !(v[0] >= 0)) continue;
+    const at = Number(v[2]) || 0;
+    if ((reset && at <= reset) || (pos[k] && pos[k][2] > at)) continue;
+    pos[k] = [Number(v[0]), Number(v[1]), at];
+  }
+  out.pos = Object.fromEntries(Object.entries(pos).sort((x, y) => y[1][2] - x[1][2]).slice(0, 300));
   const stmt = env.DB.prepare("INSERT OR REPLACE INTO userdata (user_id, kind, json, updated) VALUES (?, ?, ?, ?)");
   await env.DB.batch(Object.entries(out).map(([k, v]) => stmt.bind(u.id, k, JSON.stringify(v), now())));
   return json({ data: { ...out, historyReset: reset } });

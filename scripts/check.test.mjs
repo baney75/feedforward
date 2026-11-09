@@ -347,3 +347,46 @@ test("member home has no animated counters (reported twice: they looked glitchy)
   const src = read("public/js/views.js");
   assert.doesNotMatch(src, /data-count|liveCounters/, "the count-up stats row must stay gone");
 });
+
+test("a sync's answer never wipes what you did while it was on the way", async () => {
+  const { mergeMap, mergeList } = await import("../public/js/sync-merge.js");
+  assert.deepEqual(mergeMap({ a: 1 }, { a: 1, b: 2 }, { a: 1 }), [{ a: 1, b: 2 }, false], "nothing changed: server wins, no extra sync");
+  assert.deepEqual(mergeMap({ a: 1 }, { a: 1 }, { a: 1, c: 3 }), [{ a: 1, c: 3 }, true], "added during the sync");
+  assert.deepEqual(mergeMap({ a: 1 }, { a: 1 }, { a: -9 }), [{ a: -9 }, true], "undone during the sync");
+  assert.deepEqual(mergeMap({ old: -1 }, {}, { old: -1 }), [{}, false], "an entry the server pruned does not sync forever");
+  assert.deepEqual(mergeList(["a", "b"], ["a", "b", "z"], ["n", "a", "b"]), [["n", "a", "b", "z"], true]);
+  assert.deepEqual(mergeList(["a"], ["a", "z"], ["a"]), [["a", "z"], false]);
+  assert.deepEqual(mergeList([], ["z"], ["n"]), [["n", "z"], true]);
+});
+
+test("a track video counts when you finish it, not when you press play", async () => {
+  const mem = new Map();
+  globalThis.localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
+  globalThis.CustomEvent ||= class extends Event { constructor(t, o) { super(t); this.detail = o?.detail; } };
+  globalThis.dispatchEvent ||= () => true;
+  const { store } = await import("../public/js/store.js");
+  store.setPos("x", 30, 600);
+  assert.equal(store.isFinished("x"), false);
+  store.setPos("x", 545, 600);
+  assert.equal(store.isFinished("x"), true);
+  store.setPos("x", 3, 600);
+  assert.equal(store.isFinished("x"), true, "starting over keeps the credit");
+  const src = fs.readFileSync(path.join(root, "public/js/views.js"), "utf8");
+  assert.doesNotMatch(src, /stepDone[\s\S]{0,300}hasWatched/, "pressing play earns nothing");
+  assert.doesNotMatch(src, /#nextStep/, "moving to the next step earns nothing");
+  store.setPos("c", 590, 600); store.clearHistory();
+  assert.equal(store.isFinished("c"), false, "clearing history clears finished marks");
+  mem.clear();
+  mem.set("lt:history", JSON.stringify(["old", "high", "part"]));
+  mem.set("lt:pos", JSON.stringify({ high: [570, 600], part: [30, 600] }));
+  const { store: s2 } = await import("../public/js/store.js?migrate");
+  assert.equal(s2.isDone("v:old"), true, "history from before positions keeps its credit");
+  assert.equal(s2.isDone("v:high"), true, "an old position at 90% keeps its credit");
+  s2.setPos("old", 3, 600);
+  assert.equal(s2.isFinished("old"), true, "and rewatching does not lose it");
+  assert.equal(s2.isDone("v:part"), false, "a partly watched video is not finished");
+  assert.equal(s2.pos("part").length, 3, "old positions get a time");
+  const stage = fs.readFileSync(path.join(root, "public/js/stage.js"), "utf8");
+  assert.match(stage, /Math\.abs\(t - cur\.saved\) < 1/, "a paused player never re-reports a place it did not move to");
+  delete globalThis.localStorage;
+});
