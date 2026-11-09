@@ -47,7 +47,7 @@ function progress(id) {
 }
 // YouTube answers a missing sharp thumbnail with a tiny grey placeholder instead of an error.
 export function watchThumbs() {
-  const back = (img) => { const m = /\/vi\/([\w-]+)\/(sd|maxres)default/.exec(img.currentSrc || img.src); if (m) { img.srcset = ""; img.src = thumb(m[1], "hqdefault"); } };
+  const back = (img) => { const m = /\/vi\/([\w-]+)\/(?:sddefault|maxresdefault|oar\d)/.exec(img.currentSrc || img.src); if (m) { img.srcset = ""; img.src = thumb(m[1], "hqdefault"); } };
   document.addEventListener("load", (e) => { const i = e.target; if (i.tagName === "IMG" && i.naturalWidth && i.naturalWidth <= 120) back(i); }, true);
   document.addEventListener("error", (e) => { if (e.target.tagName === "IMG") back(e.target); }, true);
 }

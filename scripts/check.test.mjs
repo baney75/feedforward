@@ -399,6 +399,14 @@ test("the topic row stays short: three topics, plus the one you are on", () => {
   assert.equal(src.match(/MAIN_TOPICS = \[([^\]]*)\]/)[1].split(",").length, 3);
 });
 
+test("a Short with no tall thumbnail falls back instead of showing YouTube's grey placeholder", () => {
+  const views = read("public/js/views.js"), ui = read("public/js/ui.js");
+  assert.doesNotMatch(views, /oardefault/, "that size is missing for about one Short in five");
+  assert.match(views, /\/oar2\.jpg/);
+  const m = ui.match(/const m = (\/.*?\/)\.exec\(img\.currentSrc/)[1];
+  assert.ok(new RegExp(m.slice(1, -1)).test("https://i.ytimg.com/vi/VjGeZRvcMOo/oar2.jpg"), "the placeholder check covers Shorts");
+});
+
 test("sign-in codes: fixing a typo keeps the auto dashes, and a phone's long dash still counts", async () => {
   const { stepCode, formatCode } = await import("../public/js/code.js");
   const st = {}; let v = "";
