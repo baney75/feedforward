@@ -86,11 +86,19 @@ export const store = {
     m.set(id, [Date.now(), Math.max(ms, old ? old[1] : 0)]);
     write("sseen", [...m].slice(-900));
   },
+  // Shorts in history that this device has no record of (older history, or synced from another device) count once,
+  // as seen a week ago. The time is stored, so they age out like the rest.
+  backfillSeen(ids, ms) {
+    const m = this.shortsSeen(), when = Date.now() - 7 * 864e5;
+    let changed = false;
+    for (const id of ids) if (!m.has(id)) { m.set(id, [when, ms]); changed = true; }
+    if (changed) write("sseen", [...m].slice(-900));
+  },
   clearHistory() {
     const now = Date.now(), done = read("progress", {});
     for (const k of Object.keys(done)) if (k.startsWith("v:") && done[k] > 0) done[k] = -now;
     write("progress", done);
-    write("historyReset", now); write("history", []); try { localStorage.removeItem("lt:pos"); } catch {}
+    write("historyReset", now); write("history", []); write("sseen", []); try { localStorage.removeItem("lt:pos"); } catch {}
   },
   hasWatched(id) { return read("history", []).includes(id); },
   // Learning progress: {"lab:<slug>": ts, "step:<track>:<n>": ts, "quiz:<track>:<n>": ts}

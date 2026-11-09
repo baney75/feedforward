@@ -1,5 +1,5 @@
 // Loads the catalog, merges fresh items from the Worker, and ranks, samples and searches it.
-import { store } from "./store.js";
+import { store, FINISHED } from "./store.js";
 import { mine } from "./account.js";
 import { videoSampler, buildTaste, shortSignal } from "./rank.js";
 
@@ -133,13 +133,13 @@ export function myTaste() {
   for (const k of mine.dislikes) sig.push(["dislike", item(k)]);
   for (const k of store.saved()) sig.push(["save", item(k)]);
   for (const [k, stars] of Object.entries(mine.ratings)) sig.push([stars >= 4 ? "save" : stars <= 2 ? "dislike" : "", item(k)]);
-  const day = Date.now() - 864e5;
-  for (const [id, p] of Object.entries(store.allPos())) {
-    const v = D.byId.get(id);
-    if (!v) continue;
-    if (store.isFinished(id)) sig.push(["finish", v]);
-    else if (p[1] > 120 && p[0] / p[1] < 0.15 && p[2] < day) sig.push(["abandon", v]);
+  const day = Date.now() - 864e5, positions = store.allPos(), finished = new Set();
+  for (const [k, when] of Object.entries(store.get("progress", {}))) if (when > 0 && k.startsWith("v:")) finished.add(k.slice(2));
+  for (const [id, p] of Object.entries(positions)) {
+    if (p[0] / p[1] >= FINISHED) finished.add(id);
+    else if (!finished.has(id) && p[1] > 120 && p[0] / p[1] < 0.15 && p[2] < day) sig.push(["abandon", D.byId.get(id)]);
   }
+  for (const id of finished) sig.push(["finish", D.byId.get(id)]);
   for (const [id, e] of store.shortsSeen()) { const k = shortSignal(e[1]); if (k) sig.push([k, shorts.get(id)]); }
   return buildTaste(sig);
 }

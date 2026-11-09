@@ -480,10 +480,9 @@ export function shortsPage(el, qs, startId) {
   const tIdx = topic >= 0 ? topic : -1;
   // Shorts you disliked leave your Shorts feed.
   const pool = D.shorts.filter((s) => (tIdx < 0 || s.topic === tIdx) && !mine.dislikes.has("s:" + s.id));
-  // Shorts already in history from before dwell was recorded count as seen a week ago.
-  const seen = store.shortsSeen(), week = Date.now() - 7 * 864e5;
-  for (const id of store.history()) if (!seen.has(id)) seen.set(id, [week, DWELL_MS]);
-  const list = rankShorts(pool, { taste: myTaste(), seen, startId });
+  const shortIds = new Set(D.shorts.map((s) => s.id));
+  store.backfillSeen(store.history().filter((id) => shortIds.has(id)), DWELL_MS);
+  const list = rankShorts(pool, { taste: myTaste(), seen: store.shortsSeen(), startId });
   if (!list.length) { el.innerHTML = `<div class="page-h"><div><h1>Shorts</h1></div></div>${chips(topic)}<p class="empty">No shorts in this topic yet.</p>`; bindChips(el); return; }
   el.innerHTML = `<div class="shorts-page">${chips(topic)}<div class="shorts" tabindex="0" aria-label="Shorts. Use the up and down arrow keys to move between them.">${list.slice(0, 40).map(shortSlide).join("")}</div>
     <div class="snav"><button class="icon-btn" data-snav="-1" aria-label="Previous short">${icon("up")}</button><button class="icon-btn" data-snav="1" aria-label="Next short">${icon("down")}</button></div></div>`;
@@ -499,7 +498,10 @@ export function shortsPage(el, qs, startId) {
   const soundOn = () => sessionStorage.getItem("ff:sound") === "1";
   let shownAt = 0;
   // A Short flicked past in under a moment doesn't count as seen.
-  const noteDwell = () => { if (active && shownAt) { const ms = Date.now() - shownAt; if (ms >= GLANCE_MS) store.sawShort(active.dataset.id, ms); } shownAt = 0; };
+  const noteDwell = () => { if (active && shownAt) { const ms = Date.now() - shownAt; if (ms >= GLANCE_MS) { store.sawShort(active.dataset.id, ms); store.watched(active.dataset.id); } } shownAt = 0; };
+  // Time only counts while the Short is on screen and playing, and closing the app still records it.
+  const onVisible = () => { if (document.hidden) noteDwell(); else if (active && !paused) shownAt = Date.now(); };
+  addEventListener("pagehide", noteDwell); document.addEventListener("visibilitychange", onVisible);
   const activate = (slide) => {
     if (active === slide) return;
     noteDwell();
@@ -527,7 +529,6 @@ export function shortsPage(el, qs, startId) {
     f.addEventListener("load", () => f.contentWindow.postMessage(JSON.stringify({ event: "listening", id: 1, channel: "widget" }), YT));
     slide.classList.add("playing", "muted");
     delete slide.dataset.unmuted;
-    store.watched(id);
     history.replaceState(history.state, "", `/shorts/${id}${location.search}`);
     const k = [...box.children].indexOf(slide);
     if (k > shown - 6 && shown < list.length) { box.insertAdjacentHTML("beforeend", list.slice(shown, shown + 20).map(shortSlide).join("")); [...box.children].slice(shown).forEach((s) => io.observe(s)); shown += 20; }
@@ -582,6 +583,7 @@ export function shortsPage(el, qs, startId) {
       tapT = setTimeout(() => {
         paused = !paused; cmd(slide, paused ? "pauseVideo" : "playVideo");
         slide.classList.toggle("paused", paused); haptic.tick();
+        if (paused) noteDwell(); else shownAt = Date.now();
       }, 260);
       return;
     }
@@ -597,7 +599,7 @@ export function shortsPage(el, qs, startId) {
   });
   document.body.classList.add("on-shorts");
   const unbind = bindSocial(el);
-  return () => { noteDwell(); unbind(); io.disconnect(); removeEventListener("keydown", keys); removeEventListener("message", onMsg); document.body.classList.remove("on-shorts"); };
+  return () => { noteDwell(); removeEventListener("pagehide", noteDwell); document.removeEventListener("visibilitychange", onVisible); unbind(); io.disconnect(); removeEventListener("keydown", keys); removeEventListener("message", onMsg); document.body.classList.remove("on-shorts"); };
 }
 function shortSlide(s) {
   const p = D.people[s.person];

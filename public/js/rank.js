@@ -26,49 +26,60 @@ export function buildTaste(signals) {
 const leaning = (taste, x) => 30 * taste.person(x.person) + 18 * taste.topic(x.topic);
 
 // The feed and TV: each pick is a draw across creators, then the best of a few of that creator's videos.
+// Good videos come first. Weak ones are only backfill, once the good ones for this viewer run out.
 export function videoSampler(videos, { topic = -1, exclude = new Set(), watched = new Set(), newest = false, taste = NO_TASTE, rng = Math.random } = {}) {
-  const fits = videos.filter((v) => (topic < 0 || v.topic === topic) && !exclude.has(v.id));
-  // Weak videos only appear in a topic too small to fill a feed without them. Newest is a plain timeline.
-  const good = newest ? fits : fits.filter((v) => v.q >= 2);
-  const pool = new Map();
-  for (const v of good.length >= 60 ? good : fits) { if (!pool.has(v.person)) pool.set(v.person, []); pool.get(v.person).push(v); }
-  const people = [...pool.keys()];
-  const shares = people.map((p) => Math.max(0.12, 1 + 1.6 * taste.person(p)));
-  const total = shares.reduce((a, b) => a + b, 0);
-  const draw = (fair) => {
-    if (fair) return people[Math.floor(rng() * people.length)];
-    let x = rng() * total;
-    for (let i = 0; i < people.length; i++) { x -= shares[i]; if (x <= 0) return people[i]; }
-    return people[people.length - 1];
+  const fits = videos.filter((v) => (topic < 0 || v.topic === topic) && !exclude.has(v.id) && !watched.has(v.id));
+  const tier = (list) => {
+    const pool = new Map();
+    for (const v of list) { if (!pool.has(v.person)) pool.set(v.person, []); pool.get(v.person).push(v); }
+    const people = [...pool.keys()], shares = people.map((p) => Math.max(0.12, 1 + 1.6 * taste.person(p)));
+    return { pool, people, shares, total: shares.reduce((a, b) => a + b, 0) };
+  };
+  const tiers = (newest ? [fits] : [fits.filter((v) => v.q >= 2), fits.filter((v) => !(v.q >= 2))]).map(tier);
+  const draw = (t, fair) => {
+    if (fair) return t.people[Math.floor(rng() * t.people.length)];
+    let x = rng() * t.total;
+    for (let i = 0; i < t.people.length; i++) { x -= t.shares[i]; if (x <= 0) return t.people[i]; }
+    return t.people[t.people.length - 1];
   };
   const used = new Set(exclude), recent = [], topicsBack = [];
-  return function next() {
-    for (let tries = 0; tries < 80 && people.length; tries++) {
-      const explore = rng() < EXPLORE, p = draw(explore), strict = tries < 40;
-      if (strict && recent.includes(p)) continue;
-      const list = pool.get(p);
+  const count = (p) => recent.filter((x) => x === p).length;
+  const take = (v) => {
+    used.add(v.id);
+    recent.push(v.person); if (recent.length > PERSON_WINDOW) recent.shift();
+    topicsBack.push(v.topic); if (topicsBack.length > TOPIC_RUN) topicsBack.shift();
+    return v;
+  };
+  const nextFrom = (t) => {
+    for (let tries = 0; tries < 80 && t.people.length; tries++) {
+      const explore = rng() < EXPLORE, p = draw(t, explore), strict = tries < 40;
+      if (strict && (recent.slice(-PERSON_GAP).includes(p) || count(p) >= PERSON_MAX)) continue;
+      const list = t.pool.get(p);
       let best = null;
       for (let k = 0; k < 5; k++) {
         const v = list[Math.floor(rng() * list.length)];
-        if (used.has(v.id) || watched.has(v.id)) continue;
-        if (strict && topic < 0 && topicsBack.length === TOPIC_RUN && topicsBack.every((t) => t === v.topic)) continue;
+        if (used.has(v.id)) continue;
+        if (strict && topic < 0 && topicsBack.length === TOPIC_RUN && topicsBack.every((x) => x === v.topic)) continue;
         const key = newest ? v.ts + v.score * 1e5 : v.score + (v.fresh ? 25 : 0) + rng() * 10 + (explore ? 0 : leaning(taste, v));
         if (!best || key > best.key) best = { v, key };
       }
-      if (!best) continue;
-      used.add(best.v.id);
-      recent.push(p); if (recent.length > PERSON_GAP) recent.shift();
-      topicsBack.push(best.v.topic); if (topicsBack.length > TOPIC_RUN) topicsBack.shift();
-      return best.v;
+      if (best) return take(best.v);
     }
+    // Random draws can miss the last few left. Before giving up on this tier, look through all of it.
+    for (const list of t.pool.values()) for (const v of list) if (!used.has(v.id)) return take(v);
+    return null;
+  };
+  return function next() {
+    for (const t of tiers) { const v = nextFrom(t); if (v) return v; }
     return null;
   };
 }
 
 // Shorts: seen maps id to [when, ms watched]. What you've seen drops back and returns as it ages.
 export function rankShorts(pool, { taste = NO_TASTE, seen = new Map(), now = Date.now(), rng = Math.random, startId = null } = {}) {
+  const plain = new Map(pool.map((s) => [s.id, s.score + rng() * 12]));
   const value = (s) => {
-    let n = s.score + rng() * 12 + leaning(taste, s);
+    let n = plain.get(s.id) + leaning(taste, s);
     const e = seen.get(s.id);
     if (e) { const fade = Math.max(0, 1 - (now - e[0]) / SEEN_FADE); n -= SEEN_COST * fade + (e[1] < SKIP_MS ? SKIP_COST * fade : 0); }
     return n;
@@ -76,15 +87,21 @@ export function rankShorts(pool, { taste = NO_TASTE, seen = new Map(), now = Dat
   const rest = pool.map((s) => [s, value(s)]).sort((a, b) => b[1] - a[1]).map((x) => x[0]);
   const out = [];
   if (startId) { const k = rest.findIndex((s) => s.id === startId); if (k >= 0) out.push(...rest.splice(k, 1)); }
-  const allowed = (s) => !out.slice(-PERSON_GAP).some((x) => x.person === s.person)
-    && out.slice(-PERSON_WINDOW).filter((x) => x.person === s.person).length < PERSON_MAX
-    && !(out.length >= TOPIC_RUN && out.slice(-TOPIC_RUN).every((x) => x.topic === s.topic));
+  const manyTopics = new Set(pool.map((s) => s.topic)).size > 1;
+  const gapOK = (s) => !out.slice(-PERSON_GAP).some((x) => x.person === s.person);
+  const personOK = (s) => gapOK(s) && out.slice(-PERSON_WINDOW).filter((x) => x.person === s.person).length < PERSON_MAX;
+  const allowed = (s) => personOK(s) && !(manyTopics && out.length >= TOPIC_RUN && out.slice(-TOPIC_RUN).every((x) => x.topic === s.topic));
+  const notLast = (s) => !out.length || out[out.length - 1].person !== s.person;
+  // Every sixth slot goes to a creator the viewer hasn't shown a liking for, chosen without any taste at all.
+  const fresh = (s) => !seen.has(s.id) && Math.abs(taste.person(s.person)) < 0.05;
+  const discovery = () => {
+    let k = -1;
+    rest.forEach((s, i) => { if (allowed(s) && fresh(s) && (k < 0 || plain.get(s.id) > plain.get(rest[k].id))) k = i; });
+    return k;
+  };
   while (rest.length) {
-    // Every sixth slot goes to someone the viewer hasn't shown a liking for yet.
-    const fresh = (s) => !seen.has(s.id) && Math.abs(taste.person(s.person)) < 0.05;
-    let k = (out.length + 1) % EXPLORE_EVERY === 0 ? rest.findIndex((s) => allowed(s) && fresh(s)) : -1;
-    if (k < 0) k = rest.findIndex(allowed);
-    if (k < 0) k = rest.findIndex((s) => !out.slice(-1).some((x) => x.person === s.person));
+    let k = (out.length + 1) % EXPLORE_EVERY === 0 ? discovery() : -1;
+    for (const rule of [allowed, personOK, gapOK, notLast]) if (k < 0) k = rest.findIndex(rule);
     if (k < 0) k = 0;
     out.push(...rest.splice(k, 1));
   }
