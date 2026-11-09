@@ -318,6 +318,7 @@ on("POST", "/api/apply", async (req, env) => {
 // Codes live 10 minutes in KV; an approved code is handed out once.
 const PAIR_ALPHA = "ACDEFGHJKMNPQRTUVWXY3479";
 const pairCode = () => [...crypto.getRandomValues(new Uint8Array(6))].map((x) => PAIR_ALPHA[x % PAIR_ALPHA.length]).join("");
+const pairRow = (env, code) => env.DB.prepare("SELECT * FROM pairs WHERE code = ? AND expires >= ?").bind(code, now()).first();
 on("POST", "/api/pair/start", async (req, env) => {
   if (!(await rate(env, "pair:" + ip(req), 20, 3600))) return err(429, "Too many codes from here. Wait a few minutes.");
   const b = await body(req).catch(() => ({}));
@@ -326,39 +327,43 @@ on("POST", "/api/pair/start", async (req, env) => {
   const device = b.device === "Browser" ? "Browser" : "TV";
   // A second number shown only on the screen: a link or QR can carry the code, but approving needs someone looking.
   const check = String(crypto.getRandomValues(new Uint8Array(1))[0] % 90 + 10);
-  await env.FRESH.put("pair:" + code, JSON.stringify({ s: await sha(secret), device, check, at: now(), state: "waiting" }), { expirationTtl: 600 });
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM pairs WHERE expires < ?").bind(now()),
+    env.DB.prepare("INSERT INTO pairs (code, secret_hash, device, check_no, at, expires) VALUES (?, ?, ?, ?, ?, ?)").bind(code, await sha(secret), device, check, now(), now() + 600),
+  ]);
   return json({ code, secret, check, expires: 600 });
 });
 on("GET", "/api/pair/poll", async (req, env) => {
   if (!(await rate(env, "pairpoll:" + ip(req), 400, 600))) return err(429, "Slow down.");
   const url = new URL(req.url), code = String(url.searchParams.get("code") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const p = code.length === 6 && (await env.FRESH.get("pair:" + code, "json"));
-  if (!p || p.s !== (await sha(String(url.searchParams.get("secret") || "")))) return json({ state: "gone" });
+  const p = code.length === 6 && (await pairRow(env, code));
+  if (!p || p.secret_hash !== (await sha(String(url.searchParams.get("secret") || "")))) return json({ state: "gone" });
   if (p.state !== "approved") return json({ state: p.state });
-  await env.FRESH.delete("pair:" + code);
+  await env.DB.prepare("DELETE FROM pairs WHERE code = ?").bind(code).run();
   const u = await env.DB.prepare("SELECT * FROM users WHERE id = ? AND banned = 0").bind(p.uid).first();
   if (!u) return json({ state: "gone" });
   return json({ state: "approved", token: p.token, user: me(u) }, 200, { "set-cookie": await gateCookie(env, u.id, await sha(p.token)) });
 });
 on("GET", "/api/pair/([A-Za-z0-9]{6})", async (req, env, u, [code]) => {
   if (!u) return err(401, "Sign in first.");
-  const p = await env.FRESH.get("pair:" + code.toUpperCase(), "json");
+  const p = await pairRow(env, code.toUpperCase());
   if (!p) return err(404, "No screen is showing that code. Check it and try again.");
-  if (!p || p.state !== "waiting") return err(404, "That code has expired. Show a new one on the other screen.");
+  if (p.state !== "waiting") return err(404, "That code has expired. Show a new one on the other screen.");
   return json({ device: p.device, at: p.at });
 });
 on("POST", "/api/pair/([A-Za-z0-9]{6})", async (req, env, u, [code]) => {
   if (!u || u.banned) return err(401, "Sign in first.");
   if (!(await rate(env, "pairok:" + u.id, 20, 3600))) return err(429, "Slow down.");
-  const key = "pair:" + code.toUpperCase();
-  const p = await env.FRESH.get(key, "json");
+  const upper = code.toUpperCase();
+  const p = await pairRow(env, upper);
   if (!p || p.state !== "waiting") return err(404, "That code has expired. Show a new one on the other screen.");
   const b = await body(req).catch(() => ({}));
-  if (String(b.check || "") !== p.check) return err(403, "That number doesn't match the one on the screen.");
-  // KV can't claim atomically, so the single-use counter decides which approval wins.
-  if (!(await rate(env, "pairclaim:" + code.toUpperCase(), 1, 600))) return err(404, "That code has already been used.");
+  if (String(b.check || "") !== p.check_no) return err(403, "That number doesn't match the one on the screen.");
+  // Only one approval can move a code out of waiting.
+  const claim = await env.DB.prepare("UPDATE pairs SET state = 'claimed', uid = ?, expires = ? WHERE code = ? AND state = 'waiting'").bind(u.id, now() + 120, upper).run();
+  if (!claim.meta.changes) return err(404, "That code has already been used.");
   const token = await session(env, u.id, PAIRED + p.device);
-  await env.FRESH.put(key, JSON.stringify({ ...p, state: "approved", uid: u.id, token }), { expirationTtl: 120 });
+  await env.DB.prepare("UPDATE pairs SET state = 'approved', token = ? WHERE code = ?").bind(token, upper).run();
   await log(env, u.id, "pair", p.device);
   return json({ ok: true, device: p.device });
 });

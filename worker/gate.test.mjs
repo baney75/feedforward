@@ -245,6 +245,18 @@ test("QR sign-in page accepts every code the server makes (four-word codes showe
   assert.ok(!isCode("<b>"));
 });
 
+test("pairing: a phone in another region sees a code the moment the screen shows it", async () => {
+  const { env, owner } = await setup();
+  // KV reaches other regions late. Reads that always miss stand in for a phone on a different edge from the TV.
+  const get = env.FRESH.get;
+  env.FRESH.get = async (k, t) => (k.startsWith("pair:") ? null : get(k, t));
+  const start = await call(env, "/api/pair/start", { method: "POST", body: {} });
+  assert.equal((await call(env, `/api/pair/${start.d.code}`, { token: owner })).status, 200, "the phone finds the code");
+  assert.notEqual((await call(env, `/api/pair/poll?code=${start.d.code}&secret=${encodeURIComponent(start.d.secret)}`)).d.state, "gone", "the screen keeps its code");
+  assert.equal((await call(env, `/api/pair/${start.d.code}`, { method: "POST", token: owner, body: { check: start.d.check } })).status, 200);
+  assert.equal((await call(env, `/api/pair/poll?code=${start.d.code}&secret=${encodeURIComponent(start.d.secret)}`)).d.state, "approved");
+});
+
 test("pairing: a TV shows a code, a member approves, the TV gets its own session once", async () => {
   const { env, owner } = await setup();
   const start = await call(env, "/api/pair/start", { method: "POST", body: { device: "Your bank" } });
