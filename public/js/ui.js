@@ -150,11 +150,18 @@ export function personCard(p) {
   return `<a class="pcard" href="/p/${p.slug}">${avatar(p)}<div style="min-width:0"><b>${esc(p.name)}</b><p>${esc(p.why)}</p><small>${counts}</small></div></a>`;
 }
 
+// A short row: three main topics. A topic opened from a link takes the last spot, so the row always shows where you are.
+const MAIN_TOPICS = ["How models work", "Local AI", "Agents & harnesses"];
+function chipTopics(active) {
+  const main = MAIN_TOPICS.map((l) => TOPICS.findIndex((t) => t.label === l)).filter((i) => i >= 0);
+  if (active >= 0 && !main.includes(active)) main[main.length - 1] = active;
+  return main;
+}
 export function chips(active, { all = "All", extra = [] } = {}) {
   return `<div class="chip-rail"><button class="chip-arrow prev" type="button" tabindex="-1" aria-hidden="true">${icon("left")}</button><div class="chips" role="group" aria-label="Topics">
     <button class="chip" data-topic="-1" aria-pressed="${active === -1}">${all}</button>
     ${extra.map((e) => `<button class="chip" data-topic="${e.v}" aria-pressed="${active === e.v}">${e.label}</button>`).join("")}
-    ${TOPICS.map((t, i) => `<button class="chip" data-topic="${i}" aria-pressed="${active === i}">${t.label}</button>`).join("")}
+    ${chipTopics(active).map((i) => `<button class="chip" data-topic="${i}" aria-pressed="${active === i}">${TOPICS[i].label}</button>`).join("")}
   </div><button class="chip-arrow next" type="button" tabindex="-1" aria-hidden="true">${icon("right")}</button></div>`;
 }
 
