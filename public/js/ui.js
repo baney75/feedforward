@@ -39,7 +39,7 @@ export function avatar(p, cls = "") {
 
 // How far you got: a bar sized to your real position, and a check once you've finished.
 export function watchedPct(id) { const p = store.pos(id); return p ? Math.min(100, Math.round((p[0] / p[1]) * 100)) : store.hasWatched(id) ? 100 : 0; }
-export function finished(id) { const p = store.pos(id); return !!p && p[0] / p[1] >= 0.95; }
+export function finished(id) { return store.isFinished(id); }
 function progress(id) {
   const pct = watchedPct(id);
   if (!pct) return "";

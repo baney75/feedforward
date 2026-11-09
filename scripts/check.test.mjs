@@ -347,3 +347,31 @@ test("member home has no animated counters (reported twice: they looked glitchy)
   const src = read("public/js/views.js");
   assert.doesNotMatch(src, /data-count|liveCounters/, "the count-up stats row must stay gone");
 });
+
+test("a sync's answer never wipes what you did while it was on the way", async () => {
+  const { mergeMap, mergeList } = await import("../public/js/sync-merge.js");
+  assert.deepEqual(mergeMap({ a: 1 }, { a: 1, b: 2 }, { a: 1 }), [{ a: 1, b: 2 }, false], "nothing changed: server wins, no extra sync");
+  assert.deepEqual(mergeMap({ a: 1 }, { a: 1 }, { a: 1, c: 3 }), [{ a: 1, c: 3 }, true], "added during the sync");
+  assert.deepEqual(mergeMap({ a: 1 }, { a: 1 }, { a: -9 }), [{ a: -9 }, true], "undone during the sync");
+  assert.deepEqual(mergeMap({ old: -1 }, {}, { old: -1 }), [{}, false], "an entry the server pruned does not sync forever");
+  assert.deepEqual(mergeList(["a", "b"], ["a", "b", "z"], ["n", "a", "b"]), [["n", "a", "b", "z"], true]);
+  assert.deepEqual(mergeList(["a"], ["a", "z"], ["a"]), [["a", "z"], false]);
+  assert.deepEqual(mergeList([], ["z"], ["n"]), [["n", "z"], true]);
+});
+
+test("a track video counts when you finish it, not when you press play", async () => {
+  const mem = new Map();
+  globalThis.localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
+  globalThis.CustomEvent ||= class extends Event { constructor(t, o) { super(t); this.detail = o?.detail; } };
+  globalThis.dispatchEvent ||= () => true;
+  const { store } = await import("../public/js/store.js");
+  store.setPos("x", 30, 600);
+  assert.equal(store.isFinished("x"), false);
+  store.setPos("x", 545, 600);
+  assert.equal(store.isFinished("x"), true);
+  store.setPos("x", 3, 600);
+  assert.equal(store.isFinished("x"), true, "starting over keeps the credit");
+  const src = fs.readFileSync(path.join(root, "public/js/views.js"), "utf8");
+  assert.doesNotMatch(src, /s\.kind === "video" && store\.hasWatched\(s\.id\)\) return true/);
+  delete globalThis.localStorage;
+});

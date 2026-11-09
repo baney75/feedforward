@@ -276,7 +276,8 @@ function trackProgress(t) {
 }
 function stepDone(t, s, k) {
   if (s.kind === "lab") return store.isDone("lab:" + s.slug);
-  if (s.kind === "video" && store.hasWatched(s.id)) return true;
+  // Pressing play is not finishing. Watched before positions were kept (no position on record) still counts.
+  if (s.kind === "video" && (store.isFinished(s.id) || (!store.pos(s.id) && store.hasWatched(s.id)))) return true;
   return store.isDone(`step:${t.slug}:${k}`);
 }
 function meter(d, n) { return `<div class="meter${d === n ? " done" : ""}"><i><b style="width:${Math.round((100 * d) / n)}%"></b></i>${d}/${n}</div>`; }
@@ -354,7 +355,7 @@ function trackBanner(t, id) {
   return `<div class="why" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:200px"><span class="muted">Track: <a class="link" href="/learn/${t.slug}">${esc(t.title)}</a></span><br>Step ${k + 1} of ${t.steps.length}</div><a class="btn primary" id="nextStep" href="${href}">${nextStep ? "Next step" : "Back to track"}${icon("right")}</a></div>`;
 }
 function bindTrackBanner(el, t, id) {
-  const b = $("#nextStep", el); if (b) b.addEventListener("click", () => store.watched(id));
+  const b = $("#nextStep", el); if (b) b.addEventListener("click", () => { store.watched(id); store.done("v:" + id); });
 }
 
 export async function labPage(el, qs, slug) {

@@ -3,16 +3,25 @@
 import { mountPlayer } from "./tv.js";
 import { icon } from "./icons.js";
 import { store } from "./store.js";
+import { flushSync } from "./account.js";
 
 const root = document.createElement("div");
 root.id = "stage"; root.hidden = true;
 root.innerHTML = `<div class="stage-video"></div><div class="stage-bar"><a class="stage-title"></a><button type="button" class="stage-btn" id="stagePP"></button><button type="button" class="stage-btn" id="stageX" aria-label="Close player">${icon("close")}</button></div>`;
 document.body.appendChild(root);
 const video = root.querySelector(".stage-video"), title = root.querySelector(".stage-title"), pp = root.querySelector("#stagePP");
-let cur = null, slot = null, ro = null, tick = 0;
+let cur = null, slot = null, ro = null, tick = 0, ticks = 0;
 const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-function savePos() { if (!cur || !cur.player.playing()) return; store.setPos(cur.id, cur.player.time(), cur.player.duration()); paintPP(); }
+function savePos(paused) {
+  if (!cur || (!paused && !cur.player.playing())) return;
+  const t = cur.player.time();
+  if (paused && !(t >= 1)) return; // A player that hasn't started reads 0: don't erase the place to resume from.
+  store.setPos(cur.id, t, cur.player.duration()); paintPP();
+}
+// Up to the account about once a minute while playing, and right away when you pause, leave or switch apps.
+function tickPos() { savePos(); if (++ticks % 12 === 0 && cur && cur.player.playing()) store.touchPos(); }
+document.addEventListener("visibilitychange", () => { if (document.hidden && cur) { savePos(true); flushSync(); } });
 function paintPP() {
   if (!cur) return;
   const on = cur.player.playing();
@@ -44,6 +53,7 @@ function toMini() {
 export function closeStage() {
   if (!cur) return;
   savePos();
+  store.touchPos();
   clearInterval(tick);
   cur.player(); cur = null;
   unslot();
@@ -72,12 +82,12 @@ export function openStage({ id, title: t, slotEl, cover, on }) {
   me.player = mountPlayer(video.querySelector(".stage-yt"), id, {
     start,
     onPlaying: () => { root.classList.add("started"); paintPP(); call("onPlaying"); },
-    onPause: paintPP,
+    onPause: () => { savePos(true); store.touchPos(); paintPP(); },
     onPlay: () => call("onPlay"),
-    onEnd: () => { const d = me.player.duration(); if (d) store.setPos(id, d, d); if (root.classList.contains("mini")) closeStage(); else call("onEnd"); },
+    onEnd: () => { const d = me.player.duration(); if (d) { store.setPos(id, d, d); store.touchPos(); } if (root.classList.contains("mini")) closeStage(); else call("onEnd"); },
     onError: (c) => call("onError", c),
   });
-  clearInterval(tick); tick = setInterval(savePos, 5000);
+  clearInterval(tick); tick = setInterval(tickPos, 5000);
   return { video, resumed: false, play: () => me.player.play() };
 }
 // The watch page calls this when it goes away. Another watch page reuses or replaces the player itself.

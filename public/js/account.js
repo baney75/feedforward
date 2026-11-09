@@ -1,6 +1,8 @@
 // Account client: device-code sign-in, API calls, community stats, sync of history, saves and progress.
 // The session token lives in localStorage. The code is kept on this device only so it can be shown and shared by QR.
 import { store } from "./store.js";
+import { mergeMap, mergeList, byOldest } from "./sync-merge.js";
+let lastSync = 0;
 import { proofOfWork, prepare } from "./pow.js";
 export { prepare };
 
@@ -15,12 +17,14 @@ export const signedIn = () => !!(acct && acct.token);
 export const RANK = { user: 1, contributor: 2, mod: 3, admin: 4, owner: 5 };
 export const can = (min) => !!(acct && acct.user && RANK[acct.user.role] >= RANK[min]);
 
-export async function api(path, { method = "GET", body, raw, type } = {}) {
+export async function api(path, { method = "GET", body, raw, type, keepalive } = {}) {
   const headers = {};
   if (acct && acct.token) headers.authorization = "Bearer " + acct.token;
   if (body !== undefined && !raw) headers["content-type"] = "application/json";
   if (raw) headers["content-type"] = type;
-  const r = await fetch(path, { method, headers, body: raw ? body : body === undefined ? undefined : JSON.stringify(body) });
+  const payload = raw ? body : body === undefined ? undefined : JSON.stringify(body);
+  // keepalive lets a request finish after the page goes away, but browsers refuse it above 64 KB.
+  const r = await fetch(path, { method, headers, body: payload, keepalive: !!keepalive && typeof payload === "string" && payload.length < 60000 });
   let d = {};
   try { d = await r.json(); } catch {}
   if (r.status === 401 && acct && path !== "/api/login") { write(null); }
@@ -65,7 +69,7 @@ export async function refreshGate() {
 }
 // What this device has synced belongs to the account that synced it. Signing out leaves a clean device,
 // so the next person to sign in never uploads someone else's history into their account.
-const SYNCED_KEYS = ["history", "saved", "progress", "days", "historyReset", "notifSeen", "notifQueues", "notifCleared", "notes", "recentQ"];
+const SYNCED_KEYS = ["history", "saved", "progress", "days", "historyReset", "notifSeen", "notifQueues", "notifCleared", "pos", "notes", "recentQ"];
 function clearSynced() {
   try { localStorage.removeItem("lt:dislikes"); } catch {}
   mine.dislikes = new Set();
@@ -124,15 +128,28 @@ export async function sync() {
   if (owner && owner !== acct.user.id) { try { for (const k of SYNCED_KEYS) localStorage.removeItem("lt:" + k); } catch {} }
   store.set("owner", acct.user.id);
   try {
-    const d = await api("/api/sync", { method: "POST", body: { history: store.get("history", []), historyReset: store.get("historyReset", 0), saved: store.get("saved", {}), progress: store.get("progress", {}), days: store.get("days", []), notifCleared: store.get("notifCleared", {}) } });
+    lastSync = Date.now();
+    const sent = { history: store.get("history", []), historyReset: store.get("historyReset", 0), saved: store.get("saved", {}), progress: store.get("progress", {}), days: store.get("days", []), notifCleared: store.get("notifCleared", {}), pos: store.allPos() };
+    const d = await api("/api/sync", { method: "POST", body: sent, keepalive: true });
+    let again = false;
+    const map = (k, server) => { const [v, dirty] = mergeMap(sent[k], server || {}, store.get(k, {})); again ||= dirty; return v; };
+    const list = (k, server, cap) => { const [v, dirty] = mergeList(sent[k], server || [], store.get(k, []), cap); again ||= dirty; return v; };
+    const cleared = store.get("historyReset", 0) > sent.historyReset; // History cleared while the sync was on its way: that wins.
+    if (cleared) again = true;
     // Writing the merged result back must not schedule another sync.
     applying = true;
-    try { store.set("history", d.data.history); store.set("saved", d.data.saved); store.set("progress", d.data.progress); store.set("days", d.data.days); store.set("notifCleared", d.data.notifCleared || {}); store.set("historyReset", d.data.historyReset || 0); }
+    try {
+      if (!cleared) { store.set("history", list("history", d.data.history, 500)); store.set("historyReset", d.data.historyReset || 0); const [p, dirty] = mergeMap(sent.pos, d.data.pos || {}, store.allPos()); again ||= dirty; store.replacePos(byOldest(p)); }
+      store.set("saved", map("saved", d.data.saved)); store.set("progress", map("progress", d.data.progress)); store.set("days", list("days", d.data.days, 400)); store.set("notifCleared", map("notifCleared", d.data.notifCleared));
+    }
     finally { applying = false; }
+    if (again) scheduleSync();
   } catch (e) { if (e.status === 429) syncTimer = setTimeout(sync, 120000); }
 }
 // Batch changes: one sync at most every 15 seconds while someone is browsing.
 export function scheduleSync() { if (!signedIn() || applying) return; clearTimeout(syncTimer); syncTimer = setTimeout(sync, 15000); }
+// Going to the background is often the last chance a phone gives us. Sync now, but never faster than the server allows.
+export function flushSync() { if (!signedIn()) return; if (Date.now() - lastSync < 10000) { scheduleSync(); return; } clearTimeout(syncTimer); sync(); }
 addEventListener("pagehide", () => { if (syncTimer) { clearTimeout(syncTimer); sync(); } });
 
 // Referral and invite links: /join/<code> remembers the code until an account is made.

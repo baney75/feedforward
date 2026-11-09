@@ -16,6 +16,7 @@ function markDay() {
   if (d[0] !== today()) { d.unshift(today()); write("days", d.slice(0, 400)); }
 }
 
+export const FINISHED = 0.9;
 function posAll() { try { return JSON.parse(localStorage.getItem("lt:pos")) || {}; } catch { return {}; } }
 export const store = {
   // "Turn off Shorts": for people who know short video hooks them. Hides Shorts everywhere on this device.
@@ -49,16 +50,22 @@ export const store = {
     write("history", h.slice(0, 500));
     markDay();
   },
-  // Where you stopped in each video: { id: [seconds, duration] }, newest last. This device only, and quiet:
-  // it updates every few seconds while playing, so it must not trigger an account sync.
+  // Where you stopped in each video: { id: [seconds, duration, when] }, newest last. Quiet: it updates every few
+  // seconds while playing, so it doesn't sync on its own. The player calls touchPos() at moments worth syncing.
   pos(id) { return posAll()[id] || null; },
   setPos(id, t, d) {
     if (!(d > 0)) return;
-    const all = posAll(); delete all[id]; all[id] = [Math.round(t), Math.round(d)];
+    const all = posAll(); delete all[id]; all[id] = [Math.round(t), Math.round(d), Date.now()];
     const keys = Object.keys(all);
     for (const k of keys.slice(0, Math.max(0, keys.length - 300))) delete all[k];
     try { localStorage.setItem("lt:pos", JSON.stringify(all)); } catch {}
+    // Reaching 90% counts for good, so starting a video over never takes the credit back.
+    if (t / d >= FINISHED && !this.isDone("v:" + id)) this.done("v:" + id);
   },
+  allPos: posAll,
+  replacePos(all) { try { localStorage.setItem("lt:pos", JSON.stringify(all)); } catch {} },
+  touchPos() { dispatchEvent(new CustomEvent("ff:changed", { detail: "pos" })); },
+  isFinished(id) { if (this.isDone("v:" + id)) return true; const p = this.pos(id); return !!p && p[0] / p[1] >= FINISHED; },
   history() { return read("history", []); },
   clearHistory() { write("historyReset", Date.now()); write("history", []); try { localStorage.removeItem("lt:pos"); } catch {} },
   hasWatched(id) { return read("history", []).includes(id); },
