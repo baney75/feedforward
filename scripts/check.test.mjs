@@ -372,7 +372,8 @@ test("a track video counts when you finish it, not when you press play", async (
   store.setPos("x", 3, 600);
   assert.equal(store.isFinished("x"), true, "starting over keeps the credit");
   const src = fs.readFileSync(path.join(root, "public/js/views.js"), "utf8");
-  assert.doesNotMatch(src, /s\.kind === "video" && store\.hasWatched\(s\.id\)\) return true/);
+  assert.doesNotMatch(src, /stepDone[\s\S]{0,300}hasWatched/, "pressing play earns nothing");
+  assert.doesNotMatch(src, /#nextStep/, "moving to the next step earns nothing");
   store.setPos("c", 590, 600); store.clearHistory();
   assert.equal(store.isFinished("c"), false, "clearing history clears finished marks");
   mem.clear();

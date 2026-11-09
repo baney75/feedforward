@@ -185,7 +185,6 @@ export function watch(el, qs, id) {
     const url = location.origin + "/watch/" + id;
     try { if (navigator.share) await navigator.share({ title: v.title, url }); else { await navigator.clipboard.writeText(url); toast("Link copied"); } } catch {}
   };
-  if (track) bindTrackBanner(el, track, id);
   const auto = $("#autoplay", el); if (auto) auto.onchange = (e) => store.set("autoplay", e.target.checked);
   const more = $("#moreNext", el);
   if (more) more.onclick = () => { const g = $("#moreList", el); g.innerHTML = upNext.filter((x) => x !== next).map((x) => videoCard(x)).join(""); g.hidden = false; more.remove(); };
@@ -276,8 +275,8 @@ function trackProgress(t) {
 }
 function stepDone(t, s, k) {
   if (s.kind === "lab") return store.isDone("lab:" + s.slug);
-  // Pressing play is not finishing. Watched before positions were kept (no position on record) still counts.
-  if (s.kind === "video" && (store.isFinished(s.id) || (!store.pos(s.id) && store.hasWatched(s.id)))) return true;
+  // Reaching 90% or pressing Mark done completes a step. Pressing play or moving on does not.
+  if (s.kind === "video" && store.isFinished(s.id)) return true;
   return store.isDone(`step:${t.slug}:${k}`);
 }
 function meter(d, n) { return `<div class="meter${d === n ? " done" : ""}"><i><b style="width:${Math.round((100 * d) / n)}%"></b></i>${d}/${n}</div>`; }
@@ -353,9 +352,6 @@ function trackBanner(t, id) {
   const nextStep = t.steps[k + 1];
   const href = !nextStep ? `/learn/${t.slug}` : nextStep.kind === "video" ? `/watch/${nextStep.id}?track=${t.slug}` : nextStep.kind === "lab" ? `/lab/${nextStep.slug}?track=${t.slug}` : `/learn/${t.slug}`;
   return `<div class="why" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:200px"><span class="muted">Track: <a class="link" href="/learn/${t.slug}">${esc(t.title)}</a></span><br>Step ${k + 1} of ${t.steps.length}</div><a class="btn primary" id="nextStep" href="${href}">${nextStep ? "Next step" : "Back to track"}${icon("right")}</a></div>`;
-}
-function bindTrackBanner(el, t, id) {
-  const b = $("#nextStep", el); if (b) b.addEventListener("click", () => { store.watched(id); store.done(`step:${t.slug}:${t.steps.findIndex((s) => s.id === id)}`); });
 }
 
 export async function labPage(el, qs, slug) {
