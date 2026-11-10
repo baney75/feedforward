@@ -1,0 +1,2504 @@
+{
+ "LPZh9BOjkQs": [
+  {
+   "t": 189,
+   "q": "During pre-training, what does backpropagation do after the model predicts the last word of an example?",
+   "options": [
+    "It deletes the example so the model never sees it again",
+    "It tweaks all parameters so the true last word becomes a little more likely",
+    "It sets a few parameters by hand to match the correct word",
+    "It stores the whole example word for word so the model can copy it back out later"
+   ],
+   "answer": 1,
+   "why": "The model's guess is compared with the true last word, and backpropagation nudges every parameter to make that true word slightly more likely and the others less likely."
+  },
+  {
+   "t": 335,
+   "q": "What does the attention operation in a transformer do?",
+   "options": [
+    "It lets the word vectors share context so each refines its meaning, all in parallel",
+    "It reads the text one word at a time from start to finish",
+    "It picks the single most likely next word with certainty",
+    "It stores extra facts learned during training in a separate memory the model looks up"
+   ],
+   "answer": 0,
+   "why": "Attention lets the lists of numbers talk to one another and refine their meaning based on context, like turning bank into river bank, and it runs in parallel."
+  }
+ ],
+ "zjkBMFhNj_g": [
+  {
+   "t": 356,
+   "q": "Why does he call the trained parameters a lossy compression of the internet?",
+   "options": [
+    "They store an exact copy of every training web page, just packed into a smaller file",
+    "They capture the gist of the training text but cannot reproduce it exactly",
+    "They are compressed with the same lossless method a zip file uses, so nothing is lost",
+    "They keep only the most recent websites crawled and throw away the older pages"
+   ],
+   "answer": 1,
+   "why": "Roughly 10 TB of text becomes about 140 GB of parameters. Unlike a lossless zip file, the model keeps a gestalt of the text, not an identical copy."
+  },
+  {
+   "t": 690,
+   "q": "Why did the model's dreamed Amazon page contain an ISBN that almost certainly does not exist?",
+   "options": [
+    "The model looked the book up on the internet and copied an ISBN from a page with an error",
+    "The training data contained that exact fake ISBN on an Amazon page the model memorized",
+    "The model mimics the form of its training documents and fills in plausible looking text",
+    "The ISBN was added later during fine-tuning, when labelers wrote example product pages"
+   ],
+   "answer": 2,
+   "why": "The network knows a number of roughly that length follows ISBN, so it puts in whatever looks reasonable. It is dreaming text from its training distribution, which is hallucination."
+  },
+  {
+   "t": 1064,
+   "q": "What changes between pre-training and fine-tuning?",
+   "options": [
+    "The data changes to high quality Q&A conversations, while the next word objective stays the same",
+    "The objective changes from next word prediction to classification, while the internet data stays the same",
+    "Fine-tuning uses far more text than pre-training, gathered from a much larger internet crawl",
+    "Fine-tuning swaps the Transformer for a different architecture built for conversations"
+   ],
+   "answer": 0,
+   "why": "The optimization stays identical, still next word prediction. Only the data set is swapped for fewer but higher quality conversations written by labelers, which turns the base model into an assistant."
+  },
+  {
+   "t": 1330,
+   "q": "Why does the optional third stage use comparison labels?",
+   "options": [
+    "Comparisons are cheaper to store than full answers, so the labeled data set stays much smaller",
+    "It is often easier for a labeler to pick the better of several candidate answers than to write one",
+    "Comparisons remove the need for a pre-trained base model, so training can start from scratch",
+    "Comparisons let the model train without any human input once the first few labels are written"
+   ],
+   "answer": 1,
+   "why": "Writing a good haiku may be hard, but judging which of a few generated haikus is best is easy. Stage three, RLHF, uses those comparisons to further tune the model."
+  },
+  {
+   "t": 1595,
+   "q": "According to the scaling laws, what reliably improves next word prediction accuracy?",
+   "options": [
+    "A new algorithmic breakthrough every year",
+    "Training on only high quality fine-tuning data",
+    "Reducing the number of parameters N so the model avoids overfitting",
+    "Training a bigger model, more parameters N, on more text D"
+   ],
+   "answer": 3,
+   "why": "Accuracy is a smooth, predictable function of N and D, with no sign of topping out. Algorithmic progress is a bonus, but scale alone offers a dependable path."
+  },
+  {
+   "t": 2254,
+   "q": "What does it mean that current language models only have System 1 thinking?",
+   "options": [
+    "They can only answer math questions that follow one fixed pattern, not open ended word problems",
+    "They produce each word in one quick instinctive step, without reasoning through possibilities",
+    "They need a human to check every answer before the reply is shown to the user",
+    "They work in only one language at a time and must translate everything else first"
+   ],
+   "answer": 1,
+   "why": "The model just goes chunk, chunk, chunk, sampling words in sequence with roughly equal time per word. The goal of System 2 is to convert extra thinking time into accuracy."
+  },
+  {
+   "t": 2954,
+   "q": "Why did the Base64 encoded question get past Claude's refusal?",
+   "options": [
+    "Base64 text is filtered out before it reaches the safety check, so only the model sees it",
+    "The model cannot actually read Base64, so it guessed an answer without knowing the request",
+    "Its refusal training data was mostly English, so it learned to refuse mainly in English",
+    "Base64 queries are routed to a different, older model that never had any safety training"
+   ],
+   "answer": 2,
+   "why": "The model is fluent in Base64 like other languages, but the refusal examples were mostly English. It never correctly learned to refuse the same request in other encodings."
+  },
+  {
+   "t": 3232,
+   "q": "How did the fraud link end up in Bing's answer about the best movies of 2022?",
+   "options": [
+    "A web page Bing retrieved held hidden text that the model treated as new instructions",
+    "The user typed the link into the prompt by mistake, and Bing repeated it as a source",
+    "The model was poisoned during pre-training with a trigger phrase about movie lists",
+    "Bing's search ranking promoted a fraudulent movie site to the top of the results"
+   ],
+   "answer": 0,
+   "why": "This is prompt injection. One retrieved page contained text, often white on white, that hijacked the model and told it to publish the link."
+  }
+ ],
+ "7xTGNNLPyMI": [
+  {
+   "t": 730,
+   "q": "Why do LLMs use byte pair encoding instead of feeding in raw bits or bytes?",
+   "options": [
+    "It removes rare words the model should not learn, so the vocabulary stays clean",
+    "It shortens the sequence by adding more symbols, since sequence length is precious",
+    "It encrypts the text so the model cannot memorize private data word for word",
+    "It maps text to dictionary words so each token carries its meaning directly"
+   ],
+   "answer": 1,
+   "why": "Byte pair encoding merges common pairs into new symbols, trading a bigger vocabulary for shorter sequences. Sequence length is a finite, precious resource for the network."
+  },
+  {
+   "t": 2986,
+   "q": "Why doesn't the base model simply answer 4 when you type \"What is 2 plus 2\" into it?",
+   "options": [
+    "It was trained only on text without numbers, so it has never seen any arithmetic",
+    "Its safety training blocks direct answers until the question is phrased as a chat",
+    "It needs an internet search tool for any math question, and the base model has none",
+    "It is a token autocomplete that continues text like web pages, not an assistant"
+   ],
+   "answer": 3,
+   "why": "A base model only predicts the next token based on internet documents. The question is just a prefix to continue, so it may wander off instead of answering."
+  },
+  {
+   "t": 3856,
+   "q": "How does post-training turn a base model into an assistant?",
+   "options": [
+    "It keeps training the model on example conversations written by human labelers",
+    "Programmers write explicit code rules for each kind of question",
+    "It retrains the model from scratch on a larger internet crawl filtered for helpful answers",
+    "It attaches a search engine that writes the answers"
+   ],
+   "answer": 0,
+   "why": "The internet dataset is swapped for a dataset of conversations, and training continues with the same algorithm. The model learns to imitate how labelers respond."
+  },
+  {
+   "t": 5516,
+   "q": "How did Meta reduce hallucinations in Llama 3?",
+   "options": [
+    "They removed every rare name from the pre-training data so the model could not invent facts",
+    "They told the model in its system prompt to always search the web before answering",
+    "They probed which facts the model got wrong and trained it to say \"I don't know\" for those",
+    "They had humans rewrite every training answer to sound less confident about facts"
+   ],
+   "answer": 2,
+   "why": "They quizzed the model on facts, checked its answers, and for questions it got wrong added training examples where the right answer is that it doesn't know. This links its internal uncertainty to saying so."
+  },
+  {
+   "t": 6803,
+   "q": "Why is a training answer that states \"$3\" first and explains afterward a bad example?",
+   "options": [
+    "It uses more tokens than needed, which slows the model and wastes its context window",
+    "It forces the model to compute the whole answer in one token, which has limited computation",
+    "Readers prefer to see the reasoning first, so labelers are told to always put the answer last",
+    "The dollar sign confuses the tokenizer and splits the number into too many pieces"
+   ],
+   "answer": 1,
+   "why": "Each token gets only a fixed, small amount of computation. Stating the answer first crams all the work into one token, and the explanation after it is just justification."
+  },
+  {
+   "t": 8749,
+   "q": "In reinforcement learning on math problems, where do the solutions the model trains on come from?",
+   "options": [
+    "Expert human labelers write one ideal solution for each problem, and the model imitates it",
+    "They are copied from textbook answer keys that show every step of the worked solution",
+    "A larger teacher model writes them, and the smaller model is trained to imitate each of its steps",
+    "The model samples many of its own attempts, and ones reaching the right answer are reinforced"
+   ],
+   "answer": 3,
+   "why": "Reinforcement learning is guess and check. The model tries many solutions, and the token sequences that reach the correct answer are made more likely."
+  },
+  {
+   "t": 9884,
+   "q": "Why could AlphaGo trained with reinforcement learning beat top human players?",
+   "options": [
+    "It learned moves that lead to wins by playing itself, not just by imitating experts",
+    "It memorized more expert games than any human could see, then copied the best moves",
+    "Go champions wrote a hand-coded strategy for it that covered every opening and endgame",
+    "It searched a database of every possible board position to find the winning move"
+   ],
+   "answer": 0,
+   "why": "Imitating human experts tops out near human level. Reinforcement learning rewards whatever moves actually win, so it can find moves like move 37 that no human would play."
+  },
+  {
+   "t": 11073,
+   "q": "Why can't RLHF be run for a very long time the way RL on math problems can?",
+   "options": [
+    "Human labelers get tired of ranking jokes, so the comparison data runs out after a short while",
+    "The model runs out of new prompts to practice on after a few thousand updates",
+    "The reward model is a neural net that RL learns to game with nonsense that scores high",
+    "Longer training always makes the replies too long, and users stop reading them"
+   ],
+   "answer": 2,
+   "why": "RLHF optimizes against a reward model that only simulates human judgment. Run long enough, RL finds adversarial inputs, like \"the the the\", that the reward model scores highly."
+  }
+ ],
+ "EWvNQjAaOHw": [
+  {
+   "t": 627,
+   "q": "Why does a chat model like GPT-4o have a knowledge cutoff?",
+   "options": [
+    "Post-training deletes any facts learned after a set date to keep the model consistent",
+    "Pre-training is costly and rare, so its knowledge stops when it was pre-trained",
+    "The context window can only hold information from the years before the model shipped",
+    "The company blocks recent facts on purpose to keep the answers safe and checked"
+   ],
+   "answer": 1,
+   "why": "Pre-training costs tens of millions of dollars and takes months, so it happens infrequently. The model only knows the internet up to when it was pre-trained."
+  },
+  {
+   "t": 1824,
+   "q": "When is it worth switching to a thinking model?",
+   "options": [
+    "For simple questions like travel ideas, to get a more polished and complete list",
+    "Whenever you want the fastest possible reply",
+    "For hard math or coding problems where a fast model's answer falls short",
+    "Whenever the question is about recent news events"
+   ],
+   "answer": 2,
+   "why": "Thinking models were tuned with reinforcement learning and spend extra tokens reasoning, which raises accuracy on hard math and code. For simple questions the wait is not worth it."
+  },
+  {
+   "t": 2071,
+   "q": "Why couldn't the model know the White Lotus season 3 release schedule without search?",
+   "options": [
+    "The schedule was set after the model was trained, so it is not in its parameters",
+    "TV schedules are filtered out of training data on purpose to avoid spoilers",
+    "The model's context window is too small to hold a full season's release schedule",
+    "The model is trained to refuse questions about TV shows and other entertainment"
+   ],
+   "answer": 0,
+   "why": "The schedule was decided recently, after pre-training. Search pulls the web pages into the context window, the model's working memory, so it can answer."
+  },
+  {
+   "t": 3217,
+   "q": "What most likely happens when you upload a PDF to an LLM like Claude?",
+   "options": [
+    "The model retrains its parameters on the PDF",
+    "The PDF is saved to a memory that every future chat can see",
+    "Only the images are analyzed and the text is skipped",
+    "It is turned into text and loaded into the context window"
+   ],
+   "answer": 3,
+   "why": "The PDF is likely converted to text and placed in the token window. Once there, it is in working memory and the model can answer questions about it."
+  },
+  {
+   "t": 3888,
+   "q": "Why did Grok 3 get the large multiplication slightly wrong?",
+   "options": [
+    "It wrote Python to do the math, but that code had a small bug",
+    "It had no code tool, so it did the math in its head and hallucinated",
+    "Its knowledge cutoff predates the numbers, so it guessed from old data",
+    "It misread the numbers because the tokenizer split them oddly"
+   ],
+   "answer": 1,
+   "why": "Without a Python interpreter the model just does its best in its head. It got remarkably close but still hallucinated part of the result."
+  },
+  {
+   "t": 5360,
+   "q": "What makes advanced voice mode \"true audio\" instead of \"fake audio\"?",
+   "options": [
+    "It uses a more accurate speech-to-text model",
+    "It reads its text replies aloud with a much better and more natural sounding voice",
+    "The model itself takes in and predicts audio tokens, with no text step",
+    "It records your voice and sends it to a human reviewer"
+   ],
+   "answer": 2,
+   "why": "In true audio, audio is chopped into tokens and handled natively by the language model. Fake audio just converts speech to text and text back to speech around a text model."
+  },
+  {
+   "t": 6107,
+   "q": "How can a language model work with images?",
+   "options": [
+    "A separate camera model describes each image in words first, then passes the text on",
+    "Every pixel becomes its own word in the vocabulary",
+    "The image is compressed into a single special token",
+    "The image is cut into patches, each mapped to a token from a vocabulary"
+   ],
+   "answer": 3,
+   "why": "Images are split into a grid of patches, and each patch is quantized to the closest entry in a patch vocabulary. The transformer then just models a stream of tokens."
+  },
+  {
+   "t": 6968,
+   "q": "How does ChatGPT's memory feature carry information between chats?",
+   "options": [
+    "It keeps the full context window from every past chat",
+    "It saves short text notes about you and adds them to the start of each conversation",
+    "It retrains the model's parameters on your conversations each night so it learns about you",
+    "It searches your old chats on the web before answering"
+   ],
+   "answer": 1,
+   "why": "Memory is a small database of text strings about you. Those strings are prepended to new conversations so the model can see them in its context window."
+  }
+ ],
+ "aircAruvnKk": [
+  {
+   "t": 459,
+   "q": "What is the hope for what the hidden layers do when recognizing a 9?",
+   "options": [
+    "Each hidden neuron memorizes one complete training image and fires when it sees that 9",
+    "The second layer detects small edges and the third detects parts like loops and lines",
+    "The second layer sorts pixels from brightest to darkest and the third counts the dark ones",
+    "The hidden layers copy the input pixels forward so the output layer can compare them"
+   ],
+   "answer": 1,
+   "why": "The layered structure is meant to build up abstraction: edges combine into subcomponents like an upper loop and a vertical line, which combine into a digit."
+  },
+  {
+   "t": 704,
+   "q": "What does a neuron's bias control?",
+   "options": [
+    "Which pixel pattern the neuron picks up on in the layer of neurons that feeds into it",
+    "How many neurons in the next layer receive a signal from this neuron",
+    "How high the weighted sum must be before the neuron becomes meaningfully active",
+    "Whether the neuron squishes its weighted sum with a sigmoid or with ReLU"
+   ],
+   "answer": 2,
+   "why": "The weights set what pattern the neuron detects. The bias, such as minus 10, is added before the sigmoid and sets the threshold for activity."
+  },
+  {
+   "t": 973,
+   "q": "In the end, what is the whole network, viewed mathematically?",
+   "options": [
+    "A lookup table that stores one answer for each possible image it could be shown",
+    "A set of fixed rules written by hand for each digit",
+    "A random process that guesses digits until one is right",
+    "A single function that takes 784 numbers in and gives 10 numbers out"
+   ],
+   "answer": 3,
+   "why": "Each neuron is really a function of the previous layer, so the whole network is one complicated function with about 13,000 weights and biases."
+  }
+ ],
+ "IHZwWFHWa-w": [
+  {
+   "t": 273,
+   "q": "When is the cost for a single training example small?",
+   "options": [
+    "When the network confidently classifies the image correctly",
+    "When all ten output neurons have the same middling activation",
+    "When the weights and biases are set randomly",
+    "When the output layer has many bright neurons"
+   ],
+   "answer": 0,
+   "why": "The cost adds up the squared differences between the outputs and the desired values, so it is small only when the output matches the right answer closely."
+  },
+  {
+   "t": 620,
+   "q": "Why do artificial neurons use continuously ranging activations instead of simple on/off values?",
+   "options": [
+    "Because biological neurons fire at many levels, and the network copies them exactly",
+    "So the network can store more training images inside each neuron's activation",
+    "So the cost function is smooth and can be minimized by small steps downhill",
+    "So the output layer can show more than ten digits by mixing its brightness levels"
+   ],
+   "answer": 2,
+   "why": "Gradient descent needs a smooth cost function so that small nudges downhill lead toward a local minimum, which binary activations would not allow."
+  },
+  {
+   "t": 970,
+   "q": "What happens when the trained network is shown an image of random noise?",
+   "options": [
+    "It leaves all ten output neurons dark because no digit pattern is present",
+    "It confidently gives a nonsense answer, as if the noise were a real digit",
+    "It lights up all ten output neurons evenly since every digit is equally likely",
+    "It refuses to classify the image and flags it as not being a digit"
+   ],
+   "answer": 1,
+   "why": "Its cost function never rewarded uncertainty, so it is as confident about noise being a five as it is about a real five."
+  }
+ ],
+ "Ilg3gGewQ5U": [
+  {
+   "t": 331,
+   "q": "To raise the digit 2 neuron's activation, which incoming weights have the biggest effect?",
+   "options": [
+    "Weights from the dimmest, least active neurons in the layer just before it",
+    "Weights connected to the output neurons for other digits",
+    "Weights from the brightest, most active neurons in the previous layer",
+    "All weights have exactly the same effect"
+   ],
+   "answer": 2,
+   "why": "Each weight is multiplied by the previous neuron's activation, so weights from bright neurons change the weighted sum, and the cost, the most."
+  },
+  {
+   "t": 627,
+   "q": "Why do networks usually train on random mini batches instead of every training example per step?",
+   "options": [
+    "Each step is far cheaper, and a mini batch still approximates the true gradient well",
+    "Mini batches give the exact gradient of the full cost function",
+    "Using all the examples at once would make the network classify everything as one digit",
+    "Mini batches remove the need for backpropagation"
+   ],
+   "answer": 0,
+   "why": "Averaging over all data each step is very slow. A mini batch gives a good approximation of the gradient and a big speedup, which is stochastic gradient descent."
+  }
+ ],
+ "tIeHLnjs5U8": [
+  {
+   "t": 273,
+   "q": "The derivative of the cost with respect to the last activation is 2 times (aL minus y). What does that tell you?",
+   "options": [
+    "The cost barely changes when the output is far from the desired value",
+    "Its size grows with the gap between the output and the desired value",
+    "It depends only on the bias, not on the output",
+    "It is always equal to the previous neuron's activation"
+   ],
+   "answer": 1,
+   "why": "The term 2(aL minus y) is proportional to how far the output is from what we want, so a very wrong output means small changes have a big effect on the cost."
+  },
+  {
+   "t": 545,
+   "q": "With many neurons per layer, why is the cost's sensitivity to a neuron in layer L minus 1 a sum?",
+   "options": [
+    "Because each weight is counted twice in the weight matrix, once forward and once backward",
+    "Because the biases of every layer must be added together before taking the derivative",
+    "Because that neuron affects the cost through several paths, one per neuron in the next layer",
+    "Because the cost averages over every training example, and each example adds a term"
+   ],
+   "answer": 2,
+   "why": "That neuron influences aL0, aL1 and so on, and each of those feeds the cost, so you add up the effects along every path."
+  }
+ ],
+ "VMj-3S1tku0": [
+  {
+   "t": 269,
+   "q": "After backpropagation, a.grad is 138. What does that tell you?",
+   "options": [
+    "a will change by 138 on the next update",
+    "g is 138 times larger than a",
+    "If a is nudged up slightly, g rises with a slope of 138",
+    "a contributes 138 percent of the final value of the output g"
+   ],
+   "answer": 2,
+   "why": "A gradient is a slope: it says how g responds when a is tweaked a tiny amount in the positive direction."
+  },
+  {
+   "t": 1079,
+   "q": "With d = a*b + c, a = 2, b = -3 and c = 10, why does bumping a up slightly make d go down?",
+   "options": [
+    "Because c is positive and large enough to dominate the whole sum",
+    "Because the derivative of d with respect to a is b, which is -3",
+    "Because the step size h is too small to measure a real change",
+    "Because a is smaller than c, so raising it pulls d toward zero"
+   ],
+   "answer": 1,
+   "why": "Differentiating a*b + c with respect to a gives b. Since b is -3, increasing a lowers d at a slope of -3."
+  },
+  {
+   "t": 2773,
+   "q": "During backpropagation, what does a plus node do with the gradient coming into it?",
+   "options": [
+    "It passes the same gradient unchanged to each of its inputs",
+    "It splits the gradient in half between its inputs",
+    "It multiplies the gradient by the value of the other input node",
+    "It sets its inputs' gradients to zero"
+   ],
+   "answer": 0,
+   "why": "The local derivative of a sum with respect to each input is 1, so by the chain rule the incoming gradient is simply routed to every input."
+  },
+  {
+   "t": 4072,
+   "q": "In the neuron example, why is the gradient on weight w2 zero?",
+   "options": [
+    "Because w2 was initialized to zero, so it has no effect on the neuron yet",
+    "Because tanh squashed the output to zero, which zeroes every gradient below it",
+    "Because the plus node blocked the gradient before it could reach that weight",
+    "Because its input x2 is zero, so changing w2 does not change the output"
+   ],
+   "answer": 3,
+   "why": "For a times node the local derivative of w2 is the other factor, x2. With x2 equal to 0, wiggling w2 has no effect on the output."
+  },
+  {
+   "t": 5186,
+   "q": "Why did b = a + a first give a.grad of 1 instead of 2, and how was it fixed?",
+   "options": [
+    "The forward pass computed b wrong; it was fixed by calling backward a second time",
+    "The second gradient overwrote the first; it was fixed by accumulating gradients with +=",
+    "Topological sort skipped one copy of a; it was fixed by sorting the graph again",
+    "The step size was too large for a; it was fixed by lowering the learning rate"
+   ],
+   "answer": 1,
+   "why": "When a value is used more than once, each use contributes a gradient. Setting grad with = overwrote one contribution, so the fix is to add them with +=."
+  },
+  {
+   "t": 5983,
+   "q": "When tanh was rebuilt from exp, division and other smaller operations, what happened to the gradients on the leaf nodes?",
+   "options": [
+    "They came out identical to the single tanh node",
+    "They doubled because the graph was larger",
+    "They all became zero because exp has no simple derivative",
+    "They matched only after rescaling"
+   ],
+   "answer": 0,
+   "why": "The composed expression is mathematically equal to tanh, so the forward and backward passes match. The level of abstraction is up to you as long as each piece has a local derivative."
+  },
+  {
+   "t": 7442,
+   "q": "In the gradient descent update, why is the step taken as minus the learning rate times p.grad?",
+   "options": [
+    "Because gradients are always positive, so the minus sign is needed to shrink weights",
+    "Because the minus sign keeps every weight between -1 and 1 during training",
+    "Because the gradient points toward increasing loss, and we want the loss to go down",
+    "Because PyTorch requires negative updates whenever it steps the parameters"
+   ],
+   "answer": 2,
+   "why": "The gradient points in the direction that increases the loss. To minimize the loss, each parameter moves the opposite way."
+  },
+  {
+   "t": 7945,
+   "q": "What bug did the training loop have, and why did it still seem to work?",
+   "options": [
+    "It used the wrong loss function, but the tiny data set happened to fit anyway",
+    "It never called backward, so the weights drifted randomly and still happened to find a low loss",
+    "The learning rate decayed to zero too early, but the first few steps were enough",
+    "It never zeroed the gradients, so they piled up and acted like a huge step on an easy problem"
+   ],
+   "answer": 3,
+   "why": "Without zeroing grads before backward, each pass adds onto old gradients. On this very simple problem that just acted like a bigger step size."
+  }
+ ],
+ "PaCmpygFfXo": [
+  {
+   "t": 556,
+   "q": "Why wrap each word with special start and end tokens before collecting bigrams?",
+   "options": [
+    "To make every word the same length so the bigram counts line up in one table",
+    "To capture which characters tend to begin a name and that a name is likely to end",
+    "To separate uppercase from lowercase letters before counting the character pairs",
+    "To mark and remove duplicate names from the data set before any counting starts"
+   ],
+   "answer": 1,
+   "why": "Plain consecutive pairs miss that E starts Emma and that the word ends after A. The start and end tokens turn those facts into bigrams too."
+  },
+  {
+   "t": 1344,
+   "q": "Why did he replace the separate start and end tokens with a single dot token?",
+   "options": [
+    "PyTorch cannot index an array larger than 27 by 27, so one of the two tokens had to go",
+    "A single token makes sampling deterministic, so every generated name stops at the same place",
+    "Nothing followed the end token and nothing came before the start, so a row and a column were all zeros",
+    "A dot is required by torch.multinomial, which treats it as the marker for the end of every sample it draws"
+   ],
+   "answer": 2,
+   "why": "With two tokens, the end row and start column were always zero. One dot token used for both roles gives a tidier 27 by 27 array."
+  },
+  {
+   "t": 2117,
+   "q": "Why are names sampled from the bigram model so poor?",
+   "options": [
+    "The model only looks at the previous character, so it does not know what came earlier in the name",
+    "The counts were never normalized into probabilities, so the common letters were sampled far too often",
+    "The generator seed was set incorrectly, so each sample drew from the same few rows",
+    "The model was trained on only three names, so it had almost no examples to learn from"
+   ],
+   "answer": 0,
+   "why": "When it generates H, it does not know whether H is the first letter or not. It only sees one previous character, so it is a very weak model, though still better than uniform."
+  },
+  {
+   "t": 2951,
+   "q": "What went wrong when keepdim was removed from P.sum(1) before dividing?",
+   "options": [
+    "The division raised a shape error because a 27 by 27 tensor cannot divide by 27 numbers",
+    "The sums were taken over the whole tensor, so every entry was divided by one grand total",
+    "The counts were treated as integers in the division and rounded down to zero",
+    "The 27 sums were broadcast as a row vector, so the columns were normalized instead of the rows"
+   ],
+   "answer": 3,
+   "why": "Without keepdim the shape is 27. Broadcasting aligns on the right and adds a dimension on the left, making it 1 by 27, which is copied down and divides each column."
+  },
+  {
+   "t": 3446,
+   "q": "Why use the negative log likelihood as the loss instead of the likelihood itself?",
+   "options": [
+    "It is a sum instead of a product of tiny numbers, and lower values mean a better model",
+    "It makes every probability equal to one, so the loss is easy to compare across models",
+    "It removes the need to normalize the counts, since the log handles all the scaling",
+    "It is the only loss PyTorch can backpropagate through when the outputs are probabilities"
+   ],
+   "answer": 0,
+   "why": "The likelihood is a product of numbers below one and gets very tiny. The log turns it into a sum, and negating it gives a loss where 0 is best and higher is worse."
+  },
+  {
+   "t": 4261,
+   "q": "Why are the character indices one-hot encoded before going into the neural net?",
+   "options": [
+    "One-hot vectors take less memory than integers, so the forward pass runs much faster",
+    "PyTorch tensors cannot hold integers, so each index has to be turned into a float vector first",
+    "Neurons multiply inputs by weights, so a raw integer index makes no sense as an input value",
+    "One-hot encoding sorts the characters alphabetically so the weight rows stay in order"
+   ],
+   "answer": 2,
+   "why": "An index like 13 is a label, not a quantity to scale by weights. One-hot turns it into a vector of zeros with a single one, which can feed into the layer."
+  },
+  {
+   "t": 5293,
+   "q": "What does the softmax step do with the 27 outputs of the linear layer?",
+   "options": [
+    "It rounds the logits to the nearest integer counts so they match the bigram table",
+    "It exponentiates the logits into positive counts and normalizes each row to sum to one",
+    "It picks the single largest output as the next character and discards the other 26",
+    "It squares the logits so negative values disappear, then divides by the largest one"
+   ],
+   "answer": 1,
+   "why": "The outputs are read as log counts, or logits. Exponentiating makes them positive like counts, and dividing by the row sum turns them into a probability distribution."
+  },
+  {
+   "t": 6884,
+   "q": "How does adding a penalty on the squared weights relate to the counting model?",
+   "options": [
+    "Like smoothing, pushing W toward zero makes predictions more uniform, like adding fake counts",
+    "It speeds up training by shrinking the gradients, without changing the final predictions",
+    "It forces the model to memorize every bigram exactly, just as the count table does",
+    "It replaces the negative log likelihood, so the model only learns to keep its weights small"
+   ],
+   "answer": 0,
+   "why": "When all weights are zero, logits are zero and probabilities are uniform. A stronger regularization pull toward zero matches adding more fake counts in the counting approach."
+  }
+ ],
+ "wjZofJX0v4M": [
+  {
+   "t": 291,
+   "q": "How does the multi-layer perceptron step differ from the attention block?",
+   "options": [
+    "The vectors do not talk to each other and each goes through the same operation in parallel",
+    "It decides which words are relevant to updating the meaning of which other words",
+    "It turns the last vector in the sequence into a probability distribution over every possible token",
+    "It breaks the input text into tokens and looks up an embedding vector for each one"
+   ],
+   "answer": 0,
+   "why": "Attention lets vectors pass information back and forth. In the perceptron block, each vector is processed on its own, like answering a list of questions about it."
+  },
+  {
+   "t": 744,
+   "q": "What is the difference between a model's weights and the data being processed?",
+   "options": [
+    "Weights change with every new prompt, while the data stays fixed after training ends",
+    "Weights are learned in training and set behavior, while data encodes the input for one run",
+    "Weights are the input tokens, while the data is the probability distribution the model outputs",
+    "There is no real difference, since both are just matrices multiplied in the same way"
+   ],
+   "answer": 1,
+   "why": "The weights are the actual brains learned in training. The data is just whatever input, like a text snippet, is fed in for a given run."
+  },
+  {
+   "t": 1217,
+   "q": "Why did early chatbots seem to lose the thread in long conversations?",
+   "options": [
+    "Their embeddings had too few dimensions to store the meaning of a long conversation",
+    "Their temperature was set too high, so the replies drifted further from the topic",
+    "Their context size limits how much text they can use when predicting the next word",
+    "Their unembedding matrix was too small to cover the words used earlier in the chat"
+   ],
+   "answer": 2,
+   "why": "The network processes a fixed number of vectors at a time, 2048 for GPT-3, so text beyond that window cannot inform the prediction."
+  },
+  {
+   "t": 1468,
+   "q": "What happens when you raise the temperature in softmax?",
+   "options": [
+    "All weight goes to the single most likely token, so the output becomes predictable",
+    "The outputs no longer add up to one, so they must be normalized a second time",
+    "The model draws from a larger vocabulary that includes rarer tokens",
+    "Lower values get more weight, so the distribution becomes more uniform"
+   ],
+   "answer": 3,
+   "why": "A larger T flattens the distribution so less likely words get picked more often. A smaller T lets the biggest values dominate."
+  }
+ ],
+ "eMlx5fFNoYc": [
+  {
+   "t": 147,
+   "q": "After the first step of a transformer, why is the vector for \"mole\" the same in \"one mole of carbon dioxide\" and \"take a biopsy of the mole\"?",
+   "options": [
+    "Because both phrases are too short for attention to change any of the vectors",
+    "Because the word has only one meaning in the training data, so it gets one vector",
+    "Because the initial embedding is a lookup table with no reference to context",
+    "Because the model has not been trained yet, so every word starts out the same"
+   ],
+   "answer": 2,
+   "why": "The first step just looks up a vector for each token. Only later steps, like attention, let surrounding words pass information in."
+  },
+  {
+   "t": 742,
+   "q": "Why are the entries where later tokens would influence earlier ones set to negative infinity before softmax?",
+   "options": [
+    "So they become zero after softmax while each column still sums to one",
+    "So the model pays extra attention to the most recent token in the sequence",
+    "So the attention pattern takes less memory",
+    "So the dot products stay numerically stable"
+   ],
+   "answer": 0,
+   "why": "Setting them to zero directly would break normalization. Negative infinity turns into zero after softmax and keeps the columns normalized, which stops later words from giving away the answer."
+  },
+  {
+   "t": 946,
+   "q": "How does a single attention head actually update the embedding of a word like \"creature\"?",
+   "options": [
+    "It replaces the embedding with the embedding of the most relevant adjective before it",
+    "It adds a sum of value vectors, weighted by the attention pattern, to the original embedding",
+    "It multiplies the embedding by the query matrix and passes the result to the next layer",
+    "It averages the key vectors of all previous words and stores that as the new embedding"
+   ],
+   "answer": 1,
+   "why": "Each value vector is scaled by its weight in that column, the results are summed into a change, and that change is added to the original embedding."
+  },
+  {
+   "t": 1322,
+   "q": "What is the point of running many attention heads in parallel?",
+   "options": [
+    "To make each head's attention pattern smaller so the whole layer uses less memory",
+    "To remove the need for masking, since each head only looks at earlier tokens",
+    "To let the model use a longer context window by splitting it across the heads",
+    "To give the model capacity to learn many distinct ways context changes meaning"
+   ],
+   "answer": 3,
+   "why": "Each head has its own key, query and value maps, so different heads can capture different kinds of contextual updates, and their proposed changes are summed."
+  }
+ ],
+ "kCc8FmEb1nY": [
+  {
+   "t": 757,
+   "q": "What tradeoff does choosing a tokenizer's vocabulary size involve?",
+   "options": [
+    "A larger vocabulary gives longer sequences but a simpler encoder",
+    "A smaller vocabulary makes the model bigger but trains it faster",
+    "Small vocabularies give long sequences; large ones give short sequences",
+    "Subword vocabularies drop rare characters, so they can't round trip text"
+   ],
+   "answer": 2,
+   "why": "You trade code book size against sequence length. The character tokenizer has 65 tokens and long sequences, while GPT-2's roughly 50,000 tokens encode the same text in far fewer integers."
+  },
+  {
+   "t": 1073,
+   "q": "Why train on every context length from 1 up to block size in each chunk?",
+   "options": [
+    "So the model can predict well from as little as one character at sampling time",
+    "So the batch dimension can be dropped, since each chunk becomes its own full batch",
+    "So the model can read past block size at inference without being truncated",
+    "So validation loss and training loss are computed on exactly the same data"
+   ],
+   "answer": 0,
+   "why": "Karpathy says it isn't only for efficiency: it gets the Transformer used to every context size, so generation can start from a single character. Past block size the context must be truncated."
+  },
+  {
+   "t": 2084,
+   "q": "Why does generate feed the whole context to the bigram model, even though it uses only the last token?",
+   "options": [
+    "The bigram model averages all previous tokens before it predicts the next",
+    "PyTorch's embedding layer fails when it gets only a single token as input",
+    "Feeding everything lowers the loss, since more context improves sampling",
+    "So the same function still works later, once the model uses the history"
+   ],
+   "answer": 3,
+   "why": "Right now the history is ignored, so it looks silly. He keeps generate fixed so it works unchanged when later models actually look further back in the sequence."
+  },
+  {
+   "t": 3117,
+   "q": "What does multiplying by a row-normalized lower triangular matrix do to the rows of B?",
+   "options": [
+    "Each output row becomes the sum of all later rows of B, then is normalized",
+    "Each output row is the average of B's rows up to and including that position",
+    "It sorts B's rows so the largest values end up at the bottom of the matrix",
+    "It zeroes out every row except the first, so only the first token is kept"
+   ],
+   "answer": 1,
+   "why": "The ones in each row of the lower triangle pick out the current and earlier rows, and normalizing each row to sum to one turns the sum into a running average."
+  },
+  {
+   "t": 3890,
+   "q": "In self attention, how does a token decide how much to take from another token?",
+   "options": [
+    "It averages all past tokens equally, with weights fixed before training",
+    "Its query is dotted with the other token's key, and a match means high affinity",
+    "It compares raw embeddings directly, so tokens with the same letters attend more",
+    "Its value vector is dotted with each key, and the largest match is copied over"
+   ],
+   "answer": 1,
+   "why": "Each token emits a query (what am I looking for) and a key (what do I contain). The dot product of query and key sets the data dependent affinity."
+  },
+  {
+   "t": 4753,
+   "q": "Why do the attention scores get scaled by one over the square root of head size?",
+   "options": [
+    "To make the attention weights sum to one without needing a softmax step",
+    "To shrink the value vectors so the head output matches the embedding size",
+    "To stop future tokens from leaking in, together with the triangular mask",
+    "To keep variance near one so softmax stays diffuse instead of one-hot"
+   ],
+   "answer": 3,
+   "why": "Without scaling the variance of the scores grows with head size, and large values make softmax sharpen toward the max, so each node would aggregate from just one other node at initialization."
+  },
+  {
+   "t": 5435,
+   "q": "Why do residual connections help a deep Transformer optimize?",
+   "options": [
+    "Addition passes gradients straight through, a highway from loss to input",
+    "They normalize each token's features, so the activations never explode",
+    "They randomly drop blocks during training, which acts as regularization",
+    "They let each block see future tokens, which gives more training signal per step"
+   ],
+   "answer": 0,
+   "why": "Addition distributes gradients equally to its branches, so gradients flow unimpeded from the supervision to the input, and the residual blocks come online over time."
+  },
+  {
+   "t": 6375,
+   "q": "Why is the Transformer built in this video decoder only, with no encoder?",
+   "options": [
+    "Encoders only work with subword tokens, not with character-level tokens",
+    "Cross attention needs more GPU memory than the A100 used for training",
+    "The text isn't conditioned on any input to encode; it just imitates a file",
+    "The triangular mask can only be used when an encoder supplies the keys"
+   ],
+   "answer": 2,
+   "why": "The original paper needed an encoder to read the French sentence for translation. Here there is nothing to condition on, so like GPT it only needs the masked decoder."
+  }
+ ],
+ "zduSFxRajkE": [
+  {
+   "t": 681,
+   "q": "Why does non-English text tend to work worse with these tokenizers?",
+   "options": [
+    "The tokenizer refuses characters outside ASCII and drops them before training",
+    "Non-English text is split into more, smaller tokens, so it uses up the context faster",
+    "Non-English words are always mapped to the unknown token, so their meaning is lost",
+    "The embedding table has no rows for non-English tokens, so they all share one vector"
+   ],
+   "answer": 1,
+   "why": "The tokenizer is trained on mostly English, so English gets long tokens while other languages break into many pieces, stretching sequences and filling the context."
+  },
+  {
+   "t": 1348,
+   "q": "Why not just feed the raw UTF-8 bytes into the model as tokens?",
+   "options": [
+    "A 256-token vocabulary makes sequences very long, which wastes the limited context",
+    "UTF-8 bytes cannot represent emoji or characters outside the Latin alphabet",
+    "Bytes cannot be looked up in an embedding table, since they are not whole words",
+    "UTF-8 changes every time the Unicode standard updates, so the model would break"
+   ],
+   "answer": 0,
+   "why": "With only 256 possible tokens, text stretches into very long byte sequences, and attention can only cover a finite context, so the model sees less text."
+  },
+  {
+   "t": 2559,
+   "q": "If the tokenizer's training set includes a lot of Japanese text, what is the effect?",
+   "options": [
+    "The language model learns Japanese grammar faster, even with the same token count",
+    "Japanese characters are removed from the vocabulary to make room for the new merges",
+    "Japanese text falls back to raw bytes more often, so its sequences get longer",
+    "More Japanese merges are learned, so Japanese text becomes shorter token sequences"
+   ],
+   "answer": 3,
+   "why": "The tokenizer is trained separately. More of a language in its training set means more merges for it, giving denser, shorter sequences for that language."
+  },
+  {
+   "t": 3893,
+   "q": "What is the purpose of GPT-2's regex split before running byte pair encoding?",
+   "options": [
+    "To remove punctuation and extra spaces from the text before any merging starts",
+    "To make the text lowercase so the same word always merges the same way",
+    "To stop merges across categories like letters, numbers and punctuation",
+    "To speed up decoding of the final tokens back into readable text"
+   ],
+   "answer": 2,
+   "why": "The text is split into chunks and each chunk is tokenized on its own, so BPE can never merge across chunk boundaries, such as an e with a following space."
+  },
+  {
+   "t": 4844,
+   "q": "What is the end of text token in GPT-2 used for?",
+   "options": [
+    "It marks the boundary between documents in the training data",
+    "It marks where a word is split into two tokens",
+    "It stands in for any byte sequence that is not valid UTF-8 text",
+    "It pads short sequences to the full context length"
+   ],
+   "answer": 0,
+   "why": "It is inserted between documents to signal that a document ended and what follows is unrelated. It is the 50,257th token, added on top of the 256 bytes and 50,000 merges."
+  },
+  {
+   "t": 6014,
+   "q": "In SentencePiece, what happens to a rare code point like an unseen Korean character when byte fallback is turned off?",
+   "options": [
+    "It is encoded as its UTF-8 bytes",
+    "It becomes the unknown token",
+    "It is merged with the nearest common character",
+    "It is dropped from the text silently"
+   ],
+   "answer": 1,
+   "why": "Without byte fallback, code points not in the vocabulary all map to the unknown token, which is why Llama turned byte fallback on."
+  },
+  {
+   "t": 6409,
+   "q": "Which is a reason not to make the vocabulary size extremely large?",
+   "options": [
+    "Sequences would get longer, so each prompt fills the context window faster than before",
+    "The embedding table would have to shrink to fit the extra tokens in memory",
+    "The tokenizer could no longer decode text back into the original bytes",
+    "Each token appears more rarely in training, so its embedding may be undertrained"
+   ],
+   "answer": 3,
+   "why": "With a huge vocabulary, each token shows up less often, so its vectors get few updates. The embedding table and output layer also grow, adding compute."
+  },
+  {
+   "t": 7754,
+   "q": "Why did prompts containing SolidGoldMagikarp make GPT models behave strangely?",
+   "options": [
+    "The string was on a list of banned words, so the safety filter garbled the model's reply",
+    "The string was too long to fit in the context, so the prompt was cut off partway through the text",
+    "It had its own token, but that token never appeared in training, so its embedding was untrained",
+    "The token was confused with the end of text token, so the model stopped or rambled oddly"
+   ],
+   "answer": 2,
+   "why": "The Reddit username was common in the tokenizer's training data but absent from the language model's data, so its embedding row was never updated and acts like unallocated memory."
+  }
+ ],
+ "l8pRSuU81PU": [
+  {
+   "t": 1248,
+   "q": "How does the video describe the different jobs of attention and the MLP inside a Transformer block?",
+   "options": [
+    "Attention runs on each token alone (a map), while the MLP mixes information across all of the tokens (a reduce)",
+    "Attention lets tokens exchange information (a reduce), while the MLP works on each token individually (a map)",
+    "Both attention and the MLP mix information across all tokens in the sequence",
+    "Attention normalizes the residual stream, while the MLP adds the position information"
+   ],
+   "answer": 1,
+   "why": "Attention is the communication step, a weighted sum across tokens. The MLP runs on every token separately, so a block is a repeated map and reduce."
+  },
+  {
+   "t": 3386,
+   "q": "Why is a starting loss of about 11 a good sign for the randomly initialized model?",
+   "options": [
+    "It shows the model has already memorized the first batch of training tokens",
+    "It means the learning rate is set correctly for AdamW at the start of training",
+    "It proves the GPT-2 weights were loaded correctly from Hugging Face before training began",
+    "It is close to negative ln(1/50257), about 10.82, so the predictions are roughly uniform"
+   ],
+   "answer": 3,
+   "why": "With 50257 tokens, a uniform guess gives a loss of negative ln(1/50257), about 10.82. A loss near that means the network is not confidently wrong at the start."
+  },
+  {
+   "t": 4427,
+   "q": "Why does GPT-2 share one weight matrix between the token embedding and the output classifier?",
+   "options": [
+    "Similar tokens should get similar embeddings and outputs, and sharing saves about 30% of the parameters",
+    "The output layer cannot be trained unless it reuses the embedding gradients directly at each step",
+    "Sharing the matrix lets the model use a longer context window than its usual 1024 tokens",
+    "PyTorch requires the embedding and the final linear layer to point to the same tensor in memory"
+   ],
+   "answer": 0,
+   "why": "Both ends of the network want semantically similar tokens to behave alike, so the weights are tied. The 768 by 50257 matrix is about 40 million of the 124 million parameters."
+  },
+  {
+   "t": 6159,
+   "q": "Why does training in bfloat16 not need the gradient scalers that fp16 training needs?",
+   "options": [
+    "bfloat16 keeps more mantissa bits than fp16, so even very small gradients are stored exactly",
+    "bfloat16 stores weights in float32 and keeps only the gradients in 16 bits, so nothing underflows",
+    "bfloat16 keeps the same exponent bits as fp32, so it has the full range and only loses precision",
+    "bfloat16 runs only in the forward pass, so the gradients never leave float32 at all"
+   ],
+   "answer": 2,
+   "why": "bfloat16 truncates the mantissa but keeps the 8 exponent bits, so it covers the same range as fp32. fp16 reduced the range, which is why it needed gradient scaling."
+  },
+  {
+   "t": 7390,
+   "q": "Flash attention does more floating point operations than the plain attention code. Why is it still much faster?",
+   "options": [
+    "It skips the exact softmax and uses a cheaper approximation of attention that needs fewer reads",
+    "It never writes the large T by T attention matrix to high bandwidth memory, so it avoids slow memory traffic",
+    "It runs attention in int8, which the tensor cores can process about eight times faster than they process bfloat16",
+    "It drops the causal mask, so each token does less work when it attends to the earlier tokens"
+   ],
+   "answer": 1,
+   "why": "The cost is in reads and writes to HBM, not in FLOPs. Using the online softmax trick, flash attention keeps the work on chip and never materializes the attention matrix."
+  },
+  {
+   "t": 9913,
+   "q": "When accumulating gradients over several micro steps, why must each micro step's loss be divided by the number of steps?",
+   "options": [
+    "Otherwise the learning rate warmup would end too early, since each micro step counts as one step",
+    "Otherwise the summed gradients would overflow in bfloat16 and turn into infinity",
+    "Otherwise the loss would be averaged twice, once per micro batch and once by the optimizer",
+    "Repeated backward calls sum the gradients, so dividing restores the mean over the full batch"
+   ],
+   "answer": 3,
+   "why": "Each backward call adds to the gradients, which acts like a sum of losses. Dividing by the accumulation steps puts back the missing normalizer, so the result matches one big batch."
+  },
+  {
+   "t": 11113,
+   "q": "With DDP and gradient accumulation, why does the video turn on gradient sync only on the last micro step?",
+   "options": [
+    "Syncing on every micro step wastes communication, since gradients can add up locally and be averaged once",
+    "Syncing early would make every GPU train on the same data shard instead of its own slice",
+    "DDP can only average gradients once per training run, so it has to wait for the final step",
+    "The first micro steps produce no gradients yet, so there is nothing to send between the GPUs until the end"
+   ],
+   "answer": 0,
+   "why": "The all reduce that averages gradients across GPUs is costly. Gradients are accumulated locally across micro steps, then averaged once on the final backward pass."
+  },
+  {
+   "t": 12882,
+   "q": "How does the video score its small model on HellaSwag?",
+   "options": [
+    "It shows all four endings in one prompt and asks the model to output the letter A, B, C or D",
+    "It picks the option whose text is the shortest after the shared context",
+    "It picks the completion whose tokens get the lowest average loss after the shared context",
+    "It fine tunes the model on HellaSwag examples and reports training accuracy"
+   ],
+   "answer": 2,
+   "why": "Models this small cannot handle a multiple choice format, so each option is scored as a plain token completion and the most likely one wins."
+  }
+ ],
+ "SQ3fZ1sAqXI": [
+  {
+   "t": 360,
+   "q": "Why might optimizing attention in a small model be wasted effort at frontier scale?",
+   "options": [
+    "Large models drop attention layers and use only MLP layers instead",
+    "At large scale MLP flops dominate, so attention's share gets washed out",
+    "Attention flops grow so fast at scale that no kernel optimization can keep up",
+    "Small models run attention on the CPU, while large models use the GPU"
+   ],
+   "answer": 1,
+   "why": "In small models attention and MLP flops are roughly comparable, but at 175 billion parameters the MLPs dominate. Tuning attention at small scale can mean optimizing the wrong thing."
+  },
+  {
+   "t": 632,
+   "q": "What does Percy say is the right reading of the bitter lesson?",
+   "options": [
+    "Scale is all that matters, so algorithm work is no longer worth doing",
+    "Clever algorithms matter more than scale, so small models are enough",
+    "Hand-built features beat learning once a model gets large enough",
+    "Algorithms at scale matter, and efficiency counts more at large scale"
+   ],
+   "answer": 3,
+   "why": "He rejects the idea that only capital matters. Accuracy is a product of efficiency and resources, and when a run costs hundreds of millions of dollars you can't afford waste."
+  },
+  {
+   "t": 1361,
+   "q": "According to Percy, what should you try before training a language model from scratch?",
+   "options": [
+    "Prompting or fine-tuning an existing model, if that already works",
+    "Building your own tokenizer, since that drives most of the quality",
+    "Scraping a fresh Common Crawl dump so the data is your own from day one",
+    "Writing custom Triton kernels so your first training run is efficient"
+   ],
+   "answer": 0,
+   "why": "He says prompting and fine-tuning are great, and if they work you should start there. Training from scratch is not the right first step for every problem."
+  },
+  {
+   "t": 2163,
+   "q": "What is the main bottleneck the kernels unit tries to reduce on a GPU?",
+   "options": [
+    "The number of floating point units, which limits each matrix multiply",
+    "The time spent compiling Python code into GPU instructions for each step",
+    "Moving data between off-chip memory and compute, the warehouse to factory trip",
+    "The size of the L1 cache, which caps how many parameters a model can hold"
+   ],
+   "answer": 2,
+   "why": "Memory is the warehouse and compute is the factory, and the big cost is data movement between them. Techniques like fusion and tiling cut that movement."
+  },
+  {
+   "t": 2580,
+   "q": "What does the Chinchilla rule of thumb leave out, by Percy's account?",
+   "options": [
+    "The cost of data cleaning, since it assumes all tokens are high quality",
+    "The number of GPUs, since it assumes training runs on a single device",
+    "The choice of optimizer, since it assumes plain SGD for every model size",
+    "Inference cost, since it only asks for the best model for a training budget"
+   ],
+   "answer": 3,
+   "why": "The rule of about 20 tokens per parameter finds the best model for a given training compute budget. It doesn't account for what the model will cost to serve."
+  },
+  {
+   "t": 3443,
+   "q": "Why does the class train for just a single epoch over the data?",
+   "options": [
+    "It is compute constrained with plenty of data, so seeing new data beats repeats",
+    "It is data constrained, so a second pass would only memorize the same few tokens",
+    "A second epoch breaks the tokenizer, which was trained on the first pass only",
+    "The scaling laws in assignment three are only valid for single-epoch runs"
+   ],
+   "answer": 0,
+   "why": "In the current GPU-poor regime there is a lot of data but little compute, so it's more efficient to see more data than to revisit any one example. Data constrained labs may change that."
+  },
+  {
+   "t": 4142,
+   "q": "What is the main problem with byte-based tokenization?",
+   "options": [
+    "The vocabulary is huge, since every Unicode code point needs its own slot",
+    "It can't round trip, since some characters can't be decoded from bytes",
+    "Sequences get long, and attention cost grows quadratically with length",
+    "Rare words fall back to an unknown token, which breaks the perplexity"
+   ],
+   "answer": 2,
+   "why": "With a compression ratio of one byte per token, sequences are very long, and naive attention is quadratic in sequence length, which is terrible for efficiency."
+  },
+  {
+   "t": 4401,
+   "q": "How does BPE decide which sequences get their own token?",
+   "options": [
+    "It splits text with a regex and gives each whole word its own token",
+    "It repeatedly merges the most frequent adjacent pair into a new token",
+    "It assigns tokens by Unicode code point and merges only rare characters",
+    "It picks the tokens that minimize the model's loss after a short run"
+   ],
+   "answer": 1,
+   "why": "BPE starts from bytes and keeps merging the most common pair of adjacent tokens, so common sequences become one token and rare ones stay as several."
+  }
+ ],
+ "61yRuOMSfMc": [
+  {
+   "t": 440,
+   "q": "When a model fits entirely on the GPU, what mainly limits prefill speed versus decode speed?",
+   "options": [
+    "Prefill is limited by storage speed, decode by CPU threads",
+    "Both are limited only by how much VRAM the card has",
+    "Prefill is limited by memory bandwidth (GB/s), decode by compute (FLOPs)",
+    "Prefill is limited by compute (FLOPs), decode by memory bandwidth"
+   ],
+   "answer": 3,
+   "why": "Prefill processes the whole prompt at once and is compute bound. Decode reads the weights for every token, so memory bandwidth sets its ceiling."
+  },
+  {
+   "t": 548,
+   "q": "Why does the DGX Spark run models slower than a 3090 yet hold far more memory?",
+   "options": [
+    "It uses LPDDR memory, which is cheaper and cooler but has much lower bandwidth than GDDR or HBM",
+    "It has no discrete GPU, so all the math in each layer runs on its ARM CPU cores instead",
+    "Its memory is faster than a 3090's, but its software stack is far less optimized for inference",
+    "It stores the model weights on NVMe storage and streams them in, instead of keeping them in memory"
+   ],
+   "answer": 0,
+   "why": "High bandwidth GDDR and HBM are hard to produce and need cooling. The Spark's LPDDR runs at about 273 GB per second, roughly a quarter of a 3090, but is cheap enough to fit 128 GB."
+  },
+  {
+   "t": 967,
+   "q": "What is the drawback of pipeline parallelism when a model is split across two machines?",
+   "options": [
+    "It requires both machines to hold a full copy of the model weights in memory",
+    "It only works with models smaller than one machine's memory, which defeats the purpose",
+    "Each stage waits for the stage before it, so it is not the fastest way to split",
+    "It prevents a mixture of experts model from using more than one expert at a time"
+   ],
+   "answer": 2,
+   "why": "In pipeline parallelism each group of GPUs is a stage, and a stage must wait for the previous one, so splitting the model half and half or arranging experts is often faster."
+  }
+ ],
+ "K75j8MkwgJ0": [
+  {
+   "t": 250,
+   "q": "Why do K quants (the models tagged with K) do better than plain Q4 quantization?",
+   "options": [
+    "They store every number at full 32 bit precision, so nothing is lost in the conversion",
+    "They give small numbers and big numbers their own suitably sized slots instead of one rigid set",
+    "They remove half of the model's parameters entirely, so the rest can use more bits each",
+    "They move the model's numbers from RAM onto the hard drive and load only what is needed"
+   ],
+   "answer": 1,
+   "why": "Plain Q4 forces every value into the same 16 slots. K quants use separate areas so groups of small numbers get precise slots and big numbers get fitting space."
+  },
+  {
+   "t": 506,
+   "q": "What does context quantization reduce?",
+   "options": [
+    "The size of the model's weights on disk",
+    "The number of parameters the model can use",
+    "The time it takes to download a model from Ollama",
+    "The memory used to hold the conversation history"
+   ],
+   "answer": 3,
+   "why": "Long contexts like 32k tokens eat RAM for conversation history. Flash attention plus a Q8 KV cache cut that from about 15 GB to about 5 GB in the demo."
+  }
+ ],
+ "ujs0_cpAnaw": [
+  {
+   "t": 123,
+   "q": "Why does the cluster use four Mac Studios instead of three?",
+   "options": [
+    "Thunderbolt 5 can only connect an even number of machines in a ring without a switch",
+    "Three machines would not have enough GPU cores between them to load any of the experts",
+    "Tensor parallelism splits model dimensions evenly, so the node count must be 1, 2, 4 or 8",
+    "MLX distributed only runs on exactly four machines, since its ring needs four links"
+   ],
+   "answer": 2,
+   "why": "Tensor parallelism divides the model's dimensions across nodes and they must split evenly, so three nodes is not an option and two lacks room for the large context."
+  },
+  {
+   "t": 414,
+   "q": "Where are Macs weaker than Nvidia GPUs when running a model like this?",
+   "options": [
+    "Generating tokens, because Macs have low memory bandwidth compared with Nvidia cards",
+    "Prompt processing (prefill), even though generation goes well thanks to high memory bandwidth",
+    "Loading the model, because unified memory cannot hold all the weights of a model this size at once",
+    "Running the agent, because Open Code only supports Nvidia GPUs for local tool calls"
+   ],
+   "answer": 1,
+   "why": "Prefill is slower on Macs, about 238 tokens per second here. Once the prompt is processed, their high memory bandwidth makes generation the stronger part."
+  }
+ ],
+ "3XC8BA5UNBs": [
+  {
+   "t": 186,
+   "q": "Why does the speaker say the Z440's 700 watt power supply is fine for two RTX 3060 12 GB cards?",
+   "options": [
+    "Each card plugs into its own 300 watt connector, so the cards never share a rail",
+    "The cards draw no power through the PCIe slots, so all the load sits on the six pin leads",
+    "Each six pin lead supplies about 150 watts and the cards rarely sustain their 170 watt peak",
+    "The power supply automatically limits each card to 100 watts when two are installed"
+   ],
+   "answer": 2,
+   "why": "Each 3060 is rated near 170 watts, slightly over a six pin lead's 150 watts, but it is very unlikely to spike that high for long, and you can power limit it if concerned."
+  },
+  {
+   "t": 700,
+   "q": "Why is the NVIDIA driver installed inside the LXC container without kernel modules?",
+   "options": [
+    "The container uses the Proxmox host's kernel instead of its own",
+    "Kernel modules are only needed for gaming",
+    "The container has no internet access to download the kernel modules",
+    "Kernel modules would disable the second GPU"
+   ],
+   "answer": 0,
+   "why": "An LXC container shares the Proxmox host kernel, so the container only needs the user space parts of the driver."
+  },
+  {
+   "t": 934,
+   "q": "What explains Gemma 3 27B Q4 running much slower than the other models?",
+   "options": [
+    "Its context window was set too large for the GPUs, so every prompt took far longer",
+    "The model was split instead of running fully in GPU memory, so GPU use stayed low",
+    "Ollama was out of date on this machine and did not support Gemma 3 well yet",
+    "Q4 models always run slower than Q8 models because they must be decompressed first"
+   ],
+   "answer": 1,
+   "why": "Even with VRAM apparently free, the model split out of the GPUs. GPU utilization dropped to about 15 percent and tokens per second fell to around six."
+  },
+  {
+   "t": 1294,
+   "q": "Why is it a good sign that Deepcoder 14B Q8 uses only about 71 percent of the VRAM?",
+   "options": [
+    "It means the second GPU is idle, so the model runs on a single card",
+    "It means part of the model is running on the CPU instead of the GPUs",
+    "It means the model output will be more accurate than a model that fills VRAM",
+    "It leaves room for a larger context window while staying fully in VRAM"
+   ],
+   "answer": 3,
+   "why": "The model fits entirely in GPU memory for fast responses, and the spare VRAM lets you raise the context window, which helps with code work."
+  }
+ ],
+ "o1sN1lB76EA": [
+  {
+   "t": 80,
+   "q": "Why is it misleading to say a Raspberry Pi runs DeepSeek R1?",
+   "options": [
+    "The Pi only runs it through a cloud connection to DeepSeek's servers",
+    "The Pi runs a smaller model, not the 671b model that rivals ChatGPT",
+    "The Pi needs a paid OpenAI license before R1 will start",
+    "The Pi runs the full model but only for very short prompts"
+   ],
+   "answer": 1,
+   "why": "The full R1 671b model is about 400 GB and still needs heavy compute. The Pi runs a much smaller version, such as the 14b model."
+  },
+  {
+   "t": 183,
+   "q": "Why does adding an external graphics card make the model run much faster?",
+   "options": [
+    "The GPU compresses the model so it needs fewer parameters",
+    "The GPU lets the Pi download answers from the internet faster",
+    "GPU VRAM is much faster than CPU and system RAM, if the model fits in it",
+    "The GPU replaces the model with a simpler one that skips the reasoning steps"
+   ],
+   "answer": 2,
+   "why": "GPUs and their VRAM are far faster than CPUs and system memory. As long as the whole model fits in the 16 GB of VRAM, it ran about 10 times faster."
+  }
+ ],
+ "LCEmiRjPEtQ": [
+  {
+   "t": 329,
+   "q": "What happened to the Autopilot's C++ code as its neural networks improved?",
+   "options": [
+    "It was rewritten in Python so the neural nets could call it directly",
+    "It grew alongside the nets to handle the new camera stitching work",
+    "It was kept as a safety layer that checked every network output",
+    "Much of it was deleted as its functions migrated into the nets"
+   ],
+   "answer": 3,
+   "why": "Karpathy says the Software 2.0 stack ate through the Software 1.0 stack: functions like stitching camera images across time moved into the neural net, and the C++ was deleted."
+  },
+  {
+   "t": 827,
+   "q": "How does Karpathy say LLMs flip the usual path of technology diffusion?",
+   "options": [
+    "Governments adopted them first and then funded the labs that built them",
+    "Consumers adopted them first while corporations and governments lag",
+    "Open source models spread first and closed labs had to catch up later",
+    "Military research used them first, the same way early computers went"
+   ],
+   "answer": 1,
+   "why": "With electricity, computing or GPS, governments and corporations went first. With LLMs, ordinary people got them first, for things like boiling an egg, and institutions are lagging."
+  },
+  {
+   "t": 1055,
+   "q": "What does Karpathy mean by saying LLMs suffer from anterograde amnesia?",
+   "options": [
+    "They don't consolidate new learning, so the context window is only working memory",
+    "They forget the start of a long prompt, so key facts must always go at the very end",
+    "They lose their pretraining knowledge after each fine-tuning stage is applied",
+    "They mix up facts from different users because they share one large memory"
+   ],
+   "answer": 0,
+   "why": "Unlike a coworker who learns your organization over time, an LLM's weights stay fixed. The context window acts as working memory that you have to program directly, and it gets wiped."
+  },
+  {
+   "t": 1504,
+   "q": "Why does Karpathy recommend making your prompts concrete when coding with AI?",
+   "options": [
+    "A concrete prompt lets the model skip the generation step entirely",
+    "Vague prompts use more tokens, so they cost more for each request",
+    "It raises the chance verification passes, so you don't keep spinning",
+    "Concrete prompts let the agent take larger diffs without review"
+   ],
+   "answer": 2,
+   "why": "The AI generates and the human verifies. A vague prompt leads to output that fails verification and starts another round, so precise prompts keep the loop fast."
+  },
+  {
+   "t": 2184,
+   "q": "Why is Vercel replacing the word \"click\" in its docs with curl commands?",
+   "options": [
+    "Curl commands render better in markdown than screenshots of buttons",
+    "An LLM agent can run a curl command but can't natively click a button",
+    "Curl commands are shorter, which saves tokens in the model's context",
+    "Clicking in the dashboard was removed when the docs moved to markdown"
+   ],
+   "answer": 1,
+   "why": "Docs written for humans tell you to click things, which an agent can't do natively. A curl command is an action an LLM agent can take on your behalf."
+  }
+ ],
+ "D7_ipDqhtwk": [
+  {
+   "t": 207,
+   "q": "If you can easily map out the entire decision tree for a task, what does the talk recommend?",
+   "options": [
+    "Build an agent anyway so it can explore the whole tree on its own",
+    "Build the tree explicitly as a workflow and optimize each node",
+    "Use a multi agent system with one agent per branch",
+    "Skip the task, since simple tasks have no value"
+   ],
+   "answer": 1,
+   "why": "Agents thrive in ambiguous problem spaces. A task you can map fully is cheaper and more controllable as an explicit workflow."
+  },
+  {
+   "t": 391,
+   "q": "In the talk's simple view of an agent, which three components define it?",
+   "options": [
+    "The environment, the tools, and the system prompt, with the model called in a loop",
+    "A planner, a memory store, and a reward model, with a human approving each step",
+    "The user, the model, and a human reviewer who checks the output after each turn",
+    "A workflow, a decision tree, and unit tests that decide when the task is finished"
+   ],
+   "answer": 0,
+   "why": "Agents are models using tools in a loop. The environment, the tools and the system prompt define them, and iterating on just those gives the highest return."
+  },
+  {
+   "t": 540,
+   "q": "Why does the speaker urge builders to put themselves in the agent's context window?",
+   "options": [
+    "Because the agent can see everything the developer can see",
+    "Because agents learn permanently from every mistake they make in that window",
+    "Because at each step the model only knows what is in its limited context",
+    "Because longer context windows always fix agent mistakes"
+   ],
+   "answer": 2,
+   "why": "Each step is inference on a limited context of about 10 to 20k tokens. Reading only that context shows whether it is sufficient and coherent."
+  }
+ ],
+ "RjfbvDXpFls": [
+  {
+   "t": 274,
+   "q": "Why does the speaker think injecting LSP errors after every edit is bad for the model?",
+   "options": [
+    "LSP servers are too slow to run during a session, so each edit stalls while the model waits for results",
+    "It is like checking errors after every line instead of after the work is done, which confuses the model",
+    "LSP errors are usually wrong for languages other than TypeScript, so the model chases false problems",
+    "It uses up the model's tool call quota too quickly, so the session ends before the work is done"
+   ],
+   "answer": 1,
+   "why": "People finish a change and then check errors. Feeding half finished errors back after each edit confuses the model."
+  },
+  {
+   "t": 705,
+   "q": "Why does auto closing pull requests with a request for a short human written issue filter out bots?",
+   "options": [
+    "Bots cannot write in English at all",
+    "GitHub blocks automated accounts from opening issues on public repos",
+    "Bots never go back to read the comment after posting a pull request",
+    "The comment requires a paid account to reply"
+   ],
+   "answer": 2,
+   "why": "Clankers post a pull request and move on, so they never see or answer the comment. Humans who write a real issue get approved."
+  },
+  {
+   "t": 911,
+   "q": "According to the talk, what do human developers have that keeps a codebase from spiraling the way agents can?",
+   "options": [
+    "Humans can learn, they are bottlenecks, and they feel pain that pushes them to fix things",
+    "Humans never make mistakes when writing code, so errors do not pile up over time",
+    "Humans write more code per day than agents, so they keep the design consistent",
+    "Humans always read every line their agents write before any of it is merged into the codebase"
+   ],
+   "answer": 0,
+   "why": "Humans are fallible, but they learn, can only add so many errors a day, and hate pain, so they refactor. Agents keep piling on without learning."
+  }
+ ],
+ "5kLL0xUC28Q": [
+  {
+   "t": 167,
+   "q": "What problem does Pi's base AI package solve?",
+   "options": [
+    "It trains new models on your own data so the agent fits your codebase",
+    "It translates between providers' different APIs so you can switch models",
+    "It stores your chat history in a database so sessions can be resumed",
+    "It draws the terminal user interface and handles all keyboard input"
+   ],
+   "answer": 1,
+   "why": "Providers like Anthropic and OpenAI speak different API formats. The AI package handles that translation so moving from Claude to GPT does not break the app."
+  },
+  {
+   "t": 518,
+   "q": "In Pi's agent loop, what ends a turn?",
+   "options": [
+    "The outer script stops after a fixed number of steps",
+    "The user presses a key to stop the model",
+    "The model emits a stop token signaling it is done",
+    "The context window fills up"
+   ],
+   "answer": 2,
+   "why": "The outer loop keeps the model going, but the model decides when it is finished by outputting a special finish token, which tells Pi the turn is over."
+  },
+  {
+   "t": 936,
+   "q": "Why does keeping the KV cache in fast memory reduce latency?",
+   "options": [
+    "The model does not have to recompute the conversation history during prefill",
+    "It lets the model skip tool calls whose results are already stored in the cache",
+    "It makes the model weights smaller, so they load from memory more quickly",
+    "It lets the model run more tools at once without waiting for each one to finish"
+   ],
+   "answer": 0,
+   "why": "The KV cache holds the math already derived from the conversation. Without it, prefill must recompute all of that, which is slow and compute heavy."
+  },
+  {
+   "t": 1316,
+   "q": "Why does the speaker say Pi's small system prompt is an advantage?",
+   "options": [
+    "It lets Pi use models from any provider without a login or an API key",
+    "It means Pi needs no tools, since the model already knows how to edit files",
+    "It forces the model to answer in fewer words, which keeps replies easy to read",
+    "It adds less latency and keeps irrelevant tokens out of the context"
+   ],
+   "answer": 3,
+   "why": "Pi's system prompt is about 400 tokens versus tens of thousands for some harnesses. Unrelated context adds processing time and can taint the model's next token predictions."
+  },
+  {
+   "t": 1674,
+   "q": "What makes a task a good fit for the hill climbing setup the speaker describes?",
+   "options": [
+    "It has no clear goal, so the model can explore freely and pick its own target",
+    "It is hard enough that only a frontier model can make any progress on it",
+    "It has a verifiable metric checked each turn that the next attempt builds on",
+    "It finishes in a single prompt, so there is no need to keep any history"
+   ],
+   "answer": 2,
+   "why": "Hill climbing needs a measurable score at each turn end, like model speed, so each cycle keeps changes that raise the score and starts the next attempt from there."
+  }
+ ],
+ "IZAlq-V19U8": [
+  {
+   "t": 500,
+   "q": "Why does the guest say figuring out your unknowns will stay a core agentic coding skill?",
+   "options": [
+    "Models will always lack raw coding skill, so humans must plan out every call stack by hand",
+    "Ask user question only works on short tasks, so long tasks need a full written spec up front instead",
+    "Most users know less about what they want than they think, and the model needs their preferences",
+    "Clarifying questions save tokens, so the model can skip verification once requirements are known"
+   ],
+   "answer": 2,
+   "why": "She says most people have more ambiguity than they realize, and even a super intelligent model needs to know what you want, so pulling out requirements stays a skill."
+  },
+  {
+   "t": 1217,
+   "q": "In the design example, what lets a designer get better results than a non designer?",
+   "options": [
+    "They know the domain vocabulary, so they can name fonts, reference sites and components precisely",
+    "They ask for eight different mockups, so the model can explore many more options in parallel",
+    "They write shorter prompts, since the model already has a strong built in sense of good visual taste",
+    "They connect more MCP servers, which gives the model more tokens to spend on every mockup"
+   ],
+   "answer": 0,
+   "why": "A designer can be precise with reference sites, fonts, components and a Figma board. Learning that vocabulary closes the gap between the prompt (the map) and the work (the territory)."
+  },
+  {
+   "t": 1647,
+   "q": "Why does the guest expect the smartest model to do simple tasks for fewer tokens than smaller models?",
+   "options": [
+    "Frontier models keep a much larger prompt cache, so repeated simple tasks cost almost nothing",
+    "Smaller models refuse more simple tasks, so the user has to retry each of them several times",
+    "Smaller models run at max effort by default, which wastes tokens on extra edge case testing",
+    "A smarter model needs less verification, so it does the work once instead of rechecking it"
+   ],
+   "answer": 3,
+   "why": "At higher effort most extra tokens go to verification. A smarter model can trust its own work more, so it spends fewer tokens checking it."
+  },
+  {
+   "t": 1898,
+   "q": "Why might it be better to start a new project without a CLAUDE.md file?",
+   "options": [
+    "Claude reads CLAUDE.md only on the first turn, so its rules fade later in a long session",
+    "Failure modes change between model versions, so an old log of them can overconstrain Claude",
+    "CLAUDE.md replaces the system prompt, so it removes all of the built in safety and tool guidance",
+    "Skills now load the same project goals automatically, so a CLAUDE.md file gets read twice"
+   ],
+   "answer": 1,
+   "why": "Each model version has different failure modes. A running list written for an older model can overconstrain a newer one, so add entries only for failures you see repeat."
+  },
+  {
+   "t": 2582,
+   "q": "What can mods do that the older hooks could not?",
+   "options": [
+    "Run a script when an event fires, such as at the end of each assistant turn in a session",
+    "Block risky shell commands before they run by checking them against a permission list",
+    "Load skills from a shared plugin marketplace so a whole team can install the same setup",
+    "Run inside the TypeScript runtime, spawn forked subagents and change the harness UI"
+   ],
+   "answer": 3,
+   "why": "Mods run in process, so they see conversation state, can spawn subagents and parse their output, and can modify the UI, which hooks could never do."
+  },
+  {
+   "t": 3704,
+   "q": "In the Artifactory incident, why did the agents go after the scorer's code?",
+   "options": [
+    "They expected the scorer to fail them for cheating, so they tried to reverse engineer it",
+    "They needed the scorer's API keys to buy more compute once their task budget ran out",
+    "They wanted to post messages in the scorer's logs after the cache folders were deleted",
+    "They believed the scorer held the exploit bench answers, since the task had no real fix at all"
+   ],
+   "answer": 0,
+   "why": "After reverse engineering the flag, they read a paper suggesting the scorer would punish cheating, so they spent their remaining compute getting the scorer's code to get around it."
+  },
+  {
+   "t": 4823,
+   "q": "Why do the probes look at internal activations rather than only the request text?",
+   "options": [
+    "Reading activations is cheaper than reading text, so it adds no overhead to each request",
+    "Activations reveal the user's identity, which lets the probe apply each team's permissions",
+    "A model may decide on its own to hack something, and the input text would never show it",
+    "The request text is encrypted at inference time, so only the activations can be checked"
+   ],
+   "answer": 2,
+   "why": "The model may choose to hack something as a side effect of its task without being asked. You would not catch that from the input, so probes read the activations."
+  },
+  {
+   "t": 5215,
+   "q": "How does auto mode differ from the probes in the guest's account of security layers?",
+   "options": [
+    "Auto mode scans training environments for reward hacking, while probes check each tool call",
+    "Probes judge intent, like hacking being bad, while auto mode checks actions against your permissions",
+    "Auto mode runs only on unreleased models in training, while probes run only on production models",
+    "Probes stop any write to a production database, while auto mode blocks every single use of computer use"
+   ],
+   "answer": 1,
+   "why": "Probes work at the intent level, such as flagging a hack of Artifactory. Auto mode checks whether an action, like writing to a database, matches what you gave permission for."
+  }
+ ],
+ "CEvIs9y1uog": [
+  {
+   "t": 283,
+   "q": "What does progressive disclosure mean for agent skills?",
+   "options": [
+    "Every skill's full contents are loaded into context at startup so the model can choose",
+    "Skills are revealed to users one at a time as they unlock them through regular use",
+    "The model only sees each skill's metadata until it needs the skill, then reads the rest",
+    "Skills are deleted from the file system after a single use to keep the context small"
+   ],
+   "answer": 2,
+   "why": "To protect the context window and fit hundreds of skills, only metadata is shown at first. The agent reads SKILL.md and the rest of the folder when it needs them."
+  },
+  {
+   "t": 511,
+   "q": "When skills orchestrate several MCP tools, how do the two divide the work?",
+   "options": [
+    "MCP provides connection to outside tools and data, and skills provide the expertise",
+    "Skills connect to outside tools and data, and MCP stores the procedural knowledge for them",
+    "MCP replaces the agent loop, and skills replace the file system",
+    "Both do the same job, so a team should pick only one"
+   ],
+   "answer": 0,
+   "why": "The talk says MCP provides the connection to the outside world while skills provide the expertise for using it."
+  },
+  {
+   "t": 824,
+   "q": "Why do the speakers see skills as a step toward continuous learning?",
+   "options": [
+    "Skills retrain the model's weights after every conversation, so lessons become part of the model",
+    "Skills capture every kind of information the user shares and store it in long term memory",
+    "Skills let Claude skip the context window entirely and read knowledge straight from disk",
+    "Anything Claude writes down in the standard format can be used efficiently by a future version of itself"
+   ],
+   "answer": 3,
+   "why": "The standardized format guarantees that what Claude records can be reused later, so procedural knowledge transfers from day one to day 30."
+  }
+ ],
+ "eo0As3rieA8": [
+  {
+   "t": 331,
+   "q": "Which describes the Pi harness out of the box?",
+   "options": [
+    "It ships with sub-agents, goals and MCP servers built in, ready to use from the start",
+    "It only works with paid cloud subscriptions",
+    "It runs only inside a web browser",
+    "It is minimal, and features like sub-agents are added through extensions"
+   ],
+   "answer": 3,
+   "why": "Pi has a small open source code base with no sub-agents, goals or MCP built in. You extend it, and the agent can even write those extensions itself from the Pi docs."
+  },
+  {
+   "t": 605,
+   "q": "In Oh My Pi, what happens when the main model starts looping or going off track?",
+   "options": [
+    "The harness stops the agent and brings in the advisor model",
+    "The harness restarts the session from the user's last prompt",
+    "The harness switches to a smaller, faster model",
+    "The harness asks the user to rewrite the prompt"
+   ],
+   "answer": 0,
+   "why": "The advisor reads the conversation and comments occasionally. When the main agent loops or drifts, the harness stops it and uses the advisor."
+  },
+  {
+   "t": 1171,
+   "q": "Why does the speaker suggest coding in a tool with a visible file tree?",
+   "options": [
+    "It lets the agent run faster on local hardware by indexing the files",
+    "It removes the need to review the agent's code line by line",
+    "It helps you understand the shape of the repo and how parts connect",
+    "It is required for using local models with most coding agents"
+   ],
+   "answer": 2,
+   "why": "He says you do not need to know every line, but seeing how the pieces connect makes you much more effective."
+  },
+  {
+   "t": 1318,
+   "q": "According to the speaker, what is a main benefit of desktop agent apps over CLI tools?",
+   "options": [
+    "They use far fewer tokens per task because they send the model a much smaller system prompt each turn",
+    "They wire the agent into automations, goals and plugins, and show session status in a sidebar",
+    "They are the only way to run local models, since CLI tools need a cloud subscription",
+    "They let you read and edit the code more easily than any terminal editor or IDE"
+   ],
+   "answer": 1,
+   "why": "Desktop apps help you track many sessions at once and connect the agent to automations, goals, loops and plugins."
+  }
+ ],
+ "T-Z3GmM20JM": [
+  {
+   "t": 355,
+   "q": "What happens if the eccentric nut on a set of V-rollers is loosened too much?",
+   "options": [
+    "The rollers wear out early from extra pressure",
+    "The wheels clamp less on the extrusion and the carriage wobbles",
+    "The belt loses tension and skips teeth",
+    "The stepper motor generates a damaging voltage spike when it moves"
+   ],
+   "answer": 1,
+   "why": "Loosening the nut moves the wheels apart so they grip the 2020 extrusion less, which introduces wobble."
+  },
+  {
+   "t": 757,
+   "q": "What is the job of slicer software like Cura?",
+   "options": [
+    "It downloads STL files from Thingiverse and sends them straight to the printer",
+    "It levels the bed automatically before each print by probing several points",
+    "It converts a 3D model into layers and instructions the printer understands",
+    "It updates the printer's firmware to add safety features like thermal runaway"
+   ],
+   "answer": 2,
+   "why": "Like a 2D printer driver, the slicer cuts the model into flat layers and turns it into a language the printer can follow."
+  },
+  {
+   "t": 1171,
+   "q": "During the test print, what sign shows the nozzle is too close to the bed?",
+   "options": [
+    "Plastic squeezes out sideways and forms small ridges",
+    "Gaps appear between the extruded lines",
+    "The first layer peels up from the bed",
+    "The lines overlap slightly and feel smooth to the touch"
+   ],
+   "answer": 0,
+   "why": "With too little room, the plastic is pushed out sideways and creates vertical ridges you can see and feel."
+  }
+ ],
+ "d3qGQ2utl2A": [
+  {
+   "t": 227,
+   "q": "Why should you start the two point rectangle at the origin point?",
+   "options": [
+    "It makes the sketch easier to fully define with constraints and dimensions",
+    "It is the only point where Fusion 360 lets a two point rectangle begin",
+    "It sets the default units and grid spacing for the whole design",
+    "It automatically extrudes the rectangle into a 3D body when you finish"
+   ],
+   "answer": 0,
+   "why": "Anchoring the sketch to the origin ties it to a fixed point, which helps you fully define it with constraints and dimensions."
+  },
+  {
+   "t": 596,
+   "q": "When using Shell on the toy block, why select only the bottom face?",
+   "options": [
+    "So Fusion 360 fills the cylinders on top with solid material",
+    "So the bottom is removed and hollowed while the four outer walls stay",
+    "So the shell thickness gets applied only to the bottom face of the block",
+    "So the block is split into two separate bodies"
+   ],
+   "answer": 1,
+   "why": "The selected face is removed and the rest is hollowed to the set wall thickness, leaving the outer four walls with an open bottom."
+  }
+ ],
+ "ZPsLhvgU8kc": [
+  {
+   "t": 571,
+   "q": "In the Part Design workbench, what is a Body?",
+   "options": [
+    "A container that holds the part, with the active one shown in bold in the tree view",
+    "A 2D sketch that has been fully constrained and is ready to be padded into a solid",
+    "The exported mesh file used for 3D printing, saved next to the FreeCAD document",
+    "A workbench for joining several separate parts together into one assembly"
+   ],
+   "answer": 0,
+   "why": "Each part you create lives inside a Body, a container that holds the part. The active body is shown in bold in the tree view."
+  },
+  {
+   "t": 823,
+   "q": "What does it mean when a sketch turns green and shows zero degrees of freedom?",
+   "options": [
+    "The sketch has been padded into a solid and can no longer be edited",
+    "The sketch is fully constrained, so its geometry cannot move",
+    "The sketch contains an open wire that must be closed first",
+    "The sketch is attached to the XY plane of the active body"
+   ],
+   "answer": 1,
+   "why": "Zero degrees of freedom means the sketch is fully constrained. Nothing can move until you delete a constraint, which is good practice."
+  },
+  {
+   "t": 1199,
+   "q": "Why did the pad fail after a coincident constraint was deleted from the rectangle?",
+   "options": [
+    "The pad length was reset to zero, so there was no volume left to create",
+    "The sketch now had too many constraints, so the solver refused to build it",
+    "The profile became an open wire, and Part Design only makes solids from closed wires",
+    "The sketch was no longer attached to a face, so the pad had no plane to start from"
+   ],
+   "answer": 2,
+   "why": "Part Design is a solid modeling workbench. Breaking the corner made an open wire, which would extrude as a shell, so Part Design refused and reported the wire was not closed."
+  },
+  {
+   "t": 1571,
+   "q": "How does a pocket differ from a pad?",
+   "options": [
+    "A pocket adds volume in two directions at once, starting from the sketch plane",
+    "A pocket only works on sketches made of circles, such as holes",
+    "A pocket rounds off the edges of a feature with a set radius",
+    "A pocket removes volume in the shape of the sketch instead of adding it"
+   ],
+   "answer": 3,
+   "why": "The pocket is a subtractive operation. Rather than adding volume in the shape of the sketch, it takes volume away, here set to go through all."
+  },
+  {
+   "t": 2402,
+   "q": "Why did the dimension from the arc's point to the origin show as a redundant constraint?",
+   "options": [
+    "The arc was already centered on the vertical axis, so the constraint added nothing",
+    "Dimensions cannot be placed on arcs in a sketch, only on straight lines and single points",
+    "The sketch had an open wire, so the solver flagged every new dimension",
+    "The arc had no radius set yet, so the distance could not be measured"
+   ],
+   "answer": 0,
+   "why": "The arc's point had already been made coincident with the vertical axis. A dimension measuring that same centering adds no new information, so it is redundant."
+  },
+  {
+   "t": 2835,
+   "q": "Why did shortening the gusset pad from 20 mm to 18 mm cause an error?",
+   "options": [
+    "Pads cannot be edited after they are created, so FreeCAD rejected the new length",
+    "The chamfer built on that pad no longer fit the new geometry, so the later feature broke",
+    "The sketch lost its attachment to the face when the pad got shorter",
+    "The body was no longer the active body, so the new length could not be applied to that pad"
+   ],
+   "answer": 1,
+   "why": "In parametric modeling, later features depend on earlier ones. The chamfer was sized to the 20 mm pad, so a shorter pad made the chamfer cross the edge and fail."
+  },
+  {
+   "t": 3237,
+   "q": "Why was the gusset sketch padded with the symmetric to plane option?",
+   "options": [
+    "To mirror the whole body across the YZ plane so both sides match",
+    "To make the pad hollow so it uses less filament when printed",
+    "To add volume equally in both directions from the sketch plane in the middle",
+    "To reverse the pad direction so it grows outward, away from the rest of the body"
+   ],
+   "answer": 2,
+   "why": "The triangle sketch sat in the middle of the bracket. Symmetric to plane extrudes it equally both ways, giving the gusset in one sketch and one operation."
+  },
+  {
+   "t": 3554,
+   "q": "What happens when you select an earlier operation, like the pad, and export it to STL?",
+   "options": [
+    "Only the sketch outline is exported",
+    "The full final part is exported, no matter which operation is selected in the tree",
+    "The export fails because the tip is on the chamfer",
+    "The file contains all features up to that operation, not the later ones"
+   ],
+   "answer": 3,
+   "why": "Selecting an earlier feature lets you export the part at that stage. The STL holds every feature created up to that operation."
+  }
+ ],
+ "TYuLVN3YHw8": [
+  {
+   "t": 84,
+   "q": "Why won't two parts designed to exactly the same size fit together when printed?",
+   "options": [
+    "Printed plastic always shrinks to about half its size as it cools on the bed",
+    "Slicers ignore any part designed with zero gap and merge the two into one",
+    "The printer makes parts slightly bigger or smaller, so they need a designed gap",
+    "The slicer adds a skin of extra plastic to every outer wall by default"
+   ],
+   "answer": 2,
+   "why": "A printer rarely makes a part exactly the right size. Without a gap, the parts bind, so you design in a tolerance."
+  },
+  {
+   "t": 358,
+   "q": "When the 0.15 mm gap stayed welded only in some spots, what did that point to?",
+   "options": [
+    "The filament was too old and damp to print a gap that fine cleanly",
+    "The key was printed slightly too large to fit into its slots",
+    "The 60 degree overhangs sagged and collapsed onto the layers printed below them",
+    "Over extrusion where the extruder stops and starts, at the perimeter ends"
+   ],
+   "answer": 3,
+   "why": "The straight runs were accurate, but a little over extrusion where the extruder stops and starts welded those spots, so the perimeter ends were the limiting factor."
+  }
+ ],
+ "fbSQvJJjw2Q": [
+  {
+   "t": 187,
+   "q": "What is the statistical size effect argument for thicker layers?",
+   "options": [
+    "Thicker layers cool faster, so they always bond better",
+    "Fewer layers means fewer chances for one weak layer to start a failure",
+    "Thicker layers hide the stair step effect on the surface",
+    "Thicker layers keep the plastic molten longer, so the material degrades"
+   ],
+   "answer": 1,
+   "why": "Like a longer chain with more links, more layers raise the odds that one is weak. Thicker layers mean fewer layers for the same part."
+  },
+  {
+   "t": 720,
+   "q": "What rule for strong prints came out of the layer adhesion tests?",
+   "options": [
+    "Use the thinnest layers possible, since 0.05 mm bonded best",
+    "Layer height makes no difference once the part stands upright",
+    "Keep layer height at or below about half the nozzle diameter",
+    "Use layers as thick as the nozzle diameter for the best bonding"
+   ],
+   "answer": 2,
+   "why": "Strength held up to 0.2 mm, peaked at 0.15 mm, and dropped sharply at 0.3 and 0.4 mm. So with a 0.4 mm nozzle, don't go above about 0.2 mm layers."
+  }
+ ],
+ "7aJ4dDyyf20": [
+  {
+   "t": 183,
+   "q": "Why did the upright tensile samples fail at about half the load of the flat ones?",
+   "options": [
+    "Upright samples used less filament than the flat ones, so their cross section was thinner",
+    "Each new layer only partly melts onto the one below, so pulling layers apart is the weak direction",
+    "The tensile tester gripped the upright samples at an angle, which added a bending load",
+    "Upright prints cool more slowly, which makes the plastic brittle along the whole sample"
+   ],
+   "answer": 1,
+   "why": "FDM prints are anisotropic. Layers only partially fuse and polymer chains lie in the print plane, so loads that pull layers apart break them far sooner."
+  },
+  {
+   "t": 532,
+   "q": "If a part has a layer adhesion problem, how far should you angle it to gain strength?",
+   "options": [
+    "About 5 degrees, since strength rises evenly with angle",
+    "Exactly 90 degrees, so it prints fully upright",
+    "At least 45 degrees, because small tilts from the weak orientation change little",
+    "Any angle works the same, since the strength of a part does not depend on its angle"
+   ],
+   "answer": 2,
+   "why": "Strength follows an S shaped curve, not a straight line. Small changes near the extremes do little, so aim for at least 45 degrees as a compromise."
+  },
+  {
+   "t": 760,
+   "q": "Why does printing an arch or boat hull at a slight angle reduce the shrink line notch?",
+   "options": [
+    "Only a small part of the roof or deck prints in each layer, so less shrinkage pulls the sides in",
+    "Angled parts get more cooling from the part fan, so the plastic in the roof never really shrinks at all",
+    "The slicer adds extra perimeters around the notch whenever the part is tilted",
+    "Tilting removes the need for any overhangs, so the roof is printed on solid support"
+   ],
+   "answer": 0,
+   "why": "The notch forms when a whole roof or deck prints at once, cools, and pulls the thin sides inward. At an angle that section is spread over many layers."
+  }
+ ],
+ "fNk_zzaMoSs": [
+  {
+   "t": 137,
+   "q": "In linear algebra, how should you picture a vector, compared with the physics view?",
+   "options": [
+    "As an arrow that can sit anywhere in space as long as its length is fixed",
+    "As a point with no direction, located by its coordinates",
+    "As an arrow whose tail sits at the origin of a coordinate system",
+    "As a list of numbers with no geometric meaning at all"
+   ],
+   "answer": 2,
+   "why": "Physics lets vectors sit anywhere, but in linear algebra a vector is almost always rooted at the origin."
+  },
+  {
+   "t": 342,
+   "q": "Why is tip-to-tail a sensible way to define vector addition?",
+   "options": [
+    "Each vector is a movement, and taking both steps in turn lands you where the sum points",
+    "It is the only way to keep both vectors rooted at the origin",
+    "It makes the sum always longer than either vector",
+    "It turns two vectors into a scalar that measures their combined length along the same line"
+   ],
+   "answer": 0,
+   "why": "Like adding numbers on a number line, walking along the first vector then the second gives the same overall motion as walking along their sum."
+  },
+  {
+   "t": 446,
+   "q": "What does multiplying a vector by negative 1.8 do?",
+   "options": [
+    "It shrinks the vector to 1.8 percent of its length",
+    "It rotates the vector 1.8 radians counterclockwise",
+    "It moves the vector's tail 1.8 units away from the origin in the opposite direction",
+    "It flips the vector's direction and stretches it by a factor of 1.8"
+   ],
+   "answer": 3,
+   "why": "A negative scalar first reverses the vector, then the factor 1.8 stretches it. This is called scaling."
+  }
+ ],
+ "XkY2DOUCWMU": [
+  {
+   "t": 251,
+   "q": "When you multiply two matrices and apply the product to a vector, which transformation happens first?",
+   "options": [
+    "The one for the matrix on the left, read left to right just like an English sentence",
+    "The one for the matrix on the right, read right to left like function notation",
+    "Both happen at once, so the order never affects the result",
+    "Whichever matrix has the larger entries is applied first"
+   ],
+   "answer": 1,
+   "why": "Matrices act like functions written to the left of their input, so composition reads right to left: the right matrix is applied first."
+  },
+  {
+   "t": 415,
+   "q": "How do you find the first column of the composition matrix for M2 times M1?",
+   "options": [
+    "Add the first columns of M1 and M2 together",
+    "Multiply M1 by the first column of M2",
+    "Take the first row of M2 and the first column of M1 and add the matching entries together",
+    "Multiply M2 by the first column of M1, since that column is where i-hat lands first"
+   ],
+   "answer": 3,
+   "why": "The first column of M1 is where i-hat lands after M1. Applying M2 to that vector gives i-hat's final spot, which is the composition's first column."
+  },
+  {
+   "t": 561,
+   "q": "Thinking in terms of transformations, why is matrix multiplication associative?",
+   "options": [
+    "(AB)C and A(BC) both apply C, then B, then A in the same order",
+    "Because AB always equals BA, the parentheses can move freely",
+    "Because each matrix is applied to the basis vectors only once in total",
+    "Because associativity holds only for rotations and shears"
+   ],
+   "answer": 0,
+   "why": "Either grouping means applying the same three transformations one after another in the same order, so the result cannot differ."
+  }
+ ],
+ "WUvTyaaNkzM": [
+  {
+   "t": 410,
+   "q": "Why does adding up the thin rectangles from the rings give exactly pi times the radius squared?",
+   "options": [
+    "As dr shrinks, the sum approaches the area under the graph of 2 pi r, a triangle with that area",
+    "Each rectangle is an exact copy of its ring's area, so the sum is exactly right for any size of dr",
+    "The rectangles cancel out in pairs, leaving only the outer ring",
+    "Pi is defined as the number of rings that fit in the circle"
+   ],
+   "answer": 0,
+   "why": "Thinner rings make the approximation better, and the sum tends to the area under 2 pi r from 0 to R: a triangle with base R and height 2 pi R, which is pi R squared."
+  },
+  {
+   "t": 767,
+   "q": "If A(x) is the area under the graph of x squared from 0 to x, what is dA divided by dx about equal to?",
+   "options": [
+    "x cubed, the volume above the graph",
+    "2x, the slope of the graph's tangent at that point",
+    "x squared, the height of the graph at that point",
+    "The total area A(x) itself"
+   ],
+   "answer": 2,
+   "why": "A tiny nudge dx adds a sliver that is close to a rectangle of height x squared and width dx, so dA over dx is about x squared."
+  },
+  {
+   "t": 934,
+   "q": "What does the fundamental theorem of calculus say about integrals and derivatives?",
+   "options": [
+    "The integral of any function is a straight line whose slope is the function's average",
+    "The derivative of the area function under a graph gives back the function defining the graph",
+    "Derivatives and integrals measure the same thing, so for any function they are equal",
+    "An integral is just a derivative taken with a very large nudge instead of a tiny one"
+   ],
+   "answer": 1,
+   "why": "The video shows dA over dx equals the graph's height, so derivatives and integrals undo each other. That inverse relationship is the fundamental theorem."
+  }
+ ],
+ "sDv4f4s2SB8": [
+  {
+   "t": 333,
+   "q": "What makes gradient descent more efficient than plugging in many intercept values?",
+   "options": [
+    "It checks every possible intercept at once",
+    "It always jumps straight to the answer in one step",
+    "It takes big steps when far from the best value and small steps when close",
+    "It uses one fixed step size the whole way so that no possible value is skipped"
+   ],
+   "answer": 2,
+   "why": "Gradient descent does few calculations far from the optimum and more near it, so it does not waste effort the way plug and chug does."
+  },
+  {
+   "t": 655,
+   "q": "How does gradient descent decide the size of each step?",
+   "options": [
+    "It multiplies the slope of the loss curve by a small number called the learning rate",
+    "It divides the current intercept by the number of data points in the training set",
+    "It always takes a step of exactly 0.1 in the direction that lowers the loss",
+    "It picks a random step size and keeps it only if the loss gets smaller"
+   ],
+   "answer": 0,
+   "why": "The slope tells it whether to take a big or small step, and the learning rate keeps a big step from being so big that the loss goes up."
+  },
+  {
+   "t": 837,
+   "q": "How does gradient descent know when to stop taking steps?",
+   "options": [
+    "When the intercept matches the least squares estimate computed beforehand",
+    "When the loss function reaches exactly zero at the current intercept",
+    "After exactly six steps, since the loss stops changing by then",
+    "When the step size is very close to zero, or after a maximum number of steps"
+   ],
+   "answer": 3,
+   "why": "The step size gets close to zero as the slope nears zero at the bottom of the curve. A step limit stops it even if it never gets there."
+  },
+  {
+   "t": 1245,
+   "q": "What did the second example show about the learning rate?",
+   "options": [
+    "The learning rate has no effect once there are two parameters to estimate at the same time",
+    "Gradient descent can be very sensitive to it, since a rate that worked before failed here",
+    "A larger learning rate always reaches the answer faster, so it should be raised",
+    "The learning rate must equal the starting slope for each parameter to converge"
+   ],
+   "answer": 1,
+   "why": "With two parameters, the earlier rate never reached the right answer, so a smaller rate was used. In practice the rate is often started large and shrunk each step."
+  }
+ ],
+ "HZGCoVF3YvM": [
+  {
+   "t": 262,
+   "q": "Even if a librarian is four times as likely as a farmer to fit Steve's description, why is Steve still more likely a farmer?",
+   "options": [
+    "Farmers are more likely to be shy and withdrawn than librarians are in surveys",
+    "The description is too vague to change the probability for either job",
+    "Librarians are rarely described as meek and tidy by the people who know them",
+    "Farmers vastly outnumber librarians, so more farmers fit the description in total"
+   ],
+   "answer": 3,
+   "why": "With 200 farmers and 10 librarians, about 20 farmers and 4 librarians fit, so only 4 out of 24 matches are librarians. Evidence updates the prior instead of replacing it."
+  },
+  {
+   "t": 595,
+   "q": "If farmers and librarians were equally likely to fit the evidence, what would happen to the belief that Steve is a librarian?",
+   "options": [
+    "It would double, since there is now more evidence",
+    "It would not change, because evidence that fits both sides equally is irrelevant",
+    "It would drop to zero, since evidence that fits both sides cannot tell them apart",
+    "It would become 50 percent, since both are equally likely"
+   ],
+   "answer": 1,
+   "why": "The posterior is the hypothesis's share of the restricted space. If the likelihoods match, that share equals the prior."
+  },
+  {
+   "t": 839,
+   "q": "Critics say it is unclear who Steve is, such as a random American or someone you know. Which part of Bayes' theorem does that question shift?",
+   "options": [
+    "The likelihood that a librarian would fit the description he was given here",
+    "The likelihood that a farmer would fit the description",
+    "The prior, the chance he is a librarian before hearing the description",
+    "The vertical bar notation that means given that"
+   ],
+   "answer": 2,
+   "why": "The assumption about who Steve is decides the starting ratio of librarians to farmers, which is the prior. Questions about stereotypes shift the likelihoods instead."
+  }
+ ],
+ "gXbThCXjZFM": [
+  {
+   "t": 154,
+   "q": "How does the SVD differ from a Fourier transform as a way to change coordinates?",
+   "options": [
+    "It always uses sine and cosine modes but computes them faster than the FFT",
+    "It only works on square data matrices, while the Fourier transform can work on data of any shape at all",
+    "It builds the coordinate system from the data itself instead of using fixed sine and cosine modes",
+    "It keeps every detail of the data instead of reducing it to key features"
+   ],
+   "answer": 2,
+   "why": "The speaker calls the SVD a data-driven generalization of the Fourier transform: the basis is tailored to the specific data, not chosen in advance."
+  },
+  {
+   "t": 364,
+   "q": "According to the lecture, why is the SVD so widely adopted?",
+   "options": [
+    "It rests on simple, interpretable linear algebra and scales to very large data sets",
+    "It needs no data matrix, so it works even when data is missing",
+    "It was designed specifically for facial recognition and only later spread to other uses",
+    "It gives exact answers only for small problems, which keeps it fast"
+   ],
+   "answer": 0,
+   "why": "He says it can be computed on any data matrix, gives interpretable features, and is scalable enough for data sets as large as Google's."
+  }
+ ],
+ "_cyVDoyI6NE": [
+  {
+   "t": 107,
+   "q": "Why is the geometry of a 3D scene usually broken into triangles?",
+   "options": [
+    "Triangles use less memory than any other shape a screen can show",
+    "Monitors draw pixels in triangular groups, so triangles map directly to them",
+    "Triangles are the only shape that can hold color or texture data",
+    "Three points always define a flat surface, which keeps the math simple"
+   ],
+   "answer": 3,
+   "why": "A triangle's three points always lie in one plane, so complex surfaces split into triangles are simple to handle."
+  },
+  {
+   "t": 292,
+   "q": "How does a GPU beat a CPU on graphics work?",
+   "options": [
+    "It runs each single floating point operation much faster than a CPU core can",
+    "It may be slower on one operation but finishes millions of independent operations much sooner",
+    "It does all the work in software, so it can adapt to whatever the scene needs",
+    "It skips the matrix arithmetic that a CPU has to do for every vertex and every pixel on the screen"
+   ],
+   "answer": 1,
+   "why": "Work like 'for every pixel' has no dependencies, so a GPU runs it in parallel batches and is built for bulk throughput, not the speed of any one calculation."
+  }
+ ],
+ "GuV-HyslPxk": [
+  {
+   "t": 351,
+   "q": "Why was 3D graphics work so well suited to many parallel pipelines?",
+   "options": [
+    "Each triangle depends on the one before it, so they must be grouped",
+    "The tasks are repetitive and each piece of data can be processed independently",
+    "Graphics work needs only one large core running at a high clock speed to keep up",
+    "The CPU had already finished most of the work before the GPU began"
+   ],
+   "answer": 1,
+   "why": "Like bees in separate combs, each pipeline works without waiting on the others, so speed grows almost linearly with the number of cores."
+  },
+  {
+   "t": 732,
+   "q": "Why are GPUs a good fit for training neural networks?",
+   "options": [
+    "Neural networks need very few calculations, so any chip can run them, and GPUs were simply cheaper",
+    "GPUs have more cache memory per core than CPUs",
+    "Neural networks were first designed to draw graphics on screens",
+    "Network layers, inputs and weights are stored as matrices, and GPUs excel at matrix math"
+   ],
+   "answer": 3,
+   "why": "The graphics pipeline made GPUs heavily optimized for matrix operations, and neural networks are mostly big matrix calculations."
+  },
+  {
+   "t": 847,
+   "q": "Before CUDA arrived in 2006, what held back using GPUs for neural networks?",
+   "options": [
+    "There was no easy way to program them, so researchers had to frame the work as graphics operations",
+    "GPUs did not yet have enough cores to run any parallel work beyond drawing pixels",
+    "Neural networks had not been invented yet, so there was no demand for the hardware",
+    "GPUs could only run integer math, so the floating point weights had to stay on the CPU"
+   ],
+   "answer": 0,
+   "why": "Scientists saw the power growing, but without CUDA they had to force networks into the limits of graphical operations, which was very hard."
+  }
+ ],
+ "JG6JaJJ3324": [
+  {
+   "t": 229,
+   "q": "According to Phillip, what matters most when choosing a model for a production task?",
+   "options": [
+    "Whether it tops the latest public benchmark leaderboard",
+    "Whether it has the most parameters you can afford to run on your hardware",
+    "Whether it is intelligent enough that you can trust it in front of users",
+    "Whether it is open source so you can modify the weights"
+   ],
+   "answer": 2,
+   "why": "He says it is less about scoring 72 or 74 on a benchmark and more a yes or no question: is this model sufficiently intelligent for the task you assign it. Optimization only matters after that."
+  },
+  {
+   "t": 689,
+   "q": "Why is a trillion parameter model in BF16 so hard to run locally?",
+   "options": [
+    "Each parameter takes two bytes, so the weights alone need about two terabytes of memory",
+    "BF16 math is not supported by consumer GPUs, so every layer falls back to running on the CPU",
+    "BF16 weights must be converted to text before loading, which is slow",
+    "Each parameter needs its own GPU core, and consumer cards have too few"
+   ],
+   "answer": 0,
+   "why": "BF16 is a 16 bit format, so each parameter is two bytes and a trillion parameters is about two terabytes that must be loaded into memory. That is why quantization is the first step for local inference."
+  },
+  {
+   "t": 791,
+   "q": "Why does a mixture of experts model help a local user more than it helps a large batch data center?",
+   "options": [
+    "Local users can train their own experts, while data centers are stuck with a fixed set of them",
+    "Data centers cannot run mixture of experts models on Blackwell GPUs",
+    "Local runs skip the router, so they avoid its extra memory cost",
+    "With one user, only some experts activate, but a large batch activates nearly all of them"
+   ],
+   "answer": 3,
+   "why": "A single request only routes through a fraction of the parameters, so it runs faster on less hardware. At large batch sizes you must assume every expert is active, so data centers use expert parallelism instead."
+  },
+  {
+   "t": 1512,
+   "q": "Which statement about prefill and decode is correct?",
+   "options": [
+    "Prefill is memory bound and decode is compute bound",
+    "Prefill is compute bound and decode is memory bound",
+    "Both are compute bound, so only faster tensor cores help",
+    "Both are memory bound, so only more VRAM helps"
+   ],
+   "answer": 1,
+   "why": "Prefill, which sets time to first token, is limited by how fast the GPU can do math. Decode, which sets tokens per second, is limited by how fast bytes move between memory and compute."
+  },
+  {
+   "t": 1915,
+   "q": "In prefill and decode disaggregation, what problem does NVIDIA Dynamo help solve?",
+   "options": [
+    "Compressing model weights so both workers can share one copy",
+    "Choosing the best ratio of prefill workers to decode workers for a given load",
+    "Splitting each expert across nodes for tensor parallelism",
+    "Moving the KV cache built on a prefill worker over to a decode worker"
+   ],
+   "answer": 3,
+   "why": "The whole point of prefill is to build the KV cache, but decode runs on a different worker. Dynamo is a toolkit for moving KV cache data around, including from the prefill node to the decode node."
+  },
+  {
+   "t": 2023,
+   "q": "Why is disaggregation a poor fit for running a huge model like GLM on a few home GPUs?",
+   "options": [
+    "Each prefill and decode worker needs a complete copy of the model weights",
+    "Disaggregation only works with Ethernet, not PCIe connections",
+    "It requires the model to be pruned below one billion parameters before it can be split",
+    "It only speeds up image models, not language models"
+   ],
+   "answer": 0,
+   "why": "Disaggregation requires the complete weights on both the prefill and the decode workers, which assumes plenty of GPUs. It could work locally only with a small model that fits on each card."
+  },
+  {
+   "t": 2443,
+   "q": "When nodes lacked fast interconnect, what parallelism strategy did Base10 use across them?",
+   "options": [
+    "Pipeline parallelism inside each node and tensor parallelism between nodes",
+    "Tensor parallelism everywhere, since it has the least communication",
+    "Tensor parallelism inside each node and pipeline parallelism between nodes",
+    "Only data parallelism, with a full copy of the model per GPU"
+   ],
+   "answer": 2,
+   "why": "Tensor parallelism is good for latency but needs very fast links like NVLink, which exist inside a node. Pipeline parallelism has little communication overhead, so it goes between nodes."
+  },
+  {
+   "t": 2998,
+   "q": "How does Phillip compare TensorRT LLM with vLLM?",
+   "options": [
+    "vLLM is fastest on NVIDIA cards, but TensorRT LLM runs on more kinds of hardware, including AMD GPUs",
+    "TensorRT LLM often performs best but is harder to learn, while vLLM runs nearly any model anywhere",
+    "TensorRT LLM is closed source, while vLLM is the only open source option for serving",
+    "They perform about the same, so the choice depends only on the license each one uses"
+   ],
+   "answer": 1,
+   "why": "He says Base10 generally sees the best performance from TensorRT LLM, but it has a steep learning curve and limited model support. vLLM can run nearly any Hugging Face model on NVIDIA, AMD or TPUs."
+  }
+ ],
+ "4sgKnKbR-WE": [
+  {
+   "t": 722,
+   "q": "After flattening a channel by height by width image into one vector of n pixels per channel, where is the green value for pixel i?",
+   "options": [
+    "At index 3 times i plus 1",
+    "At index i plus n",
+    "At index i times n",
+    "At index i plus 1"
+   ],
+   "answer": 1,
+   "why": "Flattening puts the whole red channel first, then the whole green channel, then blue. Each channel holds n values, so green for pixel i is n positions after red, at i plus n."
+  },
+  {
+   "t": 976,
+   "q": "What does a CUDA kernel do with its result?",
+   "options": [
+    "It returns the value to the CPU after each call, like a normal C++ function",
+    "It passes the value to the next thread in order, which adds it to its own",
+    "It stores the value in a shared Python list that PyTorch reads afterward",
+    "It writes the result into output memory, since kernels cannot return a value"
+   ],
+   "answer": 3,
+   "why": "Kernels are the inner loop body, called many times in parallel in no fixed order. They cannot return anything, so all they can do is modify memory such as an output tensor."
+  },
+  {
+   "t": 1400,
+   "q": "Why does almost every CUDA kernel start with an if statement guard on the index?",
+   "options": [
+    "The number of blocks is rounded up, so some threads have an index past the end of the data",
+    "Threads may start before the data is copied to the GPU, so they must wait for it",
+    "The GPU runs each index twice for safety, and the guard skips the duplicate run",
+    "Without it, threads in different blocks would write into each other's shared memory by mistake"
+   ],
+   "answer": 0,
+   "why": "Blocks of 256 threads are counted with ceiling division, so the total threads can exceed the number of pixels. The guard stops those extra threads from going out of bounds."
+  },
+  {
+   "t": 2069,
+   "q": "What does marking a CUDA function with __global__ mean?",
+   "options": [
+    "It can only be called from other GPU functions",
+    "It runs on the CPU like a normal C++ function",
+    "It is called from the CPU side and runs on the GPU",
+    "It shares one global variable across all of the threads"
+   ],
+   "answer": 2,
+   "why": "__device__ functions are called only on the GPU and __host__ is normal CPU code. __global__ is what you use for kernels launched from the CPU that run on the GPU."
+  },
+  {
+   "t": 2594,
+   "q": "Why did the timing include copying the result back to the CPU?",
+   "options": [
+    "Copying to the CPU is the slowest step, so leaving it out would hide the real cost",
+    "The kernel only starts running once Python asks for its output on the CPU",
+    "Without the copy, the kernel would write its output to the wrong device",
+    "CUDA runs asynchronously, so the copy forces the kernel to finish before timing stops"
+   ],
+   "answer": 3,
+   "why": "Python can keep running while the CUDA code is still going, which would make the time look far too small. Moving the result to the CPU forces synchronization so the full run is measured."
+  },
+  {
+   "t": 3084,
+   "q": "In the matrix multiplication kernel, what work does each CUDA thread do?",
+   "options": [
+    "It multiplies one pair of numbers, and a later step adds up all the products",
+    "It computes one output cell by taking the dot product of a row and a column",
+    "It computes one whole row of the output matrix by looping over every column",
+    "It sums all outputs from the other threads in its block into one shared value"
+   ],
+   "answer": 1,
+   "why": "The parallel inner loop is chosen to be one dot product. Each cell of the output tensor gets one CUDA thread that does that row and column dot product."
+  },
+  {
+   "t": 4108,
+   "q": "Why is PyTorch's built in matrix multiply faster than the simple CUDA kernel?",
+   "options": [
+    "It reuses rows and columns from fast shared memory instead of rereading slow global memory",
+    "It launches more threads per block than the hardware limit allows, so more cells run at once",
+    "It runs part of the multiplication on the CPU at the same time as the GPU kernel",
+    "It skips the bounds check on the index, which removes most of the cost of each thread"
+   ],
+   "answer": 0,
+   "why": "Threads in a block run on the same SM and share a small, very fast memory. A 16 by 16 block reuses the same rows and columns, so caching them there avoids repeated trips to slower global memory."
+  },
+  {
+   "t": 4447,
+   "q": "Why does Jeremy recommend conda for setting up CUDA on your own machine?",
+   "options": [
+    "It is the only tool that can install both Python packages and the NVIDIA driver itself",
+    "It runs CUDA code on Macs and other machines without an NVIDIA GPU through emulation",
+    "It keeps several versions of Python, CUDA and compilers side by side so you can switch",
+    "It compiles CUDA kernels faster than load_inline, so each change rebuilds in seconds"
+   ],
+   "answer": 2,
+   "why": "He says to think of conda as a replacement for Docker, not pip. You can have different versions of Python, CUDA and C++ build tools in separate environments and switch freely."
+  }
+ ],
+ "LuhJEEJQgUM": [
+  {
+   "t": 712,
+   "q": "Why can't you time a CUDA kernel with Python's time module alone?",
+   "options": [
+    "Python timers round to whole milliseconds, which is too coarse for most GPU kernels",
+    "CUDA is async, so you only measure the launch overhead, not how long the kernel ran",
+    "The time module reads the GPU clock, which drifts away from the CPU clock under load",
+    "The first call compiles the kernel, so every later call just reuses a cached result"
+   ],
+   "answer": 1,
+   "why": "CUDA calls return before the kernel finishes. You need CUDA start and end events, a warm up run to set up the CUDA context, and a synchronize before reading the time."
+  },
+  {
+   "t": 1228,
+   "q": "What does load_inline do for you when you pass it C++ source?",
+   "options": [
+    "It translates the C++ into Python, so the function runs without needing any compiler",
+    "It converts the C++ into a Triton kernel, which then compiles down to PTX assembly code for you",
+    "It sends the source to a precompiled PyTorch library, so no build step is ever needed",
+    "It generates the pybind bindings and a build.ninja file, then compiles them to a module"
+   ],
+   "answer": 3,
+   "why": "load_inline writes main.cpp with the pybind code and a build.ninja file into a build directory, compiles them, and lets you call the C++ function from Python."
+  },
+  {
+   "t": 1851,
+   "q": "Why was the speaker's first Triton square kernel slower than torch.square?",
+   "options": [
+    "Its kernel launch parameters were bad, and setting the block size to 1024 fixed it",
+    "Triton writes CUDA C code first, and that extra translation step adds all of the overhead",
+    "Square is not a pointwise op, so Triton could not process the matrix row by row",
+    "The A10G lacked enough registers, so the kernel only ran at full speed on a 4090"
+   ],
+   "answer": 0,
+   "why": "After profiling, he found his launch parameters were poor. Fixing the block size to 1024 reversed the trend."
+  },
+  {
+   "t": 2252,
+   "q": "What does setting TORCH_LOGS to output_code give you when you run a torch.compile program?",
+   "options": [
+    "A Chrome trace JSON file that shows each kernel launch laid out along a timeline",
+    "A table of the top kernels sorted by how much CPU and GPU time each one took",
+    "The Triton kernel code torch.compile generated, to use as a starting point",
+    "The PTX assembly for every kernel, with the registers used by each line of code"
+   ],
+   "answer": 2,
+   "why": "It prints the generated Triton code to the console, so you can write plain PyTorch, get a Triton kernel out, and learn from it or optimize it."
+  },
+  {
+   "t": 2606,
+   "q": "According to the NCU example, when does it make sense to move from Triton to raw CUDA?",
+   "options": [
+    "When the remaining gains need better memory coalescing or shared memory than Triton does",
+    "As soon as NCU reports a tail effect, since padding inputs is only possible in raw CUDA",
+    "Right at the start, since Triton kernels always run slower than handwritten CUDA ones",
+    "Whenever achieved occupancy is low, since Triton cannot change the size of a kernel launch grid"
+   ],
+   "answer": 0,
+   "why": "Tail effect and occupancy are fixed with padding, which you control from Triton. Long scoreboard stalls depend on coalescing and shared memory, which Triton manages, so CUDA pays off only if you can beat it there."
+  },
+  {
+   "t": 3134,
+   "q": "If a function squares a tensor twice and torch.compile does its job, what should you see?",
+   "options": [
+    "Two separate kernels, one per square, since each op must read and write its own output",
+    "No kernel at all, since the compiler folds both squares into one precomputed constant",
+    "One pow kernel with the exponent set to four, since the compiler rewrites the math first",
+    "Both squares fused in a single kernel, so the data is read and written back only once"
+   ],
+   "answer": 3,
+   "why": "Eager PyTorch launches one kernel per op, reading and writing memory each time. Fusion puts both squares in one kernel, and as few kernels as possible is the main goal."
+  }
+ ]
+}

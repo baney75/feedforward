@@ -74,6 +74,46 @@ dataTest("learning tracks point at real videos, labs and quizzes", () => {
   }
 });
 
+test("questions inside videos are well formed and don't give the answer away", () => {
+  const checks = json("public/data/checks.json");
+  const trackVideos = new Set(learn.tracks.flatMap((t) => t.steps.filter((s) => s.kind === "video").map((s) => s.id)));
+  let n = 0, longest = 0;
+  for (const [id, list] of Object.entries(checks)) {
+    assert.ok(trackVideos.has(id), `checks for ${id}, which is in no track`);
+    assert.ok(list.length >= 2 && list.length <= 8, `${id}: ${list.length} questions`);
+    list.forEach((c, k) => {
+      const at = `${id} #${k + 1}`;
+      assert.ok(Number.isInteger(c.t) && c.t >= 45, `${at}: pauses too early`);
+      if (k) assert.ok(c.t - list[k - 1].t >= 90, `${at}: less than 90s after the last question`);
+      assert.ok(/\?$/.test(c.q), `${at}: not a question`);
+      assert.equal(c.options.length, 4, `${at}: needs 4 options`);
+      assert.equal(new Set(c.options).size, 4, `${at}: repeated option`);
+      assert.ok(c.answer >= 0 && c.answer < 4 && c.why && c.why.length > 20, `${at}: bad answer or why`);
+      const right = c.options[c.answer].length, other = Math.max(...c.options.filter((_, i) => i !== c.answer).map((o) => o.length));
+      assert.ok(right <= 1.3 * other, `${at}: the right option is much longer than the others, so it can be guessed`);
+      if (right >= other) longest++;
+      n++;
+    });
+  }
+  assert.ok(n >= 150, `only ${n} questions`);
+  assert.ok(longest / n < 0.4, `the right option is the longest in ${longest} of ${n}`);
+  const spots = Object.values(checks).flat().map((c) => c.answer);
+  for (const a of [0, 1, 2, 3]) assert.ok(spots.filter((x) => x === a).length / n > 0.15, `answer ${a} is rarely right`);
+});
+
+test("a question inside a video comes due when you reach it, and scrubbing past one goes back to it", async () => {
+  const { dueCheck } = await import("../public/js/checktime.js");
+  const list = [{ t: 100 }, { t: 300 }], none = () => false;
+  assert.equal(dueCheck(list, null, 150, none).k, -1, "the first read is where you start, not a crossing");
+  assert.equal(dueCheck(list, 90, 99.5, none).k, -1, "not yet");
+  assert.deepEqual(dueCheck(list, 99.6, 100.1, none), { k: 0, seekTo: null }, "plays into it");
+  assert.deepEqual(dueCheck(list, 99.8, 100.2 - 0.3 + 0.1, none).k, 0, "a read just before the mark still counts");
+  assert.deepEqual(dueCheck(list, 50, 420, none), { k: 0, seekTo: 100 }, "scrubbing past both goes back to the first");
+  assert.deepEqual(dueCheck(list, 50, 420, (i) => i === 0), { k: 1, seekTo: 300 }, "an answered one is skipped");
+  assert.equal(dueCheck(list, 150, 120, none).k, -1, "going back asks nothing");
+  assert.equal(dueCheck(list, 310, 400, none).k, -1, "resuming past a question doesn't pull you back");
+});
+
 test("books are official free editions with complete entries", () => {
   const books = json("public/data/books.json");
   assert.ok(books.length >= 20, "only " + books.length + " books");
@@ -94,7 +134,7 @@ test("every lab module exists and follows the contract", () => {
 });
 
 test("copy has no em or en dashes", () => {
-  const files = ["public/index.html", "public/data/learn.json", "public/data/books.json", "public/manifest.webmanifest",
+  const files = ["public/index.html", "public/data/learn.json", "public/data/checks.json", "public/data/books.json", "public/manifest.webmanifest",
     ...jsUnder("public/js"), ...jsUnder("public/labs"), ...jsUnder("worker")];
   const hits = files.filter((f) => /[–—]/.test(read(f)));
   assert.deepEqual(hits, []);

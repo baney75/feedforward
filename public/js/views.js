@@ -7,6 +7,7 @@ import { openStage, leaveStage } from "./stage.js";
 import { likeButton, stars, bindSocial, comments } from "./social.js";
 import { mine, like as likeItem, signedIn } from "./account.js";
 import { haptic } from "./haptics.js";
+import { loadChecks, runChecks, checkScore } from "./checks.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const wideWire = () => matchMedia("(min-width: 1600px)").matches;
@@ -127,6 +128,7 @@ export function watch(el, qs, id) {
   el.innerHTML = `<div class="watch">
     <div style="min-width:0">
       <div class="player"></div>
+      <div class="ckstrip" hidden></div><div class="ckbox" hidden></div>
       ${track ? trackBanner(track, id) : ""}
       <h1>${esc(v.title)}</h1>
       <div class="wbar">
@@ -144,11 +146,12 @@ export function watch(el, qs, id) {
       <div id="cmts"></div>
     </div>
   </div>`;
-  let countdown = 0;
+  let countdown = 0, ck = null, gone = false;
   // YouTube fills the end of a video with its own wall of suggestions. Ours says what's next, and nothing else.
   const endCard = () => {
     const nx = !track && next;
-    stage.video.insertAdjacentHTML("beforeend", `<div class="autonext" role="status">${nx ? `<img src="${thumb(nx.id, "hqdefault")}" alt="">` : ""}<div><span class="topic-tag">${nx ? "Finished. Next up" : "Finished"}</span>${nx ? `<h3>${esc(nx.title)}</h3>` : ""}<div class="row"><button class="btn replay" type="button">Watch again</button>${nx ? `<a class="btn primary" href="/watch/${nx.id}">${icon("play")}Play next</a>` : ""}</div></div></div>`);
+    const score = ck ? ck.summary() : "";
+    stage.video.insertAdjacentHTML("beforeend", `<div class="autonext" role="status">${nx ? `<img src="${thumb(nx.id, "hqdefault")}" alt="">` : ""}<div><span class="topic-tag">${nx ? "Finished. Next up" : "Finished"}${score ? `. ${score}` : ""}</span>${nx ? `<h3>${esc(nx.title)}</h3>` : ""}<div class="row"><button class="btn replay" type="button">Watch again</button>${nx ? `<a class="btn primary" href="/watch/${nx.id}">${icon("play")}Play next</a>` : ""}</div></div></div>`);
     const box = stage.video.querySelector(".autonext");
     box.querySelector(".replay").onclick = () => { box.remove(); stage.play(); };
   };
@@ -168,6 +171,13 @@ export function watch(el, qs, id) {
     },
     onError: () => { stage.video.innerHTML = `<div class="noembed"><img src="${thumb(id, "hqdefault")}" alt=""><div><p>The owner only allows this video to play on YouTube.</p><a class="btn primary" href="https://www.youtube.com/watch?v=${id}" target="_blank" rel="noopener">${icon("yt")}Watch on YouTube</a></div></div>`; },
   } });
+  // Questions inside the video: on by default in a track, one tap away anywhere else.
+  loadChecks().then((m) => {
+    const list = m[id];
+    if (gone || !list || !list.length) return;
+    const strip = $(".ckstrip", el); strip.hidden = false;
+    ck = runChecks({ id, list, stage, box: $(".ckbox", el), strip, on: !!track });
+  });
   const pc = stage.video.querySelector(".pcover");
   if (pc) pc.onclick = () => { stage.play(); setTimeout(() => stage.video.parentElement.classList.add("started"), 1500); };
   $("#save", el).onclick = (e) => {
@@ -190,7 +200,7 @@ export function watch(el, qs, id) {
   noteBox.oninput = () => { const all = store.get("notes", {}); delete all[id]; if (noteBox.value.trim()) all[id] = noteBox.value; const k = Object.keys(all); for (const x of k.slice(0, Math.max(0, k.length - 200))) delete all[x]; store.set("notes", all); };
   const unbind = bindSocial(el);
   comments($("#cmts", el), "v:" + id);
-  return () => { clearInterval(countdown); document.body.classList.remove("focus"); stage.video.querySelector(".autonext")?.remove(); leaveStage(); unbind(); };
+  return () => { gone = true; ck && ck.stop(); clearInterval(countdown); document.body.classList.remove("focus"); stage.video.querySelector(".autonext")?.remove(); leaveStage(); unbind(); };
 }
 
 function extraVideo(id) {
@@ -291,10 +301,18 @@ export function learnPage(el) {
     <div class="labs">${D.learn.labs.map(labCard).join("")}</div>`;
 }
 
+let CHECKS = null;
 export function trackPage(el, qs, slug) {
   const t = D.learn.tracks.find((x) => x.slug === slug);
   if (!t) return notFound(el);
   setTitle(t.title);
+  // Question counts arrive after the page draws; they slot into the rows already there, so nothing you clicked resets.
+  if (!CHECKS) loadChecks().then((m) => {
+    if (!Object.keys(m).length) return;
+    CHECKS = m;
+    if (!el.isConnected || location.pathname !== `/learn/${slug}`) return;
+    el.querySelectorAll(".step[data-vid]").forEach((li) => { const a = li.querySelector(".vrow"); if (a && !li.querySelector(".ckcount")) a.insertAdjacentHTML("beforebegin", ckCount(li.dataset.vid)); });
+  });
   const render = () => {
     const [d, n] = trackProgress(t);
     el.innerHTML = `<nav class="crumbs"><a href="/learn">Learn</a>${icon("right")}<span>Track ${D.learn.tracks.indexOf(t) + 1}</span></nav>
@@ -324,7 +342,7 @@ function step(t, s, k) {
     kind = "Watch";
     title = s.title || (v && v.title) || "Video";
     const by = v ? D.people[v.person].name : s.by || "";
-    body = `<a class="vrow" href="/watch/${s.id}?track=${t.slug}"><div class="thumb"><img src="${thumb(s.id)}" alt="" loading="lazy" width="320" height="180">${v && v.sec ? `<span class="dur">${dur(v.sec)}</span>` : ""}</div><div class="vtext"><h3 class="vt">${esc(title)}</h3><div class="vsub">${esc(by)}</div></div></a>`;
+    body = `${ckCount(s.id)}<a class="vrow" href="/watch/${s.id}?track=${t.slug}"><div class="thumb"><img src="${thumb(s.id)}" alt="" loading="lazy" width="320" height="180">${v && v.sec ? `<span class="dur">${dur(v.sec)}</span>` : ""}</div><div class="vtext"><h3 class="vt">${esc(title)}</h3><div class="vsub">${esc(by)}</div></div></a>`;
   } else if (s.kind === "lab") {
     const l = D.learn.labs.find((x) => x.slug === s.slug) || { title: s.slug, minutes: 5 };
     kind = "Lab"; title = l.title;
@@ -334,9 +352,15 @@ function step(t, s, k) {
     body = `<div class="act"><a class="btn" href="${esc(s.url)}" target="_blank" rel="noopener">${icon("ext")}${esc(s.site || "Open")}</a></div>`;
   }
   const markable = s.kind !== "lab";
-  return `<li class="step${done ? " done" : ""}"><span class="tick">${done ? icon("check") : k + 1}</span><div style="min-width:0">
+  return `<li class="step${done ? " done" : ""}"${s.kind === "video" ? ` data-vid="${esc(s.id)}"` : ""}><span class="tick">${done ? icon("check") : k + 1}</span><div style="min-width:0">
     <span class="kind">${kind}</span>${s.kind === "video" ? "" : `<h3>${esc(title)}</h3>`}${s.note ? `<p>${esc(s.note)}</p>` : ""}${body}
     ${markable ? `<div class="act"><button class="btn${done ? " is-done" : ""}" data-mark="${key}">${icon("check")}${done ? "Done" : "Mark done"}</button></div>` : ""}</div></li>`;
+}
+function ckCount(id) {
+  const cl = CHECKS && CHECKS[id];
+  if (!cl || !cl.length) return "";
+  const [r, n] = checkScore(id, cl);
+  return `<span class="ckcount">${icon("check")}${n} question${n === 1 ? "" : "s"} inside${r ? `, ${r} right` : ""}</span>`;
 }
 function quiz(t, q, k) {
   return `<div class="q"><h3>${esc(q.q)}</h3><div class="opts">${q.options.map((o, i) => `<button data-q="${k}" data-opt="${i}">${esc(o)}</button>`).join("")}</div><div class="fb" aria-live="polite"></div></div>`;

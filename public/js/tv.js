@@ -41,13 +41,15 @@ export function mountPlayer(host, id, { start = 0, onPlay, onPlaying, onPause, o
         onError: (e) => { if ([100, 101, 150].includes(e.data)) onError && onError(e.data); },
       },
     });
-  }).catch(() => { if (!dead) { fallbackIframe(host, id); onPlay && onPlay(); onPlaying && onPlaying(); } });
+  }).catch(() => { if (!dead) { stop.fallback = true; fallbackIframe(host, id); onPlay && onPlay(); onPlaying && onPlaying(); } });
   const stop = () => { dead = true; try { player && player.destroy(); } catch {} };
   stop.play = () => { try { player && player.playVideo(); } catch {} };
   const read = (f, d) => { try { return player && player[f] ? player[f]() : d; } catch { return d; } };
   stop.playing = () => [1, 3].includes(read("getPlayerState", -1));
   stop.time = () => read("getCurrentTime", 0);
   stop.duration = () => read("getDuration", 0);
+  stop.pause = () => { try { player && player.pauseVideo(); } catch {} };
+  stop.seek = (t) => { try { player && player.seekTo(Math.max(0, t), true); } catch {} };
   stop.toggle = () => { try { stop.playing() ? player.pauseVideo() : player.playVideo(); } catch {} };
   return stop;
 }
