@@ -306,7 +306,13 @@ export function trackPage(el, qs, slug) {
   const t = D.learn.tracks.find((x) => x.slug === slug);
   if (!t) return notFound(el);
   setTitle(t.title);
-  if (!CHECKS) loadChecks().then((m) => { CHECKS = m; if (el.isConnected && location.pathname === `/learn/${slug}`) render(); });
+  // Question counts arrive after the page draws; they slot into the rows already there, so nothing you clicked resets.
+  if (!CHECKS) loadChecks().then((m) => {
+    if (!Object.keys(m).length) return;
+    CHECKS = m;
+    if (!el.isConnected || location.pathname !== `/learn/${slug}`) return;
+    el.querySelectorAll(".step[data-vid]").forEach((li) => { const a = li.querySelector(".vrow"); if (a && !li.querySelector(".ckcount")) a.insertAdjacentHTML("beforebegin", ckCount(li.dataset.vid)); });
+  });
   const render = () => {
     const [d, n] = trackProgress(t);
     el.innerHTML = `<nav class="crumbs"><a href="/learn">Learn</a>${icon("right")}<span>Track ${D.learn.tracks.indexOf(t) + 1}</span></nav>
@@ -336,9 +342,7 @@ function step(t, s, k) {
     kind = "Watch";
     title = s.title || (v && v.title) || "Video";
     const by = v ? D.people[v.person].name : s.by || "";
-    const cl = CHECKS && CHECKS[s.id];
-    const cq = cl && cl.length ? (([r, n]) => `<span class="ckcount">${icon("check")}${n} question${n === 1 ? "" : "s"} inside${r ? `, ${r} right` : ""}</span>`)(checkScore(s.id, cl)) : "";
-    body = `${cq}<a class="vrow" href="/watch/${s.id}?track=${t.slug}"><div class="thumb"><img src="${thumb(s.id)}" alt="" loading="lazy" width="320" height="180">${v && v.sec ? `<span class="dur">${dur(v.sec)}</span>` : ""}</div><div class="vtext"><h3 class="vt">${esc(title)}</h3><div class="vsub">${esc(by)}</div></div></a>`;
+    body = `${ckCount(s.id)}<a class="vrow" href="/watch/${s.id}?track=${t.slug}"><div class="thumb"><img src="${thumb(s.id)}" alt="" loading="lazy" width="320" height="180">${v && v.sec ? `<span class="dur">${dur(v.sec)}</span>` : ""}</div><div class="vtext"><h3 class="vt">${esc(title)}</h3><div class="vsub">${esc(by)}</div></div></a>`;
   } else if (s.kind === "lab") {
     const l = D.learn.labs.find((x) => x.slug === s.slug) || { title: s.slug, minutes: 5 };
     kind = "Lab"; title = l.title;
@@ -348,9 +352,15 @@ function step(t, s, k) {
     body = `<div class="act"><a class="btn" href="${esc(s.url)}" target="_blank" rel="noopener">${icon("ext")}${esc(s.site || "Open")}</a></div>`;
   }
   const markable = s.kind !== "lab";
-  return `<li class="step${done ? " done" : ""}"><span class="tick">${done ? icon("check") : k + 1}</span><div style="min-width:0">
+  return `<li class="step${done ? " done" : ""}"${s.kind === "video" ? ` data-vid="${esc(s.id)}"` : ""}><span class="tick">${done ? icon("check") : k + 1}</span><div style="min-width:0">
     <span class="kind">${kind}</span>${s.kind === "video" ? "" : `<h3>${esc(title)}</h3>`}${s.note ? `<p>${esc(s.note)}</p>` : ""}${body}
     ${markable ? `<div class="act"><button class="btn${done ? " is-done" : ""}" data-mark="${key}">${icon("check")}${done ? "Done" : "Mark done"}</button></div>` : ""}</div></li>`;
+}
+function ckCount(id) {
+  const cl = CHECKS && CHECKS[id];
+  if (!cl || !cl.length) return "";
+  const [r, n] = checkScore(id, cl);
+  return `<span class="ckcount">${icon("check")}${n} question${n === 1 ? "" : "s"} inside${r ? `, ${r} right` : ""}</span>`;
 }
 function quiz(t, q, k) {
   return `<div class="q"><h3>${esc(q.q)}</h3><div class="opts">${q.options.map((o, i) => `<button data-q="${k}" data-opt="${i}">${esc(o)}</button>`).join("")}</div><div class="fb" aria-live="polite"></div></div>`;

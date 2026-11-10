@@ -101,6 +101,19 @@ test("questions inside videos are well formed and don't give the answer away", (
   for (const a of [0, 1, 2, 3]) assert.ok(spots.filter((x) => x === a).length / n > 0.15, `answer ${a} is rarely right`);
 });
 
+test("a question inside a video comes due when you reach it, and scrubbing past one goes back to it", async () => {
+  const { dueCheck } = await import("../public/js/checktime.js");
+  const list = [{ t: 100 }, { t: 300 }], none = () => false;
+  assert.equal(dueCheck(list, null, 150, none).k, -1, "the first read is where you start, not a crossing");
+  assert.equal(dueCheck(list, 90, 99.5, none).k, -1, "not yet");
+  assert.deepEqual(dueCheck(list, 99.6, 100.1, none), { k: 0, seekTo: null }, "plays into it");
+  assert.deepEqual(dueCheck(list, 99.8, 100.2 - 0.3 + 0.1, none).k, 0, "a read just before the mark still counts");
+  assert.deepEqual(dueCheck(list, 50, 420, none), { k: 0, seekTo: 100 }, "scrubbing past both goes back to the first");
+  assert.deepEqual(dueCheck(list, 50, 420, (i) => i === 0), { k: 1, seekTo: 300 }, "an answered one is skipped");
+  assert.equal(dueCheck(list, 150, 120, none).k, -1, "going back asks nothing");
+  assert.equal(dueCheck(list, 310, 400, none).k, -1, "resuming past a question doesn't pull you back");
+});
+
 test("books are official free editions with complete entries", () => {
   const books = json("public/data/books.json");
   assert.ok(books.length >= 20, "only " + books.length + " books");

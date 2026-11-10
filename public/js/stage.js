@@ -85,7 +85,8 @@ export function openStage({ id, title: t, slotEl, cover, on }) {
   me.player = mountPlayer(video.querySelector(".stage-yt"), id, {
     start,
     onPlaying: () => { root.classList.add("started"); paintPP(); call("onPlaying"); },
-    onPause: () => { savePos(true); store.touchPos(); paintPP(); },
+    // A pause the page asked for (a question inside the video) saves the place but doesn't sync on its own.
+    onPause: () => { savePos(true); if (me.quiet) me.quiet = false; else store.touchPos(); paintPP(); },
     onPlay: () => call("onPlay"),
     onEnd: () => { const d = me.player.duration(); if (d) { store.setPos(id, d, d); store.touchPos(); } if (root.classList.contains("mini")) closeStage(); else call("onEnd"); },
     onError: (c) => call("onError", c),
@@ -99,10 +100,11 @@ function controls(video, resumed) {
   return {
     video, resumed,
     play: () => live() && me.player.play(),
-    pause: () => live() && me.player.pause(),
+    pause: (quiet) => { if (!live()) return; if (quiet) me.quiet = true; me.player.pause(); },
     seek: (t) => live() && me.player.seek(t),
     time: () => (live() ? me.player.time() : 0),
     playing: () => live() && me.player.playing(),
+    controllable: () => live() && !me.player.fallback,
   };
 }
 // The watch page calls this when it goes away. Another watch page reuses or replaces the player itself.

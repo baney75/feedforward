@@ -1130,12 +1130,13 @@ body.focus { background: color-mix(in oklab, var(--bg) 90%, #000); }
 body.focus .topbar, body.focus .rail, body.focus .tabbar { display: none; }
 body.focus main { padding: var(--s4); margin: 0; }
 body.focus .watch { max-width: 1440px; }
-body.focus .watch > div > :not(.player, .notes-pane) { display: none; }
+body.focus .watch > div > :not(.player, .notes-pane, .ckbox) { display: none; }
+body.focus .ckbox:not([hidden]) { grid-column: 1 / -1; }
 body.focus .notes-pane { display: flex; flex-direction: column; gap: var(--s2); }
 .notes-h { display: flex; justify-content: space-between; align-items: center; }
 .notes-h label { font-weight: 650; }
 .notes-pane textarea { flex: 1; min-height: 200px; resize: vertical; background: var(--bg-2); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r); padding: var(--s3); font: inherit; font-size: var(--t-m); line-height: 1.5; }
-@media (min-width: 900px) { body.focus .watch > div { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--s4); align-items: stretch; } body.focus .watch .player { max-width: none; } }
+@media (min-width: 900px) { body.focus .watch > div { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--s4); align-items: stretch; } body.focus .watch .player { max-width: none; } body.focus .watch .player { grid-row: 1; grid-column: 1; } body.focus .notes-pane { grid-row: 1; grid-column: 2; } body.focus .ckbox:not([hidden]) { grid-row: 2; } }
 @media (max-width: 899px) { body.focus .notes-pane { margin-top: var(--s4); } }
 
 /* Hover frames */
