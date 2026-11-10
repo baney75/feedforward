@@ -74,16 +74,22 @@ export function runChecks({ id, list, stage, box, strip, on }) {
     if (!stage.playing()) { if (open >= 0) held = true; return; }
     const t = stage.time();
     if (open >= 0) {
+      // Answered, then played with YouTube's own button: same as Keep watching.
+      if (box.querySelector(".opts")?.dataset.done) { close(); last = t; return; }
       // Play pressed after the question paused the video: pause once more. If they play again (an iPhone's own
-      // fullscreen player can't be left from here, so it may be the only way out), let it play; the question waits below.
-      if (held) { held = false; if (forced++ < 1) stage.pause(true); else stage.video.querySelector(".ckdim")?.remove(); }
-      last = t; return;
+      // fullscreen player can't be left from here, so it may be the only way out), let it go; the question is
+      // skipped for now, and the ones after it still come.
+      if (held) { held = false; if (forced++ < 1) { stage.pause(true); last = t; return; } passed.delete(open); close(); }
+      else { last = t; return; }
     }
+    // The first read that has a time is where you started, so earlier questions don't pull you back. A buffering
+    // player can read 0 before it reaches a resumed spot.
+    if (last == null) { if (t > 0.05) last = t; return; }
     if (enabled) {
       const { k, seekTo } = dueCheck(list, last, t, asked);
       if (k >= 0) { if (seekTo != null) stage.seek(seekTo); last = list[k].t; ask(k); return; }
     }
-    last = t; // the first read is where you started, so earlier questions don't pull you back
+    last = t;
   };
   timer = setInterval(tick, 250);
   paintStrip();
