@@ -1150,3 +1150,27 @@ html:has(body.on-watch) { overscroll-behavior-y: contain; }
 /* Twitch */
 .twitch-frame { position: relative; aspect-ratio: 16 / 9; max-width: 960px; border-radius: var(--r); overflow: hidden; background: #000; }
 .twitch-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* Questions inside a video */
+.ckstrip { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; margin-top: var(--s3); font-size: 14px; }
+.ckstrip[hidden], .ckbox[hidden] { display: none; }
+.ckon { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 var(--s3); border-radius: 999px; border: 1px solid var(--line); background: var(--bg); font: 600 13px/1 var(--font); color: var(--fg); }
+.ckon svg { width: 16px; height: 16px; }
+.ckon[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.ckdots { display: inline-flex; gap: 6px; }
+.ckdots i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--fg-2); }
+.ckdots i.ok { background: var(--ok); border-color: var(--ok); }
+.ckdots i.miss { border-color: var(--bad); }
+.ckdots i.now { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ckbox { margin-top: var(--s3); }
+.ckq { margin: 0; border: 1px solid var(--line); scroll-margin: 80px; }
+.ckq .kind { display: block; margin-bottom: var(--s2); font: 600 11px/1 var(--font); text-transform: uppercase; letter-spacing: .06em; color: var(--fg-2); }
+.ckq .opts button:disabled { cursor: default; opacity: 1; color: var(--fg); }
+.ckq .opts button.right { background: color-mix(in srgb, var(--ok) 12%, var(--bg)); }
+.ckq .act { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: var(--s3); }
+.ckq .act:empty { display: none; }
+.ckdim { position: absolute; inset: 0; z-index: 3; display: grid; place-items: end center; padding: var(--s4); background: rgba(0,0,0,.6); color: #fff; font: 600 14px/1.3 var(--font); }
+.ckdim span { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; background: rgba(0,0,0,.7); }
+.ckdim svg { width: 16px; height: 16px; }
+.ckcount { display: inline-flex; align-items: center; gap: 6px; margin-top: var(--s2); font: 600 12px/1 var(--font); color: var(--fg-2); }
+.ckcount svg { width: 14px; height: 14px; }

@@ -63,7 +63,7 @@ export function closeStage() {
   root.hidden = true; root.className = ""; root.style.cssText = "";
   video.innerHTML = "";
 }
-// The watch page calls this when it renders. Returns { video, resumed, play }.
+// The watch page calls this when it renders. Returns the controls below.
 export function openStage({ id, title: t, slotEl, cover, on }) {
   const same = cur && cur.id === id;
   const from = same && root.classList.contains("mini") ? root.getBoundingClientRect() : null;
@@ -74,7 +74,7 @@ export function openStage({ id, title: t, slotEl, cover, on }) {
   if (same) {
     cur.on = on;
     if (from) glide(from);
-    return { video, resumed: true, play: () => cur.player.play() };
+    return controls(video, true);
   }
   video.innerHTML = `<div class="stage-yt"></div>${cover}`;
   const p = store.pos(id);
@@ -91,7 +91,19 @@ export function openStage({ id, title: t, slotEl, cover, on }) {
     onError: (c) => call("onError", c),
   });
   clearInterval(tick); tick = setInterval(tickPos, 5000);
-  return { video, resumed: false, play: () => me.player.play() };
+  return controls(video, false);
+}
+// What a page can do with the player it opened. Each call reaches whatever player is current, so a stale page does nothing.
+function controls(video, resumed) {
+  const me = cur, live = () => cur === me;
+  return {
+    video, resumed,
+    play: () => live() && me.player.play(),
+    pause: () => live() && me.player.pause(),
+    seek: (t) => live() && me.player.seek(t),
+    time: () => (live() ? me.player.time() : 0),
+    playing: () => live() && me.player.playing(),
+  };
 }
 // The watch page calls this when it goes away. Another watch page reuses or replaces the player itself.
 export function leaveStage() {

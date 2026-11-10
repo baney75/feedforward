@@ -48,6 +48,8 @@ export function mountPlayer(host, id, { start = 0, onPlay, onPlaying, onPause, o
   stop.playing = () => [1, 3].includes(read("getPlayerState", -1));
   stop.time = () => read("getCurrentTime", 0);
   stop.duration = () => read("getDuration", 0);
+  stop.pause = () => { try { player && player.pauseVideo(); } catch {} };
+  stop.seek = (t) => { try { player && player.seekTo(Math.max(0, t), true); } catch {} };
   stop.toggle = () => { try { stop.playing() ? player.pauseVideo() : player.playVideo(); } catch {} };
   return stop;
 }
