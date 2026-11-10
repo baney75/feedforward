@@ -2,7 +2,7 @@
 // reports, the skills queue and bans for people below them. Controls appear only where the API allows them:
 // the owner names admins; admins name mods and contributors, set verified and set teaching roles;
 // mods ban people below them. Professors name tutors at /teach. Every destructive action asks first.
-import { api, user, can, refreshMe, RANK } from "../account.js";
+import { api, user, can, hasRole, refreshMe, signIn, RANK } from "../account.js";
 import { TOPICS } from "../data.js";
 import { esc, toast, badges, userAvatar, ago } from "../ui.js";
 import { $, SITE, setTitle, cssReady, loader, copy, go, fmtDate, on, busy, itemHref, itemLabel } from "./_shared.js";
@@ -17,7 +17,8 @@ const say = (a) => ACTION[a] || a.replace(/^role:(\w+)$/, (_, r) => "made " + (R
 export async function render(el, qs) {
   await cssReady;
   try { await refreshMe(); } catch {}
-  if (!can("mod")) { toast(user() ? "Staff only." : "Sign in first."); go("/me", true); return null; }
+  if (!hasRole("mod")) { toast(user() ? "Staff only." : "Sign in first."); go("/me", true); return null; }
+  if (user().paired) return upgrade(el);
   const me = user(), admin = can("admin");
   setTitle(admin ? "Admin" : "Moderation");
   // Moderators see reports first; admins see people first.
@@ -323,3 +324,26 @@ async function catalog(pane) {
 }
 
 const PANES = { applications, people, catalog, reports, suggestions, skills, invites, log };
+
+// A screen your phone approved can't run the site, so a screen someone talks you into approving can't either.
+// Signing in here with your code makes this a full session.
+function upgrade(el) {
+  setTitle("Admin");
+  el.innerHTML = `<div class="pg narrow-pg pg-admin">
+    <header class="page-h"><div><h1>Admin</h1><p>Your phone signed this browser in. That's enough to watch and save, but staff tools need your code on this device.</p></div></header>
+    <form class="choice" id="upgrade" aria-labelledby="upH">
+      <h2 id="upH">Sign in with your code</h2>
+      <div class="inline">
+        <label class="sr-only" for="upCode">Your code</label>
+        <input class="input mono" id="upCode" name="code" data-code enterkeyhint="go" required autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="otter-river-cedar-acorn-42" maxlength="60">
+        <button class="btn primary" type="submit">Sign in</button>
+      </div>
+    </form>
+    <p class="hint">Your code stays on this device. Never type it on a screen you don't own.</p>
+  </div>`;
+  $("#upgrade", el).onsubmit = (e) => {
+    e.preventDefault();
+    busy(e.submitter || $("#upgrade button", el), async () => { await signIn($("#upCode", el).value); toast("Signed in. Admin is open."); dispatchEvent(new PopStateEvent("popstate")); });
+  };
+  return null;
+}

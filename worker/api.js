@@ -156,7 +156,8 @@ export async function xAvatar(handle) {
   }
   return "";
 }
-const me = (u) => ({ ...pub(u), ref: u.ref_code, banned: !!u.banned, links: linksOf(u), uploaded: !!u.avatar });
+// paired: this session came from a phone approving a screen. It can watch and save, never run the site.
+const me = (u) => ({ ...pub(u), ref: u.ref_code, banned: !!u.banned, links: linksOf(u), uploaded: !!u.avatar, paired: paired(u) });
 const log = (env, actor, action, target) => env.DB.prepare("INSERT INTO modlog (actor, action, target, ts) VALUES (?, ?, ?, ?)").bind(actor, action, target, now()).run();
 const staff = (u, min) => u && !u.banned && !paired(u) && RANK[u.role] >= RANK[min];
 const paired = (u) => String(u.session_device || "").startsWith(PAIRED);
@@ -342,7 +343,7 @@ on("GET", "/api/pair/poll", async (req, env) => {
   await env.DB.prepare("DELETE FROM pairs WHERE code = ?").bind(code).run();
   const u = await env.DB.prepare("SELECT * FROM users WHERE id = ? AND banned = 0").bind(p.uid).first();
   if (!u) return json({ state: "gone" });
-  return json({ state: "approved", token: p.token, user: me(u) }, 200, { "set-cookie": await gateCookie(env, u.id, await sha(p.token)) });
+  return json({ state: "approved", token: p.token, user: { ...me(u), paired: true } }, 200, { "set-cookie": await gateCookie(env, u.id, await sha(p.token)) });
 });
 on("GET", "/api/pair/([A-Za-z0-9]{6})", async (req, env, u, [code]) => {
   if (!u) return err(401, "Sign in first.");

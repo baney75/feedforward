@@ -1,7 +1,7 @@
 // /me: the account page. Signed out: get a code or sign in with one. Signed in: name, photo, code and QR,
 // referral link, badges, agent tokens, sign out. /link#<code>: sign in on this device from a scanned QR.
 import { haptic, hapticsOn, setHaptics } from "../haptics.js";
-import { api, account, signedIn, user, can, createAccount, signIn, signOut, refreshMe, updateUser, setCode } from "../account.js";
+import { api, account, signedIn, user, can, createAccount, signIn, signOut, refreshMe, updateUser, setCode, hasRole } from "../account.js";
 import { esc, toast, badges, userAvatar } from "../ui.js";
 import { icon } from "../icons.js";
 import { store } from "../store.js";
@@ -109,7 +109,7 @@ async function signedInView(el) {
   const keys = [u.verified && "verified", u.role !== "user" && u.role, u.teach].filter(Boolean);
   const links = u.links || {};
   const tools = [
-    can("admin") ? ["/admin", "Admin", "People, catalog, reports, invites"] : can("mod") ? ["/admin", "Moderation", "Reports, skills, bans"] : null,
+    hasRole("admin") ? ["/admin", "Admin", "People, catalog, reports, invites"] : hasRole("mod") ? ["/admin", "Moderation", "Reports, skills, bans"] : null,
     u.teach || can("admin") ? ["/teach", "Teaching", u.teach === "professor" ? "Your sessions and tutors" : "Host and run your sessions"] : null,
   ].filter(Boolean);
 
