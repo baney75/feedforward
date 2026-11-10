@@ -15,7 +15,9 @@ export const account = () => acct;            // { token, code?, user }
 export const user = () => acct && acct.user;
 export const signedIn = () => !!(acct && acct.token);
 export const RANK = { user: 1, contributor: 2, mod: 3, admin: 4, owner: 5 };
-export const can = (min) => !!(acct && acct.user && RANK[acct.user.role] >= RANK[min]);
+// hasRole: the account's role. can: what this session may do. A paired screen holds the role but not the tools.
+export const hasRole = (min) => !!(acct && acct.user && RANK[acct.user.role] >= RANK[min]);
+export const can = (min) => hasRole(min) && !acct.user.paired;
 
 export async function api(path, { method = "GET", body, raw, type, keepalive } = {}) {
   const headers = {};

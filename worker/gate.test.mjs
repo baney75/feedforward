@@ -273,6 +273,9 @@ test("pairing: a TV shows a code, a member approves, the TV gets its own session
   assert.match(got.cookie, /__Host-ff_gate=/);
   assert.notEqual(got.d.token, owner, "the TV gets a session of its own");
   assert.equal((await call(env, "/api/me", { token: got.d.token })).status, 200);
+  assert.equal(got.d.user.paired, true, "the screen knows it was paired");
+  assert.equal((await call(env, "/api/me", { token: got.d.token })).d.user.paired, true, "and /api/me says so, so the page hides staff tools");
+  assert.equal((await call(env, "/api/me", { token: owner })).d.user.paired, false, "a code sign-in is a full session");
   assert.equal((await call(env, "/api/me/code", { method: "POST", token: got.d.token, body: {} })).status, 403, "a paired screen can't change the account's code");
   assert.equal((await call(env, "/api/admin/users?q=", { token: got.d.token })).status, 403, "a paired screen gets no staff tools");
   assert.equal((await poll()).d.state, "gone", "handed out once");
